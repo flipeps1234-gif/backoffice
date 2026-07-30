@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Invoice builder",
-  description: "Create and download a clean invoice PDF.",
+  title: "Ledger",
+  description: "Snap your payment screenshots. We do the bookkeeping.",
 };
 
 export default function RootLayout({
