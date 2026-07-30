@@ -133,7 +133,7 @@ export const openAiExtractor: Extractor = {
         authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL ?? "gpt-4o",
+        model: process.env.OPENAI_MODEL ?? "gpt-5.6",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userContent(inputs, today) },
