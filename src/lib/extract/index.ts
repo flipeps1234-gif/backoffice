@@ -1,5 +1,6 @@
 import { dedupe } from "./dedupe";
 import { mockExtractor } from "./mock";
+import { openAiExtractor } from "./openai";
 import type { ExtractionInput, ExtractionResult, Extractor } from "./types";
 
 /**
@@ -9,10 +10,12 @@ import type { ExtractionInput, ExtractionResult, Extractor } from "./types";
 
 const PROVIDERS: Record<string, Extractor> = {
   mock: mockExtractor,
+  openai: openAiExtractor,
 };
 
+/** EXTRACT_PROVIDER wins; otherwise use a real one only if there's a key for it. */
 export const activeProviderName = (): string =>
-  process.env.EXTRACT_PROVIDER ?? "mock";
+  process.env.EXTRACT_PROVIDER ?? (process.env.OPENAI_API_KEY ? "openai" : "mock");
 
 export const getExtractor = (name = activeProviderName()): Extractor => {
   const extractor = PROVIDERS[name];

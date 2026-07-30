@@ -47,6 +47,14 @@ export async function POST(request: Request) {
     });
   }
 
-  const result = await extract(inputs);
-  return Response.json(result);
+  try {
+    return Response.json(await extract(inputs));
+  } catch (cause) {
+    // Never fail silently — log the real reason, show the user a usable one.
+    console.error("Extraction failed:", cause);
+    return Response.json(
+      { error: "We couldn't read those right now. Try again in a moment." },
+      { status: 502 },
+    );
+  }
 }
