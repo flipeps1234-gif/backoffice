@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import ConfirmationSheet from "./confirmation-sheet";
+import QuickAdd from "./quick-add";
 import RunningTotals from "./running-totals";
 import SwipeDeck from "./swipe-deck";
 import { warningMessage, type ExtractionWarning } from "@/lib/extract/types";
@@ -18,6 +19,7 @@ export default function UploadScreen() {
   const [warnings, setWarnings] = useState<ExtractionWarning[]>([]);
   const [error, setError] = useState("");
   const [decided, setDecided] = useState<string[]>([]);
+  const [quickAdd, setQuickAdd] = useState(false);
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -37,10 +39,17 @@ export default function UploadScreen() {
         setStatus("error");
         return;
       }
-      setTransactions(data.transactions);
+      // Append — a new batch of screenshots must never wipe cash already logged.
+      // Re-id on arrival: extraction ids are derived from payer + amount, so
+      // two batches containing the same payment would otherwise collide.
+      const batch: Transaction[] = data.transactions.map((tx: Transaction) => ({
+        ...tx,
+        id: crypto.randomUUID(),
+      }));
+      setTransactions((current) => [...current, ...batch]);
       setWarnings(data.warnings);
       setStatus("idle");
-      if (data.transactions.length > 0) setStage("confirm");
+      if (batch.length > 0) setStage("confirm");
     } catch {
       setError("Couldn't reach the server. Check your connection and try again.");
       setStatus("error");
@@ -74,9 +83,24 @@ export default function UploadScreen() {
   }
 
   const pending = transactions.filter((tx) => tx.business === null);
+  const sorted = transactions.filter((tx) => tx.business !== null);
+
+  // The numpad owns the screen while it's open — one hand, one thing at a time.
+  if (quickAdd) {
+    return (
+      <QuickAdd
+        onSave={(tx) => setTransactions((current) => [...current, tx])}
+        onClose={() => setQuickAdd(false)}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {(stage === "sort" || sorted.length > 0) && (
+        <RunningTotals transactions={transactions} />
+      )}
+
       {stage === "upload" && (
         <label className="block cursor-pointer rounded-lg border-2 border-dashed border-neutral-300 px-6 py-10 text-center hover:border-neutral-500">
           <input
@@ -93,6 +117,16 @@ export default function UploadScreen() {
             Venmo, Cash App, or Zelle. Pick as many as you like.
           </span>
         </label>
+      )}
+
+      {stage !== "confirm" && (
+        <button
+          type="button"
+          className="w-full rounded-lg border border-neutral-300 px-4 py-4 text-base font-medium hover:bg-neutral-50"
+          onClick={() => setQuickAdd(true)}
+        >
+          Log a cash payment
+        </button>
       )}
 
       {status === "reading" && (
@@ -120,13 +154,12 @@ export default function UploadScreen() {
 
       {stage === "confirm" && (
         <>
-          <ConfirmationSheet
-            transactions={transactions}
-            onChange={updateTransaction}
-          />
+          {/* Only the new batch needs confirming — anything already sorted
+              (cash, or an earlier batch) has business set and is excluded. */}
+          <ConfirmationSheet transactions={pending} onChange={updateTransaction} />
           <button
             type="button"
-            className="w-full rounded-lg bg-neutral-900 px-4 py-4 text-base font-medium text-white hover:bg-neutral-800"
+            className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"
             onClick={() => setStage("sort")}
           >
             Looks right — start sorting
@@ -136,7 +169,6 @@ export default function UploadScreen() {
 
       {stage === "sort" && (
         <>
-          <RunningTotals transactions={transactions} />
           {pending.length > 0 ? (
             <SwipeDeck
               pending={pending}
@@ -159,13 +191,21 @@ export default function UploadScreen() {
               </button>
               <button
                 type="button"
+                className="block w-full rounded-lg bg-foreground px-4 py-3 text-sm font-medium text-background hover:opacity-90"
+                onClick={() => setStage("upload")}
+              >
+                Add more screenshots
+              </button>
+              <button
+                type="button"
                 className="block w-full rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50"
                 onClick={startOver}
               >
-                Start a new batch
+                Clear and start over
               </button>
               <p className="text-xs text-neutral-500">
                 Nothing is saved yet — that arrives with accounts in v0.2.
+                Clearing loses these totals.
               </p>
             </div>
           )}
