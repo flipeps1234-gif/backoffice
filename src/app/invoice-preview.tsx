@@ -1,7 +1,9 @@
+// parked prototype — future payment-links module, do not extend.
+
 import {
-  formatMoney,
-  invoiceTotal,
-  lineTotal,
+  formatCents,
+  invoiceTotalCents,
+  lineTotalCents,
   type Invoice,
 } from "@/lib/invoice";
 
@@ -11,7 +13,7 @@ import {
  */
 export default function InvoicePreview({ invoice }: { invoice: Invoice }) {
   const items = invoice.items.filter(
-    (item) => item.description.trim() !== "" || lineTotal(item) !== 0,
+    (item) => item.description.trim() !== "" || lineTotalCents(item) !== 0,
   );
 
   return (
@@ -80,10 +82,10 @@ export default function InvoicePreview({ invoice }: { invoice: Invoice }) {
                   {item.quantity}
                 </td>
                 <td className="py-2 text-right tabular-nums">
-                  {formatMoney(item.unitPrice)}
+                  {formatCents(item.unitPriceCents)}
                 </td>
                 <td className="py-2 text-right tabular-nums">
-                  {formatMoney(lineTotal(item))}
+                  {formatCents(lineTotalCents(item))}
                 </td>
               </tr>
             ))
@@ -95,7 +97,7 @@ export default function InvoicePreview({ invoice }: { invoice: Invoice }) {
         <div className="w-64 flex justify-between border-t-2 border-neutral-900 pt-2 font-semibold">
           <span>Total</span>
           <span className="tabular-nums">
-            {formatMoney(invoiceTotal(invoice.items))}
+            {formatCents(invoiceTotalCents(invoice.items))}
           </span>
         </div>
       </div>

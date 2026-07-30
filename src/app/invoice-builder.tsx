@@ -1,8 +1,16 @@
+// parked prototype — future payment-links module, do not extend.
+
 "use client";
 
 import { useState } from "react";
 import InvoicePreview from "./invoice-preview";
-import { emptyInvoice, emptyItem, type Invoice, type LineItem } from "@/lib/invoice";
+import {
+  dollarsToCents,
+  emptyInvoice,
+  emptyItem,
+  type Invoice,
+  type LineItem,
+} from "@/lib/invoice";
 
 const labelClass = "block text-xs font-medium text-neutral-500 mb-1";
 const inputClass =
@@ -179,10 +187,17 @@ export default function InvoiceBuilder() {
                   type="number"
                   min="0"
                   step="0.01"
+                  placeholder="0.00"
                   className={inputClass}
-                  value={item.unitPrice}
+                  // Uncontrolled: the user types dollars, we store cents.
+                  // Controlling it would reformat mid-keystroke.
+                  defaultValue=""
                   onChange={(event) =>
-                    setItem(item.id, "unitPrice", Number(event.target.value))
+                    setItem(
+                      item.id,
+                      "unitPriceCents",
+                      dollarsToCents(event.target.value),
+                    )
                   }
                 />
               </div>
