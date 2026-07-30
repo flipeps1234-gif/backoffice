@@ -36,9 +36,13 @@ law: every flow survives "ten seconds, one hand, in a driveway."
 - v0.3 Catalog depth + expenses: services carry flat OR rate
   pricing (per sqft / hour / room) with inline mini-calc;
   per-customer remembered price and size; receipt photo → expense
-  via the same extraction engine.
+  via the same extraction engine; optional cost field on catalog
+  items (per-unit estimate, editable at save-as-service time).
 - v0.4 Dashboard + tax export: money in/out, revenue by service,
   monthly summary, CSV "give this to your tax preparer."
+  Margin view — revenue minus estimated costs per service. Margin
+  uses catalog cost ESTIMATES; the tax export uses ACTUAL logged
+  expenses only. Never mix the two.
 - v0.5 Bilingual EN/ES/PT + polish. This build is the demo.
 Never start the next milestone or out-of-scope features unprompted —
 make me say "milestone done" first.
@@ -48,8 +52,9 @@ Modular pay-per-feature, prices conceptual. Free forever and
 untouchable: the core loop, manual logging, viewing ALL history at
 any age, exporting their own data, every language. Future paid
 modules: tax-ready year package/filing (per event, January);
-insights & reports; team seats (when multi-user unparks); payment
-links (per transaction, 2028); one everything-bundle (~$15/mo).
+insights & reports (margin insights belong here); team seats (when
+multi-user unparks); payment links (per transaction, 2028); one
+everything-bundle (~$15/mo).
 Filter: modules charge for value ADDED on top of their data — never
 to un-cripple the core, never to meter their own records. Sell what
 we built on their data; never sell their data back. Today: zero
