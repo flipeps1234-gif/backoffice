@@ -26,24 +26,22 @@ type Stage = "upload" | "confirm" | "sort";
 
 /**
  * The session gate. The ledger below is keyed on the account, so switching
- * accounts — sign-in, sign-out, demo — REMOUNTS it with fresh state. One
- * account's rows structurally cannot survive into another's session (or
- * into demo mode) on a shared device: the component holding them is gone.
+ * accounts — sign-in, sign-out, tester — REMOUNTS it with fresh state. One
+ * account's rows structurally cannot survive into another's session on a
+ * shared device: the component holding them is gone.
  */
 export default function UploadScreen() {
   const { user, loading, isConfigured } = useSession();
-  // Demo mode: the sign-in gate steps aside, nothing is saved. Deliberately
-  // not persisted across reloads — a refresh returns to the real gate.
-  const [demo, setDemo] = useState(false);
 
   // Don't flash the sign-in form at someone who is already signed in.
   if (loading) {
     return <p className="text-sm text-neutral-500">Loading…</p>;
   }
 
-  // Configured but signed out: the ledger belongs to an account.
-  if (isConfigured && !user && !demo) {
-    return <SignIn onDemo={() => setDemo(true)} />;
+  // Configured but signed out: the ledger belongs to an account. Typing the
+  // demo word signs into the shared tester account — a real session.
+  if (isConfigured && !user) {
+    return <SignIn />;
   }
 
   return (
@@ -52,8 +50,9 @@ export default function UploadScreen() {
       accountId={user?.id ?? null}
       email={user?.email ?? null}
       isConfigured={isConfigured}
-      demo={demo && !user}
-      onExitDemo={() => setDemo(false)}
+      // The tester account's email is created with local part "tester" —
+      // that's the whole convention. Anyone signed into it shares its data.
+      demoAccount={user?.email?.split("@")[0]?.toLowerCase() === "tester"}
     />
   );
 }
@@ -62,14 +61,12 @@ function Ledger({
   accountId,
   email,
   isConfigured,
-  demo,
-  onExitDemo,
+  demoAccount,
 }: {
   accountId: string | null;
   email: string | null;
   isConfigured: boolean;
-  demo: boolean;
-  onExitDemo: () => void;
+  demoAccount: boolean;
 }) {
   const [status, setStatus] = useState<Status>("idle");
   const [stage, setStage] = useState<Stage>("upload");
@@ -316,16 +313,10 @@ function Ledger({
         </p>
       )}
 
-      {demo && (
-        <p className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          <span>Demo mode — nothing is saved.</span>
-          <button
-            type="button"
-            className="font-medium hover:underline"
-            onClick={onExitDemo}
-          >
-            Sign in
-          </button>
+      {demoAccount && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          Shared test account — everyone who types the demo word sees what you
+          save here. Try everything; don&apos;t put real numbers in.
         </p>
       )}
 

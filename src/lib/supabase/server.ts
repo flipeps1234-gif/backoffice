@@ -11,10 +11,10 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(url && anonKey);
 
-/** Returns the signed-in user's id, or null for a missing/invalid token. */
+/** Returns the signed-in user, or null for a missing/invalid token. */
 export const verifyAccessToken = async (
   token: string | null,
-): Promise<string | null> => {
+): Promise<{ accountId: string; email: string | null } | null> => {
   if (!isSupabaseConfigured || !token) return null;
 
   const supabase = createClient(url!, anonKey!, {
@@ -22,5 +22,11 @@ export const verifyAccessToken = async (
   });
   const { data, error } = await supabase.auth.getUser(token);
   if (error || !data.user) return null;
-  return data.user.id;
+  return { accountId: data.user.id, email: data.user.email ?? null };
+};
+
+/** The shared demo account never gets the paid extraction provider. */
+export const isDemoAccount = (email: string | null): boolean => {
+  const demoEmail = process.env.DEMO_EMAIL;
+  return Boolean(demoEmail && email && email.toLowerCase() === demoEmail.toLowerCase());
 };

@@ -1,6 +1,10 @@
 import { activeProviderName, extract } from "@/lib/extract";
 import type { ExtractionInput } from "@/lib/extract";
-import { isSupabaseConfigured, verifyAccessToken } from "@/lib/supabase/server";
+import {
+  isDemoAccount,
+  isSupabaseConfigured,
+  verifyAccessToken,
+} from "@/lib/supabase/server";
 
 /**
  * Extraction runs here, not in the browser. When a real provider is plugged
@@ -111,11 +115,18 @@ export async function POST(request: Request) {
       request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
     if (!token) {
       provider = "mock";
-    } else if (!(await verifyAccessToken(token))) {
-      return Response.json(
-        { error: "Your session expired. Sign in again and retry." },
-        { status: 401 },
-      );
+    } else {
+      const verified = await verifyAccessToken(token);
+      if (!verified) {
+        return Response.json(
+          { error: "Your session expired. Sign in again and retry." },
+          { status: 401 },
+        );
+      }
+      // The shared tester account is a real session anyone can mint via
+      // /api/demo-session — letting it reach the paid provider would reopen
+      // the exact spend-the-owner's-budget hole the token check closes.
+      if (isDemoAccount(verified.email)) provider = "mock";
     }
   }
 
