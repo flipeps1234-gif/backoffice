@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import ConfirmationSheet from "./confirmation-sheet";
+import HistoryList, { type LogAgainPrefill } from "./history-list";
 import Insights from "./insights";
 import QuickAdd from "./quick-add";
 import RunningTotals from "./running-totals";
@@ -77,6 +78,9 @@ function Ledger({
   const [error, setError] = useState("");
   const [decided, setDecided] = useState<string[]>([]);
   const [quickAdd, setQuickAdd] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  /** Set by History's "Log again" — opens the numpad pre-filled. */
+  const [logAgain, setLogAgain] = useState<LogAgainPrefill | null>(null);
   /** Ids of the most recently read batch — what the insights describe. */
   const [lastBatchIds, setLastBatchIds] = useState<string[]>([]);
 
@@ -269,10 +273,11 @@ function Ledger({
   const lastBatch = transactions.filter((tx) => lastBatchIds.includes(tx.id));
 
   // The numpad owns the screen while it's open — one hand, one thing at a time.
-  if (quickAdd) {
+  if (quickAdd || logAgain) {
     return (
       <QuickAdd
         services={services}
+        prefill={logAgain ?? undefined}
         onSave={(tx) => {
           setTransactions((current) => [...current, tx]);
           if (accountId) {
@@ -289,7 +294,24 @@ function Ledger({
           updateTransaction(txId, { serviceId });
           void persist(() => saveTransaction(txId, { serviceId }));
         }}
-        onClose={() => setQuickAdd(false)}
+        onClose={() => {
+          setQuickAdd(false);
+          setLogAgain(null);
+        }}
+      />
+    );
+  }
+
+  if (showHistory) {
+    return (
+      <HistoryList
+        transactions={transactions}
+        services={services}
+        onLogAgain={(prefill) => {
+          setShowHistory(false);
+          setLogAgain(prefill);
+        }}
+        onClose={() => setShowHistory(false)}
       />
     );
   }
@@ -339,13 +361,24 @@ function Ledger({
       )}
 
       {stage !== "confirm" && (
-        <button
-          type="button"
-          className="w-full rounded-lg border border-neutral-300 px-4 py-4 text-base font-medium hover:bg-neutral-50"
-          onClick={() => setQuickAdd(true)}
-        >
-          Log a cash payment
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="flex-1 rounded-lg border border-neutral-300 px-4 py-4 text-base font-medium hover:bg-neutral-50"
+            onClick={() => setQuickAdd(true)}
+          >
+            Log a cash payment
+          </button>
+          {sorted.length > 0 && (
+            <button
+              type="button"
+              className="rounded-lg border border-neutral-300 px-4 py-4 text-base font-medium hover:bg-neutral-50"
+              onClick={() => setShowHistory(true)}
+            >
+              History
+            </button>
+          )}
+        </div>
       )}
 
       {status === "reading" && (

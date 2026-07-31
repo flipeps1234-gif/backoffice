@@ -51,30 +51,42 @@ type PricingChoice = "flat" | RateUnit;
 const unitQuestion = (unit: RateUnit): string =>
   unit === "sqft" ? "How many sq ft?" : `How many ${UNIT_LABELS[unit]}s?`;
 
+/** "Log again" hands these in: last time's details, today's date. */
+export type QuickAddPrefill = {
+  payer: string;
+  amountCents: number;
+  serviceId: string | null;
+  business: boolean;
+};
+
 export default function QuickAdd({
   services,
+  prefill,
   onSave,
   onCreateService,
   onLinkService,
   onClose,
 }: {
   services: Service[];
+  prefill?: QuickAddPrefill;
   onSave: (tx: Transaction) => void;
   onCreateService: (service: Service) => void;
   onLinkService: (txId: string, serviceId: string) => void;
   onClose: () => void;
 }) {
-  const [cents, setCents] = useState(0);
-  const [payer, setPayer] = useState("");
+  const [cents, setCents] = useState(prefill?.amountCents ?? 0);
+  const [payer, setPayer] = useState(prefill?.payer ?? "");
   const [date, setDate] = useState(today);
-  const [business, setBusiness] = useState(true);
+  const [business, setBusiness] = useState(prefill?.business ?? true);
   const [justSaved, setJustSaved] = useState("");
 
   // Chip + mini-calc state. fromChip marks an amount the user didn't type,
   // so the next digit starts a fresh number instead of appending.
-  const [selected, setSelected] = useState<Service | null>(null);
+  const [selected, setSelected] = useState<Service | null>(
+    () => services.find((s) => s.id === prefill?.serviceId) ?? null,
+  );
   const [qty, setQty] = useState("");
-  const [fromChip, setFromChip] = useState(false);
+  const [fromChip, setFromChip] = useState(Boolean(prefill));
 
   // The save-as-service prompt. The payment is ALREADY saved by the time this
   // is set — it holds only what's needed to link the new service afterwards.
