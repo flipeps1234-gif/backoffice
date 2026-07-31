@@ -16,6 +16,7 @@ type Row = {
   occurred_on: string | null;
   memo: string;
   source: string;
+  direction: string;
   service_id: string | null;
   business: boolean | null;
 };
@@ -27,6 +28,7 @@ const toTransaction = (row: Row): Transaction => ({
   date: row.occurred_on ?? "",
   memo: row.memo,
   source: row.source === "manual" ? "manual" : "screenshot",
+  direction: row.direction === "out" ? "out" : "in",
   serviceId: row.service_id,
   business: row.business,
   confidence: {},
@@ -41,6 +43,7 @@ const toRow = (tx: Transaction, accountId: string) => ({
   occurred_on: tx.date === "" ? null : tx.date,
   memo: tx.memo,
   source: tx.source satisfies TransactionSource,
+  direction: tx.direction,
   service_id: tx.serviceId,
   business: tx.business,
 });
@@ -51,7 +54,9 @@ export const loadTransactions = async (): Promise<Transaction[]> => {
 
   const { data, error } = await supabase
     .from("transactions")
-    .select("id, payer, amount_cents, occurred_on, memo, source, service_id, business")
+    .select(
+      "id, payer, amount_cents, occurred_on, memo, source, direction, service_id, business",
+    )
     .order("occurred_on", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
@@ -86,6 +91,7 @@ export const updateTransaction = async (
   if (patch.amountCents !== undefined) row.amount_cents = patch.amountCents;
   if (patch.date !== undefined) row.occurred_on = patch.date === "" ? null : patch.date;
   if (patch.memo !== undefined) row.memo = patch.memo;
+  if (patch.direction !== undefined) row.direction = patch.direction;
   if (patch.serviceId !== undefined) row.service_id = patch.serviceId;
   if (patch.business !== undefined) row.business = patch.business;
   if (Object.keys(row).length === 0) return;

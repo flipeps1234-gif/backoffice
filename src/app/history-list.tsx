@@ -15,6 +15,7 @@ export type LogAgainPrefill = {
   amountCents: number;
   serviceId: string | null;
   business: boolean;
+  direction: "in" | "out";
 };
 
 const localToday = () => {
@@ -65,8 +66,10 @@ export default function HistoryList({
           </h3>
           <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
             {group.transactions.map((tx) => {
+              const out = tx.direction === "out";
               const detail = [
                 serviceName(tx.serviceId),
+                out ? "expense" : undefined,
                 tx.source === "manual" ? "Cash" : "Screenshot",
                 tx.business ? undefined : "personal",
                 tx.memo || undefined,
@@ -88,9 +91,16 @@ export default function HistoryList({
                   <div className="flex shrink-0 items-center gap-2">
                     <span
                       className={`text-sm font-medium tabular-nums ${
-                        tx.business ? "text-neutral-900" : "text-neutral-400"
+                        out
+                          ? tx.business
+                            ? "text-red-600"
+                            : "text-red-300"
+                          : tx.business
+                            ? "text-neutral-900"
+                            : "text-neutral-400"
                       }`}
                     >
+                      {out ? "−" : ""}
                       {formatCents(tx.amountCents)}
                     </span>
                     <button
@@ -102,6 +112,7 @@ export default function HistoryList({
                           amountCents: tx.amountCents,
                           serviceId: tx.serviceId,
                           business: tx.business === true,
+                          direction: tx.direction,
                         })
                       }
                     >

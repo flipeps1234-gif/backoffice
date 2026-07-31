@@ -82,7 +82,7 @@ export default function SwipeDeck({
         <div
           role="group"
           tabIndex={0}
-          aria-label={`${card.payer || "Unknown"}, ${formatCents(card.amountCents)}. Right arrow for business, left arrow for personal.`}
+          aria-label={`${card.direction === "out" ? "Expense, money out: " : ""}${card.payer || "Unknown"}, ${formatCents(card.amountCents)}. Right arrow for business, left arrow for personal.`}
           className="absolute inset-0 h-52 cursor-grab touch-none select-none rounded-xl border border-neutral-300 bg-white p-5 shadow-sm active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-neutral-900"
           style={{
             transform: `translateX(${dragX}px) rotate(${dragX / 20}deg)`,
@@ -97,7 +97,17 @@ export default function SwipeDeck({
             if (event.key === "ArrowLeft") decide(false);
           }}
         >
-          <p className="text-3xl font-semibold tabular-nums text-neutral-900">
+          {card.direction === "out" && (
+            <span className="mb-1 inline-block rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
+              money out
+            </span>
+          )}
+          <p
+            className={`text-3xl font-semibold tabular-nums ${
+              card.direction === "out" ? "text-red-600" : "text-neutral-900"
+            }`}
+          >
+            {card.direction === "out" ? "−" : ""}
             {formatCents(card.amountCents)}
           </p>
           <p className="mt-1 text-lg text-neutral-900">

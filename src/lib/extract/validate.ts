@@ -1,4 +1,4 @@
-import type { Transaction } from "@/lib/transaction";
+import { MAX_CENTS, type Transaction } from "@/lib/transaction";
 import type { ExtractionResult, ExtractionWarningCode } from "./types";
 
 /**
@@ -19,10 +19,15 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 const asString = (value: unknown, fallback = ""): string =>
   typeof value === "string" ? value.trim() : fallback;
 
-/** Cents must be a whole number. A model returning 12.5 is a bug, not a price. */
+/**
+ * Cents must be a whole number in 0..MAX_CENTS. A model returning 12.5 is a
+ * bug, not a price — and a negative or absurd value would violate the DB
+ * check constraint, which rejects the WHOLE batch insert, losing every row.
+ */
 const asCents = (value: unknown): number | null => {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   if (!Number.isInteger(value)) return null;
+  if (value < 0 || value > MAX_CENTS) return null;
   return value;
 };
 
@@ -58,6 +63,9 @@ const validateTransaction = (
     date: asIsoDate(raw.date),
     memo: asString(raw.memo),
     source: "screenshot",
+    // Anything unrecognized is money IN — the safer wrong guess, since the
+    // user confirms every row and income is what these documents mostly are.
+    direction: raw.direction === "out" ? "out" : "in",
     serviceId: null,
     business: null,
     confidence: {

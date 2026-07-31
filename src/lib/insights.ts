@@ -26,15 +26,19 @@ const plural = (count: number, word: string): string =>
   `${count} ${word}${count === 1 ? "" : "s"}`;
 
 const periodInsight = (transactions: Transaction[]): Insight => {
-  const total = transactions.reduce((sum, tx) => sum + tx.amountCents, 0);
+  const ins = transactions.filter((tx) => tx.direction !== "out");
+  const outs = transactions.filter((tx) => tx.direction === "out");
+  const total = ins.reduce((sum, tx) => sum + tx.amountCents, 0);
+  const spent = outs.reduce((sum, tx) => sum + tx.amountCents, 0);
   const dates = transactions.map((tx) => tx.date).filter(Boolean).sort();
 
+  const spend = spent > 0 ? `, −${formatCents(spent)} in ${plural(outs.length, "expense")}` : "";
   const detail =
     dates.length === 0
-      ? `${plural(transactions.length, "payment")}, no dates read`
+      ? `${plural(ins.length, "payment")}${spend}, no dates read`
       : dates[0] === dates.at(-1)
-        ? `${plural(transactions.length, "payment")} on ${shortDate(dates[0])}`
-        : `${plural(transactions.length, "payment")}, ${shortDate(dates[0])} – ${shortDate(dates.at(-1)!)}`;
+        ? `${plural(ins.length, "payment")}${spend} on ${shortDate(dates[0])}`
+        : `${plural(ins.length, "payment")}${spend}, ${shortDate(dates[0])} – ${shortDate(dates.at(-1)!)}`;
 
   return { key: "period", label: "Total read", value: formatCents(total), detail };
 };
@@ -42,8 +46,9 @@ const periodInsight = (transactions: Transaction[]): Insight => {
 const busiestInsight = (transactions: Transaction[]): Insight => {
   const byDay = new Map<string, { count: number; cents: number }>();
 
+  // Busiest is about earning days — expenses don't make a day "busy".
   for (const tx of transactions) {
-    if (!tx.date) continue;
+    if (!tx.date || tx.direction === "out") continue;
     const day = byDay.get(tx.date) ?? { count: 0, cents: 0 };
     day.count += 1;
     day.cents += tx.amountCents;
@@ -51,11 +56,16 @@ const busiestInsight = (transactions: Transaction[]): Insight => {
   }
 
   if (byDay.size === 0) {
+    const hadExpenses = transactions.some((tx) => tx.direction === "out");
     return {
       key: "busiest",
       label: "Busiest day",
       value: "—",
-      detail: "No dates were readable in these screenshots",
+      // Don't claim dates were unreadable when the batch was simply all
+      // expenses — those may carry perfectly good dates.
+      detail: hadExpenses
+        ? "No income in this batch"
+        : "No dates were readable in these screenshots",
     };
   }
 
@@ -84,6 +94,8 @@ const topPayerInsight = (transactions: Transaction[]): Insight => {
   const byPayer = new Map<string, { count: number; cents: number; name: string }>();
 
   for (const tx of transactions) {
+    // Payers pay you — merchants you paid don't compete for Top payer.
+    if (tx.direction === "out") continue;
     // Nameless payments are distinct people, not one big spender — folding
     // them into an "Unknown" bucket could crown a person who doesn't exist.
     const name = tx.payer.trim();
@@ -96,11 +108,16 @@ const topPayerInsight = (transactions: Transaction[]): Insight => {
   }
 
   if (byPayer.size === 0) {
+    const hadExpenses = transactions.some((tx) => tx.direction === "out");
+    const hadIncome = transactions.some((tx) => tx.direction !== "out");
     return {
       key: "payer",
       label: "Top payer",
       value: "—",
-      detail: "No names on these payments",
+      detail:
+        !hadIncome && hadExpenses
+          ? "No income in this batch"
+          : "No names on these payments",
     };
   }
 

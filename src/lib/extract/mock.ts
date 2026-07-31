@@ -19,6 +19,8 @@ const PAYERS = [
 
 const MEMOS = ["", "driveway", "monthly", "back yard", "thanks!", ""];
 
+const MERCHANTS = ["Home Depot", "Shell", "Ace Hardware", "Costco"];
+
 /** Cheap deterministic hash so results are stable across reloads. */
 const hash = (text: string): number => {
   let value = 0;
@@ -28,7 +30,10 @@ const hash = (text: string): number => {
 
 const rowsFor = (label: string, offset: number) => {
   const seed = hash(label);
-  const count = 3 + (seed % 3);
+  // Filenames containing "receipt" produce expenses, so the money-out path
+  // is exercisable offline. One transaction per receipt, like the real thing.
+  const expense = /receipt/i.test(label);
+  const count = expense ? 1 : 3 + (seed % 3);
 
   return Array.from({ length: count }, (_, index) => {
     const n = seed + index * 7919;
@@ -37,10 +42,11 @@ const rowsFor = (label: string, offset: number) => {
     const shaky = (n + offset) % 4 === 0;
 
     return {
-      payer: PAYERS[n % PAYERS.length],
+      payer: expense ? MERCHANTS[n % MERCHANTS.length] : PAYERS[n % PAYERS.length],
       amountCents: (20 + (n % 180)) * 100 + (n % 4) * 25,
       date: `2026-07-${String(day).padStart(2, "0")}`,
-      memo: MEMOS[n % MEMOS.length],
+      memo: expense ? "" : MEMOS[n % MEMOS.length],
+      direction: expense ? "out" : "in",
       confidence: {
         payer: shaky ? 0.52 : 0.97,
         amountCents: shaky ? 0.61 : 0.99,

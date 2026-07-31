@@ -5,7 +5,7 @@ import {
   dollarsToCents,
   formatCents,
   isUncertain,
-  totalCents,
+  totalsByDirection,
   uncertainFields,
   type Transaction,
 } from "@/lib/transaction";
@@ -34,15 +34,26 @@ export default function ConfirmationSheet({
   const flaggedCount = transactions.filter(
     (tx) => uncertainFields(tx).length > 0,
   ).length;
+  const { inCents, outCents } = totalsByDirection(transactions);
+  const payments = transactions.filter((tx) => tx.direction !== "out").length;
+  const expenses = transactions.length - payments;
+
+  const found = [
+    payments > 0 ? `${payments} payment${payments === 1 ? "" : "s"}` : "",
+    expenses > 0 ? `${expenses} expense${expenses === 1 ? "" : "s"}` : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <section className="space-y-4">
       <header className="flex items-baseline justify-between gap-4">
-        <h2 className="text-sm font-semibold">
-          {transactions.length} payment{transactions.length === 1 ? "" : "s"} found
-        </h2>
+        <h2 className="text-sm font-semibold">{found} found</h2>
         <p className="text-sm tabular-nums font-semibold">
-          {formatCents(totalCents(transactions))}
+          {formatCents(inCents)}
+          {outCents > 0 && (
+            <span className="text-red-500"> −{formatCents(outCents)}</span>
+          )}
         </p>
       </header>
 
@@ -61,10 +72,29 @@ export default function ConfirmationSheet({
             key={tx.id}
             className="rounded-lg border border-neutral-200 bg-white p-3 space-y-3"
           >
+            {/* Direction is extracted too, and it's the one field that flips
+                the SIGN of the money — so it must be as fixable as a typo'd
+                amount. Tap to flip. */}
+            <button
+              type="button"
+              aria-pressed={tx.direction === "out"}
+              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                tx.direction === "out"
+                  ? "bg-red-50 text-red-700 ring-1 ring-red-200"
+                  : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+              }`}
+              onClick={() =>
+                onChange(tx.id, {
+                  direction: tx.direction === "out" ? "in" : "out",
+                })
+              }
+            >
+              {tx.direction === "out" ? "money out" : "money in"} · tap to flip
+            </button>
             <div className="flex gap-2">
               <div className="flex-1">
                 <label className={labelClass} htmlFor={`${tx.id}-payer`}>
-                  Who paid
+                  {tx.direction === "out" ? "Paid to" : "Who paid"}
                 </label>
                 <input
                   id={`${tx.id}-payer`}

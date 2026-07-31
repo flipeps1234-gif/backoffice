@@ -247,6 +247,9 @@ function Ledger({
           amountCents: tx.amountCents,
           date: tx.date,
           memo: tx.memo,
+          // The user can flip in/out on the sheet — a misread sign is the
+          // most consequential extraction error there is.
+          direction: tx.direction,
         }),
       );
     }
@@ -360,6 +363,21 @@ function Ledger({
         </label>
       )}
 
+      {stage === "upload" && (
+        <label className="block cursor-pointer rounded-lg border border-neutral-300 px-4 py-4 text-center text-base font-medium hover:bg-neutral-50">
+          {/* capture jumps straight into the camera on phones. */}
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            multiple
+            className="sr-only"
+            onChange={(event) => handleFiles(event.target.files)}
+          />
+          Snap a receipt, check, or statement
+        </label>
+      )}
+
       {stage !== "confirm" && (
         <div className="flex gap-2">
           <button
@@ -442,7 +460,9 @@ function Ledger({
           ) : (
             <div className="space-y-4">
               <p className="text-sm font-medium">
-                All sorted. That&apos;s your money in.
+                {sorted.some((tx) => tx.direction === "out")
+                  ? "All sorted. That's your money, in and out."
+                  : "All sorted. That's your money in."}
               </p>
               <button
                 type="button"

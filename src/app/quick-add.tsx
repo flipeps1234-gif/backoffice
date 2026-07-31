@@ -14,6 +14,7 @@ import {
   formatCents,
   MAX_CENTS,
   type Transaction,
+  type TransactionDirection,
 } from "@/lib/transaction";
 
 /**
@@ -57,6 +58,7 @@ export type QuickAddPrefill = {
   amountCents: number;
   serviceId: string | null;
   business: boolean;
+  direction: TransactionDirection;
 };
 
 export default function QuickAdd({
@@ -78,7 +80,11 @@ export default function QuickAdd({
   const [payer, setPayer] = useState(prefill?.payer ?? "");
   const [date, setDate] = useState(today);
   const [business, setBusiness] = useState(prefill?.business ?? true);
+  const [direction, setDirection] = useState<TransactionDirection>(
+    prefill?.direction ?? "in",
+  );
   const [justSaved, setJustSaved] = useState("");
+  const spending = direction === "out";
 
   // Chip + mini-calc state. fromChip marks an amount the user didn't type,
   // so the next digit starts a fresh number instead of appending.
@@ -154,7 +160,9 @@ export default function QuickAdd({
       date,
       memo: "",
       source: "manual",
-      serviceId: selected?.id ?? null,
+      direction,
+      // Chips are things you SELL — they don't apply to money out.
+      serviceId: spending ? null : (selected?.id ?? null),
       business,
       confidence: {},
     };
@@ -166,7 +174,11 @@ export default function QuickAdd({
       onClose();
       return;
     }
-    setJustSaved(`${formatCents(savedCents)} logged`);
+    setJustSaved(
+      spending
+        ? `−${formatCents(savedCents)} logged`
+        : `${formatCents(savedCents)} logged`,
+    );
     setCents(0);
     setPayer("");
     setSelected(null);
@@ -182,9 +194,9 @@ export default function QuickAdd({
     // is optional decoration.
     onSave(tx);
 
-    // Offer the catalog only for business income without a chip — a personal
-    // repayment from a friend is not a service you sell.
-    if (!tx.serviceId && tx.business === true) {
+    // Offer the catalog only for business INCOME without a chip — a personal
+    // repayment isn't a service you sell, and neither is an expense.
+    if (!tx.serviceId && tx.business === true && tx.direction === "in") {
       setPending({ txId: tx.id, amountCents: tx.amountCents, stay });
       return;
     }
@@ -347,7 +359,9 @@ export default function QuickAdd({
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">Log a cash payment</h2>
+        <h2 className="text-sm font-semibold">
+          {spending ? "Log money you spent" : "Log a cash payment"}
+        </h2>
         <button
           type="button"
           className="text-sm text-neutral-500 hover:underline"
@@ -357,7 +371,41 @@ export default function QuickAdd({
         </button>
       </div>
 
-      {services.length > 0 && (
+      <div className="flex gap-2" role="group" aria-label="Money in or out">
+        <button
+          type="button"
+          aria-pressed={!spending}
+          className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium ${
+            !spending
+              ? "bg-foreground text-background"
+              : "border border-neutral-300 bg-white text-neutral-900"
+          }`}
+          onClick={() => setDirection("in")}
+        >
+          Got paid
+        </button>
+        <button
+          type="button"
+          aria-pressed={spending}
+          className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium ${
+            spending
+              ? "bg-foreground text-background"
+              : "border border-neutral-300 bg-white text-neutral-900"
+          }`}
+          onClick={() => {
+            setDirection("out");
+            // Chips price what you SELL. Left selected, the rate mini-calc
+            // would keep computing this expense from your selling rate.
+            setSelected(null);
+            setQty("");
+            setFromChip(false);
+          }}
+        >
+          Spent
+        </button>
+      </div>
+
+      {!spending && services.length > 0 && (
         <div
           className="flex max-h-24 flex-wrap gap-2 overflow-y-auto"
           role="group"
@@ -388,7 +436,7 @@ export default function QuickAdd({
         {formatCents(cents)}
       </p>
 
-      {selected?.pricing.type === "rate" && (
+      {!spending && selected?.pricing.type === "rate" && (
         <div className="mx-auto flex w-56 items-center gap-2">
           <label className="text-sm text-neutral-500" htmlFor="qty">
             {unitQuestion(selected.pricing.unit)}
@@ -460,12 +508,12 @@ export default function QuickAdd({
       <div className="flex gap-2">
         <div className="flex-1">
           <label className={labelClass} htmlFor="quick-payer">
-            Who paid (optional)
+            {spending ? "Where (optional)" : "Who paid (optional)"}
           </label>
           <input
             id="quick-payer"
             className={fieldClass}
-            placeholder="Name"
+            placeholder={spending ? "Gas station" : "Name"}
             value={payer}
             onChange={(event) => setPayer(event.target.value)}
           />

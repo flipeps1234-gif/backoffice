@@ -53,6 +53,7 @@ const meanConfidence = (tx: Transaction): number => {
  * can appear once with its date and once without across two screenshots.
  */
 export const isDuplicate = (a: Transaction, b: Transaction): boolean =>
+  a.direction === b.direction &&
   a.amountCents === b.amountCents &&
   (a.date === b.date || a.date === "" || b.date === "") &&
   samePayer(a.payer, b.payer);

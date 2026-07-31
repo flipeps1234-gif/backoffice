@@ -1,4 +1,8 @@
-import { formatCents, totalCents, type Transaction } from "@/lib/transaction";
+import {
+  formatCents,
+  totalsByDirection,
+  type Transaction,
+} from "@/lib/transaction";
 
 /** The number that climbs. Sticky, so it stays in view while sorting. */
 export default function RunningTotals({
@@ -6,8 +10,14 @@ export default function RunningTotals({
 }: {
   transactions: Transaction[];
 }) {
-  const business = transactions.filter((tx) => tx.business === true);
-  const personal = transactions.filter((tx) => tx.business === false);
+  const business = totalsByDirection(
+    transactions.filter((tx) => tx.business === true),
+  );
+  const personal = totalsByDirection(
+    transactions.filter((tx) => tx.business === false),
+  );
+  const businessCount = transactions.filter((tx) => tx.business === true).length;
+  const personalCount = transactions.filter((tx) => tx.business === false).length;
   const left = transactions.filter((tx) => tx.business === null).length;
 
   return (
@@ -18,10 +28,15 @@ export default function RunningTotals({
             Business
           </p>
           <p className="text-2xl font-semibold tabular-nums text-emerald-600">
-            {formatCents(totalCents(business))}
+            {formatCents(business.inCents)}
           </p>
           <p className="text-xs text-neutral-500">
-            {business.length} payment{business.length === 1 ? "" : "s"}
+            {business.outCents > 0 ? (
+              <span className="text-red-500">
+                −{formatCents(business.outCents)} spent ·{" "}
+              </span>
+            ) : null}
+            {businessCount} item{businessCount === 1 ? "" : "s"}
           </p>
         </div>
         <div className="text-right">
@@ -29,10 +44,13 @@ export default function RunningTotals({
             Personal
           </p>
           <p className="text-lg font-medium tabular-nums text-neutral-500">
-            {formatCents(totalCents(personal))}
+            {formatCents(personal.inCents)}
           </p>
           <p className="text-xs text-neutral-500">
-            {personal.length} payment{personal.length === 1 ? "" : "s"}
+            {personal.outCents > 0 ? (
+              <span>−{formatCents(personal.outCents)} spent · </span>
+            ) : null}
+            {personalCount} item{personalCount === 1 ? "" : "s"}
           </p>
         </div>
       </div>

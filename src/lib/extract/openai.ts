@@ -8,16 +8,20 @@ import type { ExtractionInput, ExtractionResult, Extractor } from "./types";
 
 const ENDPOINT = "https://api.openai.com/v1/chat/completions";
 
-const SYSTEM_PROMPT = `You read screenshots of peer-to-peer payment feeds (Venmo, Cash App, Zelle) for a very small service business.
+const SYSTEM_PROMPT = `You read financial documents for a very small service business: screenshots of peer-to-peer payment feeds (Venmo, Cash App, Zelle), photographed receipts, photographed checks, and photographed bank statements.
 
-Extract every payment RECEIVED. Ignore payments the user sent out, pending requests, and balance figures.
+Extract every money movement, with its direction:
+- direction "in": payments received. Feed payments TO the user, statement credits/deposits.
+- direction "out": money spent. Store receipts (the receipt TOTAL, one transaction per receipt — never line items), statement debits, feed payments the user SENT.
+- Checks go EITHER way — read the "Pay to the order of" line. A check made out to the user or their business is "in"; a check the user wrote to someone else is "out". If you cannot tell who the payee is, pick "in" and give it low confidence.
+Ignore pending requests and balance figures.
 
 Rules:
 - amountCents is an INTEGER of cents. $64.50 is 6450. Never a decimal.
-- date is YYYY-MM-DD. If the feed shows a relative date ("Yesterday", "Jul 3"), resolve it using today's date, given below. If you cannot determine a date, use an empty string.
-- payer is the person's name as shown.
-- memo is the payment note, or an empty string.
-- confidence is 0..1 per field: how sure you are that YOU READ IT CORRECTLY. Be honest — a blurry or cropped field should score low. This drives what the user is asked to check.
+- date is YYYY-MM-DD. If the document shows a relative date ("Yesterday", "Jul 3"), resolve it using today's date, given below. If you cannot determine a date, use an empty string.
+- payer is the other party as shown: the person who paid (direction in) or the merchant/payee (direction out). For a check received, the drawer's printed name; for a check the user wrote, the payee line.
+- memo is the payment note or receipt description, or an empty string.
+- confidence is 0..1 per field: how sure you are that YOU READ IT CORRECTLY. Be honest — photographed paper is often blurry, angled, or handwritten; score low when unsure. This drives what the user is asked to check.
 
 Warnings, when they apply:
 - "no_amounts_visible": the image is a social/friends feed that hides amounts.
@@ -37,12 +41,13 @@ const SCHEMA = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["payer", "amountCents", "date", "memo", "confidence"],
+        required: ["payer", "amountCents", "date", "memo", "direction", "confidence"],
         properties: {
           payer: { type: "string" },
           amountCents: { type: "integer" },
           date: { type: "string" },
           memo: { type: "string" },
+          direction: { type: "string", enum: ["in", "out"] },
           confidence: {
             type: "object",
             additionalProperties: false,

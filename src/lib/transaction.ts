@@ -2,6 +2,9 @@
 
 export type TransactionSource = "screenshot" | "manual";
 
+/** Money in (a payment received) or money out (an expense). */
+export type TransactionDirection = "in" | "out";
+
 /** Which fields the extractor was unsure about. Shown as "tap to fix" flags. */
 export type FieldName = "payer" | "amountCents" | "date";
 
@@ -13,6 +16,7 @@ export type Transaction = {
   date: string;
   memo: string;
   source: TransactionSource;
+  direction: TransactionDirection;
   /** Which catalog service this was, if logged via a chip. */
   serviceId: string | null;
   /** null until the user swipes. true = business, false = personal. */
@@ -53,3 +57,16 @@ export const centsToDollars = (cents: number): string =>
 
 export const totalCents = (transactions: Transaction[]): number =>
   transactions.reduce((sum, tx) => sum + tx.amountCents, 0);
+
+/** In and out never blend into one number — they answer different questions. */
+export const totalsByDirection = (
+  transactions: Transaction[],
+): { inCents: number; outCents: number } => {
+  let inCents = 0;
+  let outCents = 0;
+  for (const tx of transactions) {
+    if (tx.direction === "out") outCents += tx.amountCents;
+    else inCents += tx.amountCents;
+  }
+  return { inCents, outCents };
+};
