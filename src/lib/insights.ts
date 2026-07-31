@@ -14,8 +14,6 @@ export type Insight = {
   detail: string;
 };
 
-const UNKNOWN = "Unknown";
-
 /** "2026-07-14" → "Jul 14". Parsed as UTC so the day never shifts by timezone. */
 const shortDate = (iso: string): string =>
   new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -86,7 +84,10 @@ const topPayerInsight = (transactions: Transaction[]): Insight => {
   const byPayer = new Map<string, { count: number; cents: number; name: string }>();
 
   for (const tx of transactions) {
-    const name = tx.payer.trim() || UNKNOWN;
+    // Nameless payments are distinct people, not one big spender — folding
+    // them into an "Unknown" bucket could crown a person who doesn't exist.
+    const name = tx.payer.trim();
+    if (!name) continue;
     const key = name.toLowerCase();
     const entry = byPayer.get(key) ?? { count: 0, cents: 0, name };
     entry.count += 1;
@@ -99,7 +100,7 @@ const topPayerInsight = (transactions: Transaction[]): Insight => {
       key: "payer",
       label: "Top payer",
       value: "—",
-      detail: "No payments yet",
+      detail: "No names on these payments",
     };
   }
 

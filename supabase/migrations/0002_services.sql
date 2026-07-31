@@ -55,8 +55,19 @@ update public.transactions
   where service_id is not null
     and service_id not in (select id from public.services);
 
+-- The FK is composite on (service_id, account_id), not just service_id.
+-- Postgres checks foreign keys with owner privileges, so RLS does NOT apply
+-- to the referenced row: a plain FK would let one account attach another
+-- account's service id — and the success/failure difference would leak
+-- whether a given uuid exists across tenants. Tying the reference to the
+-- same account_id closes both.
+create unique index if not exists services_id_account_key
+  on public.services (id, account_id);
+
 alter table public.transactions
   drop constraint if exists transactions_service_id_fkey;
 alter table public.transactions
   add constraint transactions_service_id_fkey
-  foreign key (service_id) references public.services (id) on delete set null;
+  foreign key (service_id, account_id)
+  references public.services (id, account_id)
+  on delete set null (service_id);

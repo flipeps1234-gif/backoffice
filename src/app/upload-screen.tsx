@@ -7,6 +7,7 @@ import QuickAdd from "./quick-add";
 import RunningTotals from "./running-totals";
 import SignIn from "./sign-in";
 import SwipeDeck from "./swipe-deck";
+import { isDuplicate } from "@/lib/extract/dedupe";
 import { warningMessage, type ExtractionWarning } from "@/lib/extract/types";
 import { getSupabase } from "@/lib/supabase/client";
 import { insertService, loadServices } from "@/lib/supabase/services";
@@ -23,46 +24,96 @@ type Status = "idle" | "reading" | "error";
 /** upload → confirm what we read → sort each one → totals. */
 type Stage = "upload" | "confirm" | "sort";
 
+/**
+ * The session gate. The ledger below is keyed on the account, so switching
+ * accounts — sign-in, sign-out, demo — REMOUNTS it with fresh state. One
+ * account's rows structurally cannot survive into another's session (or
+ * into demo mode) on a shared device: the component holding them is gone.
+ */
 export default function UploadScreen() {
+  const { user, loading, isConfigured } = useSession();
+  // Demo mode: the sign-in gate steps aside, nothing is saved. Deliberately
+  // not persisted across reloads — a refresh returns to the real gate.
+  const [demo, setDemo] = useState(false);
+
+  // Don't flash the sign-in form at someone who is already signed in.
+  if (loading) {
+    return <p className="text-sm text-neutral-500">Loading…</p>;
+  }
+
+  // Configured but signed out: the ledger belongs to an account.
+  if (isConfigured && !user && !demo) {
+    return <SignIn onDemo={() => setDemo(true)} />;
+  }
+
+  return (
+    <Ledger
+      key={user?.id ?? "anon"}
+      accountId={user?.id ?? null}
+      email={user?.email ?? null}
+      isConfigured={isConfigured}
+      demo={demo && !user}
+      onExitDemo={() => setDemo(false)}
+    />
+  );
+}
+
+function Ledger({
+  accountId,
+  email,
+  isConfigured,
+  demo,
+  onExitDemo,
+}: {
+  accountId: string | null;
+  email: string | null;
+  isConfigured: boolean;
+  demo: boolean;
+  onExitDemo: () => void;
+}) {
   const [status, setStatus] = useState<Status>("idle");
   const [stage, setStage] = useState<Stage>("upload");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [warnings, setWarnings] = useState<ExtractionWarning[]>([]);
+  const [batchNotice, setBatchNotice] = useState("");
   const [error, setError] = useState("");
   const [decided, setDecided] = useState<string[]>([]);
   const [quickAdd, setQuickAdd] = useState(false);
-  // Demo mode: the sign-in gate steps aside, nothing is saved. Deliberately
-  // not persisted across reloads — a refresh returns to the real gate.
-  const [demo, setDemo] = useState(false);
-  const { user, loading, isConfigured } = useSession();
-  // Token refreshes mint a new user OBJECT for the same account; keying
-  // effects on the id stops them re-running and clobbering local edits.
-  const accountId = user?.id ?? null;
-
-  // Service inserts must land before anything that references them — the
-  // transactions table now carries a foreign key. Chaining every dependent
-  // write behind the last service insert closes the race. persist() never
-  // rejects, so the chain can't wedge.
-  const serviceChain = useRef<Promise<void>>(Promise.resolve());
+  /** Ids of the most recently read batch — what the insights describe. */
+  const [lastBatchIds, setLastBatchIds] = useState<string[]>([]);
 
   /**
-   * Writes go through here so one failed save can't lose what's on screen.
-   * No signed-in user (unconfigured, or demo mode) means nothing to save —
-   * row level security would reject the write anyway.
+   * ALL database writes flow through here, one at a time, in call order.
+   * Serialising them closes a whole family of races at once: a service
+   * insert must land before a transaction that references it, and a row's
+   * INSERT must land before any UPDATE to that row — a Supabase update that
+   * matches zero rows "succeeds" silently, which is how edits get lost.
+   * The queue never wedges: failures are caught and surfaced as a banner.
    */
-  const persist = useCallback(async (work: () => Promise<void>) => {
-    if (!isConfigured || !user) return;
-    try {
-      await work();
-    } catch (cause) {
-      console.error("Save failed:", cause);
-      setError("Saved on screen but not to your account. Check your connection.");
-      setStatus("error");
-    }
-  }, [isConfigured, user]);
+  const writeChain = useRef<Promise<void>>(Promise.resolve());
+  const persist = useCallback(
+    (work: () => Promise<void>): Promise<void> => {
+      const next = writeChain.current.then(async () => {
+        if (!isConfigured || !accountId) return;
+        try {
+          await work();
+        } catch (cause) {
+          console.error("Save failed:", cause);
+          setError(
+            "Saved on screen but not to your account. Check your connection.",
+          );
+          setStatus("error");
+        }
+      });
+      writeChain.current = next;
+      return next;
+    },
+    [isConfigured, accountId],
+  );
 
-  // Pull the ledger back down once we know who's signed in.
+  // Pull the ledger back down. This component is keyed on the account, so
+  // the effect runs exactly once per account, on a freshly mounted state.
   useEffect(() => {
     if (!accountId) return;
     let cancelled = false;
@@ -104,8 +155,18 @@ export default function UploadScreen() {
     const body = new FormData();
     for (const file of files) body.append("screenshots", file);
 
+    // The paid extraction path is gated on being signed in; the token proves
+    // it. Demo and unconfigured callers send none and get the free mock.
+    const headers: Record<string, string> = {};
+    const session = (await getSupabase()?.auth.getSession())?.data.session;
+    if (session) headers.authorization = `Bearer ${session.access_token}`;
+
     try {
-      const response = await fetch("/api/extract", { method: "POST", body });
+      const response = await fetch("/api/extract", {
+        method: "POST",
+        headers,
+        body,
+      });
       const data = await response.json();
 
       if (!response.ok) {
@@ -113,21 +174,41 @@ export default function UploadScreen() {
         setStatus("error");
         return;
       }
-      // Append — a new batch of screenshots must never wipe cash already logged.
+
       // Re-id on arrival: extraction ids are derived from payer + amount, so
       // two batches containing the same payment would otherwise collide.
       const batch: Transaction[] = data.transactions.map((tx: Transaction) => ({
         ...tx,
         id: crypto.randomUUID(),
       }));
-      setTransactions((current) => [...current, ...batch]);
+
+      // Server dedupe only sees one request's files. Screen the batch against
+      // screenshot rows already on the ledger, or overlapping screenshots
+      // uploaded across two batches silently double every total. Cash rows
+      // are exempt: a $60 cash entry and a $60 Venmo row may both be real.
+      const priorScreens = transactions.filter(
+        (tx) => tx.source === "screenshot",
+      );
+      const fresh = batch.filter(
+        (tx) => !priorScreens.some((prev) => isDuplicate(prev, tx)),
+      );
+      const skipped = batch.length - fresh.length;
+      setBatchNotice(
+        skipped > 0
+          ? `Skipped ${skipped} payment${skipped === 1 ? "" : "s"} already on your ledger.`
+          : "",
+      );
+
+      // Append — a new batch must never wipe what's already here.
+      setTransactions((current) => [...current, ...fresh]);
       setWarnings(data.warnings);
+      setLastBatchIds(fresh.map((tx) => tx.id));
       setStatus("idle");
-      if (batch.length > 0) setStage("confirm");
+      if (fresh.length > 0) setStage("confirm");
 
       // Save on arrival, not after confirming — closing the tab mid-sheet
       // shouldn't cost you the extraction you just paid for.
-      if (user) await persist(() => insertTransactions(batch, user.id));
+      if (accountId) await persist(() => insertTransactions(fresh, accountId));
     } catch {
       setError("Couldn't reach the server. Check your connection and try again.");
       setStatus("error");
@@ -170,25 +251,25 @@ export default function UploadScreen() {
     }
   }
 
+  function moreScreenshots() {
+    // Stale batch messages don't belong on a fresh upload screen.
+    setWarnings([]);
+    setBatchNotice("");
+    setStage("upload");
+  }
+
   function startOver() {
     setTransactions([]);
     setWarnings([]);
+    setBatchNotice("");
     setDecided([]);
+    setLastBatchIds([]);
     setStage("upload");
   }
 
   const pending = transactions.filter((tx) => tx.business === null);
   const sorted = transactions.filter((tx) => tx.business !== null);
-
-  // Don't flash the sign-in form at someone who is already signed in.
-  if (loading) {
-    return <p className="text-sm text-neutral-500">Loading…</p>;
-  }
-
-  // Configured but signed out: the ledger belongs to an account.
-  if (isConfigured && !user && !demo) {
-    return <SignIn onDemo={() => setDemo(true)} />;
-  }
+  const lastBatch = transactions.filter((tx) => lastBatchIds.includes(tx.id));
 
   // The numpad owns the screen while it's open — one hand, one thing at a time.
   if (quickAdd) {
@@ -197,29 +278,19 @@ export default function UploadScreen() {
         services={services}
         onSave={(tx) => {
           setTransactions((current) => [...current, tx]);
-          if (user) {
-            const accountFor = user.id;
-            // Behind the chain: this row may reference a service whose
-            // insert is still in flight.
-            void serviceChain.current.then(() =>
-              persist(() => insertTransactions([tx], accountFor)),
-            );
+          if (accountId) {
+            void persist(() => insertTransactions([tx], accountId));
           }
         }}
         onCreateService={(service) => {
           setServices((current) => [...current, service]);
-          if (user) {
-            const accountFor = user.id;
-            serviceChain.current = serviceChain.current.then(() =>
-              persist(() => insertService(service, accountFor)),
-            );
+          if (accountId) {
+            void persist(() => insertService(service, accountId));
           }
         }}
         onLinkService={(txId, serviceId) => {
           updateTransaction(txId, { serviceId });
-          void serviceChain.current.then(() =>
-            persist(() => saveTransaction(txId, { serviceId })),
-          );
+          void persist(() => saveTransaction(txId, { serviceId }));
         }}
         onClose={() => setQuickAdd(false)}
       />
@@ -232,9 +303,9 @@ export default function UploadScreen() {
         <RunningTotals transactions={transactions} />
       )}
 
-      {user && (
+      {accountId && (
         <p className="flex items-center justify-between text-xs text-neutral-500">
-          <span>{user.email}</span>
+          <span>{email}</span>
           <button
             type="button"
             className="hover:underline"
@@ -245,13 +316,13 @@ export default function UploadScreen() {
         </p>
       )}
 
-      {demo && !user && (
+      {demo && (
         <p className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
           <span>Demo mode — nothing is saved.</span>
           <button
             type="button"
             className="font-medium hover:underline"
-            onClick={() => setDemo(false)}
+            onClick={onExitDemo}
           >
             Sign in
           </button>
@@ -296,18 +367,25 @@ export default function UploadScreen() {
         </p>
       )}
 
-      {stage === "upload" &&
-        warnings.map((warning, index) => (
-          <p
-            key={`${warning.code}-${index}`}
-            className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-          >
-            {warning.filename && (
-              <span className="font-medium">{warning.filename}: </span>
-            )}
-            {warningMessage(warning)}
-          </p>
-        ))}
+      {/* Batch messages describe the batch wherever the user is looking —
+          gating them to one stage hid them exactly when they mattered. */}
+      {batchNotice && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {batchNotice}
+        </p>
+      )}
+
+      {warnings.map((warning, index) => (
+        <p
+          key={`${warning.code}-${index}`}
+          className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          {warning.filename && (
+            <span className="font-medium">{warning.filename}: </span>
+          )}
+          {warningMessage(warning)}
+        </p>
+      ))}
 
       {stage === "confirm" && (
         <>
@@ -326,9 +404,9 @@ export default function UploadScreen() {
 
       {stage === "sort" && (
         <>
-          {/* Shown the moment a batch is confirmed, before any sorting —
-              the first upload has to teach you something. */}
-          <Insights transactions={transactions} />
+          {/* "What we found" is about the batch just read — not the whole
+              ledger, which already includes cash and loaded history. */}
+          <Insights transactions={lastBatch} />
 
           {pending.length > 0 ? (
             <SwipeDeck
@@ -353,11 +431,11 @@ export default function UploadScreen() {
               <button
                 type="button"
                 className="block w-full rounded-lg bg-foreground px-4 py-3 text-sm font-medium text-background hover:opacity-90"
-                onClick={() => setStage("upload")}
+                onClick={moreScreenshots}
               >
                 Add more screenshots
               </button>
-              {user ? (
+              {accountId ? (
                 <p className="text-xs text-neutral-500">
                   Saved to your account. It&apos;ll be here next time you open
                   this on any device.

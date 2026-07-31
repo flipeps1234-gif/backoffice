@@ -30,8 +30,9 @@ export const getExtractor = (name = activeProviderName()): Extractor => {
 /** Dedupe happens here so no caller can forget it. */
 export const extract = async (
   inputs: ExtractionInput[],
+  provider = activeProviderName(),
 ): Promise<ExtractionResult> => {
-  const result = await getExtractor().extract(inputs);
+  const result = await getExtractor(provider).extract(inputs);
   return { ...result, transactions: dedupe(result.transactions) };
 };
 

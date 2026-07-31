@@ -46,9 +46,15 @@ const meanConfidence = (tx: Transaction): number => {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 };
 
-const isDuplicate = (a: Transaction, b: Transaction): boolean =>
+/**
+ * Exported so the client can screen a NEW batch against payments already on
+ * the ledger — server-side dedupe only ever sees one request's files.
+ * An empty date means "unreadable", not "a different day": the same payment
+ * can appear once with its date and once without across two screenshots.
+ */
+export const isDuplicate = (a: Transaction, b: Transaction): boolean =>
   a.amountCents === b.amountCents &&
-  a.date === b.date &&
+  (a.date === b.date || a.date === "" || b.date === "") &&
   samePayer(a.payer, b.payer);
 
 /**
@@ -64,9 +70,17 @@ export const dedupe = (transactions: Transaction[]): Transaction[] => {
     const existing = kept.findIndex((other) => isDuplicate(other, tx));
     if (existing === -1) {
       kept.push(tx);
-    } else if (meanConfidence(tx) > meanConfidence(kept[existing])) {
-      kept[existing] = tx;
+      continue;
     }
+    const held = kept[existing];
+    // A readable date beats any confidence score — it's the copy with data.
+    const preferTx =
+      tx.date !== "" && held.date === ""
+        ? true
+        : tx.date === "" && held.date !== ""
+          ? false
+          : meanConfidence(tx) > meanConfidence(held);
+    if (preferTx) kept[existing] = tx;
   }
   return kept;
 };
