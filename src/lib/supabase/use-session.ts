@@ -19,10 +19,13 @@ export function useSession() {
     const supabase = getSupabase();
     if (!supabase) return;
 
+    // getSession reads the session stored ON THIS DEVICE — no network.
+    // Signed in once means signed in on the next open, even offline or on
+    // driveway signal. Every actual query is still validated server-side,
+    // so a revoked session fails loudly at use, not silently at the gate.
     supabase.auth
-      .getUser()
-      .then(({ data }) => setUser(data.user ?? null))
-      // A network failure means "not signed in", not "hang on Loading forever".
+      .getSession()
+      .then(({ data }) => setUser(data.session?.user ?? null))
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
 
