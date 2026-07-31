@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import ConfirmationSheet from "./confirmation-sheet";
+import Insights from "./insights";
 import QuickAdd from "./quick-add";
 import RunningTotals from "./running-totals";
 import SignIn from "./sign-in";
@@ -261,6 +262,10 @@ export default function UploadScreen() {
 
       {stage === "sort" && (
         <>
+          {/* Shown the moment a batch is confirmed, before any sorting —
+              the first upload has to teach you something. */}
+          <Insights transactions={transactions} />
+
           {pending.length > 0 ? (
             <SwipeDeck
               pending={pending}

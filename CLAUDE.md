@@ -28,6 +28,11 @@ law: every flow survives "ten seconds, one hand, in a driveway."
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →
   confirmation sheet → swipe → running totals. In-memory is fine.
+- Instant insights (HARD REQUIREMENT, part of the free core): after
+  the first confirmed batch, immediately show at least three —
+  period total, busiest day, top payer. The first upload must teach
+  the user something they didn't already know. This is the payoff
+  that earns the next upload; it is never gated, never metered.
 - v0.2 Persistence & manual entry: Supabase auth + db. Transactions
   (payer, amount_cents, date, memo, source: screenshot|manual,
   service_id nullable, business boolean). Amount-first numpad
@@ -55,6 +60,11 @@ modules: tax-ready year package/filing (per event, January);
 insights & reports (margin insights belong here); team seats (when
 multi-user unparks); payment links (per transaction, 2028); one
 everything-bundle (~$15/mo).
+Insights boundary — the three instant insights (period total,
+busiest day, top payer) are core and free forever. The paid module
+is depth on top: trends over time, per-service margin, comparisons,
+forecasts. Never move a free insight behind the paywall; that is
+un-crippling the core, which the filter below forbids.
 Filter: modules charge for value ADDED on top of their data — never
 to un-cripple the core, never to meter their own records. Sell what
 we built on their data; never sell their data back. Today: zero
