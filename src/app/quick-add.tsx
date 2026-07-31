@@ -42,8 +42,10 @@ export default function QuickAdd({
 
   function build(): Transaction {
     return {
-      // Date.now is fine here: this only ever runs from a click, never a render.
-      id: `manual-${Date.now()}`,
+      // A real uuid, because this id becomes the primary key in Postgres.
+      // Generated here (not by the database) so the row can render instantly
+      // and be updated by id before the insert comes back.
+      id: crypto.randomUUID(),
       payer: payer.trim(),
       amountCents: cents,
       date,

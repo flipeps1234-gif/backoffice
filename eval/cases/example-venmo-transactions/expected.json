@@ -1,0 +1,12 @@
+{
+  "note": "Template. Copy this folder, drop your screenshot in as input.png, and replace the values below with what the app SHOULD have said. Delete this note line.",
+  "transactions": [
+    {
+      "payer": "Maria Santos",
+      "amountCents": 6500,
+      "date": "2026-07-14",
+      "memo": "driveway"
+    }
+  ],
+  "warnings": []
+}

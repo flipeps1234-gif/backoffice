@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ConfirmationSheet from "./confirmation-sheet";
 import QuickAdd from "./quick-add";
 import RunningTotals from "./running-totals";
+import SignIn from "./sign-in";
 import SwipeDeck from "./swipe-deck";
 import { warningMessage, type ExtractionWarning } from "@/lib/extract/types";
+import { getSupabase } from "@/lib/supabase/client";
+import {
+  insertTransactions,
+  loadTransactions,
+  updateTransaction as saveTransaction,
+} from "@/lib/supabase/transactions";
+import { useSession } from "@/lib/supabase/use-session";
 import type { Transaction } from "@/lib/transaction";
 
 type Status = "idle" | "reading" | "error";
@@ -20,6 +28,43 @@ export default function UploadScreen() {
   const [error, setError] = useState("");
   const [decided, setDecided] = useState<string[]>([]);
   const [quickAdd, setQuickAdd] = useState(false);
+  const { user, loading, isConfigured } = useSession();
+
+  /** Writes go through here so one failed save can't lose what's on screen. */
+  const persist = useCallback(async (work: () => Promise<void>) => {
+    if (!isConfigured) return;
+    try {
+      await work();
+    } catch (cause) {
+      console.error("Save failed:", cause);
+      setError("Saved on screen but not to your account. Check your connection.");
+      setStatus("error");
+    }
+  }, [isConfigured]);
+
+  // Pull the ledger back down once we know who's signed in.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+
+    loadTransactions()
+      .then((rows) => {
+        if (cancelled) return;
+        setTransactions(rows);
+        // Un-triaged rows go back to the sheet, not straight to the deck —
+        // if you closed the tab mid-confirm, you still get to check them.
+        if (rows.some((tx) => tx.business === null)) setStage("confirm");
+      })
+      .catch((cause) => {
+        console.error("Load failed:", cause);
+        setError("Couldn't load your saved payments.");
+        setStatus("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -50,6 +95,10 @@ export default function UploadScreen() {
       setWarnings(data.warnings);
       setStatus("idle");
       if (batch.length > 0) setStage("confirm");
+
+      // Save on arrival, not after confirming — closing the tab mid-sheet
+      // shouldn't cost you the extraction you just paid for.
+      if (user) await persist(() => insertTransactions(batch, user.id));
     } catch {
       setError("Couldn't reach the server. Check your connection and try again.");
       setStatus("error");
@@ -66,6 +115,7 @@ export default function UploadScreen() {
   function decide(id: string, business: boolean) {
     updateTransaction(id, { business });
     setDecided((current) => [...current, id]);
+    void persist(() => saveTransaction(id, { business }));
   }
 
   function undo() {
@@ -73,6 +123,22 @@ export default function UploadScreen() {
     if (!last) return;
     updateTransaction(last, { business: null });
     setDecided((current) => current.slice(0, -1));
+    void persist(() => saveTransaction(last, { business: null }));
+  }
+
+  /** The sheet edits local state per keystroke; this is the one save point. */
+  function confirmBatch() {
+    setStage("sort");
+    for (const tx of pending) {
+      void persist(() =>
+        saveTransaction(tx.id, {
+          payer: tx.payer,
+          amountCents: tx.amountCents,
+          date: tx.date,
+          memo: tx.memo,
+        }),
+      );
+    }
   }
 
   function startOver() {
@@ -85,11 +151,24 @@ export default function UploadScreen() {
   const pending = transactions.filter((tx) => tx.business === null);
   const sorted = transactions.filter((tx) => tx.business !== null);
 
+  // Don't flash the sign-in form at someone who is already signed in.
+  if (loading) {
+    return <p className="text-sm text-neutral-500">Loading…</p>;
+  }
+
+  // Configured but signed out: the ledger belongs to an account.
+  if (isConfigured && !user) {
+    return <SignIn />;
+  }
+
   // The numpad owns the screen while it's open — one hand, one thing at a time.
   if (quickAdd) {
     return (
       <QuickAdd
-        onSave={(tx) => setTransactions((current) => [...current, tx])}
+        onSave={(tx) => {
+          setTransactions((current) => [...current, tx]);
+          if (user) void persist(() => insertTransactions([tx], user.id));
+        }}
         onClose={() => setQuickAdd(false)}
       />
     );
@@ -99,6 +178,19 @@ export default function UploadScreen() {
     <div className="space-y-6">
       {(stage === "sort" || sorted.length > 0) && (
         <RunningTotals transactions={transactions} />
+      )}
+
+      {user && (
+        <p className="flex items-center justify-between text-xs text-neutral-500">
+          <span>{user.email}</span>
+          <button
+            type="button"
+            className="hover:underline"
+            onClick={() => getSupabase()?.auth.signOut()}
+          >
+            Sign out
+          </button>
+        </p>
       )}
 
       {stage === "upload" && (
@@ -160,7 +252,7 @@ export default function UploadScreen() {
           <button
             type="button"
             className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"
-            onClick={() => setStage("sort")}
+            onClick={confirmBatch}
           >
             Looks right — start sorting
           </button>
@@ -196,17 +288,26 @@ export default function UploadScreen() {
               >
                 Add more screenshots
               </button>
-              <button
-                type="button"
-                className="block w-full rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50"
-                onClick={startOver}
-              >
-                Clear and start over
-              </button>
-              <p className="text-xs text-neutral-500">
-                Nothing is saved yet — that arrives with accounts in v0.2.
-                Clearing loses these totals.
-              </p>
+              {user ? (
+                <p className="text-xs text-neutral-500">
+                  Saved to your account. It&apos;ll be here next time you open
+                  this on any device.
+                </p>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="block w-full rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50"
+                    onClick={startOver}
+                  >
+                    Clear and start over
+                  </button>
+                  <p className="text-xs text-neutral-500">
+                    Not signed in, so nothing is saved. Clearing loses these
+                    totals.
+                  </p>
+                </>
+              )}
             </div>
           )}
         </>
