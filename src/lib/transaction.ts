@@ -13,6 +13,8 @@ export type Transaction = {
   date: string;
   memo: string;
   source: TransactionSource;
+  /** Which catalog service this was, if logged via a chip. */
+  serviceId: string | null;
   /** null until the user swipes. true = business, false = personal. */
   business: boolean | null;
   /** 0..1 per field. Anything below LOW_CONFIDENCE gets flagged in the sheet. */
@@ -33,10 +35,17 @@ export const formatCents = (cents: number): string =>
     currency: "USD",
   }).format(cents / 100);
 
-/** "12.34" -> 1234. Anything unparseable is 0 cents. */
+/** $999,999.99 — a typo guard, and safely inside Postgres int4. */
+export const MAX_CENTS = 99_999_999;
+
+/**
+ * "12.34" -> 1234. Anything unparseable is 0 cents. Clamped to 0..MAX_CENTS:
+ * amounts in this app are never negative, and never bigger than the column.
+ */
 export const dollarsToCents = (input: string): number => {
   const amount = Number.parseFloat(input.replace(/[^0-9.-]/g, ""));
-  return Number.isFinite(amount) ? Math.round(amount * 100) : 0;
+  if (!Number.isFinite(amount)) return 0;
+  return Math.min(MAX_CENTS, Math.max(0, Math.round(amount * 100)));
 };
 
 export const centsToDollars = (cents: number): string =>

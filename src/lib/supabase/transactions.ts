@@ -27,6 +27,7 @@ const toTransaction = (row: Row): Transaction => ({
   date: row.occurred_on ?? "",
   memo: row.memo,
   source: row.source === "manual" ? "manual" : "screenshot",
+  serviceId: row.service_id,
   business: row.business,
   confidence: {},
 });
@@ -40,6 +41,7 @@ const toRow = (tx: Transaction, accountId: string) => ({
   occurred_on: tx.date === "" ? null : tx.date,
   memo: tx.memo,
   source: tx.source satisfies TransactionSource,
+  service_id: tx.serviceId,
   business: tx.business,
 });
 
@@ -84,6 +86,7 @@ export const updateTransaction = async (
   if (patch.amountCents !== undefined) row.amount_cents = patch.amountCents;
   if (patch.date !== undefined) row.occurred_on = patch.date === "" ? null : patch.date;
   if (patch.memo !== undefined) row.memo = patch.memo;
+  if (patch.serviceId !== undefined) row.service_id = patch.serviceId;
   if (patch.business !== undefined) row.business = patch.business;
   if (Object.keys(row).length === 0) return;
 

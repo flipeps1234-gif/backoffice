@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import ConfirmationSheet from "./confirmation-sheet";
 import Insights from "./insights";
 import QuickAdd from "./quick-add";
@@ -9,12 +9,14 @@ import SignIn from "./sign-in";
 import SwipeDeck from "./swipe-deck";
 import { warningMessage, type ExtractionWarning } from "@/lib/extract/types";
 import { getSupabase } from "@/lib/supabase/client";
+import { insertService, loadServices } from "@/lib/supabase/services";
 import {
   insertTransactions,
   loadTransactions,
   updateTransaction as saveTransaction,
 } from "@/lib/supabase/transactions";
 import { useSession } from "@/lib/supabase/use-session";
+import type { Service } from "@/lib/service";
 import type { Transaction } from "@/lib/transaction";
 
 type Status = "idle" | "reading" | "error";
@@ -25,6 +27,7 @@ export default function UploadScreen() {
   const [status, setStatus] = useState<Status>("idle");
   const [stage, setStage] = useState<Stage>("upload");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [warnings, setWarnings] = useState<ExtractionWarning[]>([]);
   const [error, setError] = useState("");
   const [decided, setDecided] = useState<string[]>([]);
@@ -33,6 +36,15 @@ export default function UploadScreen() {
   // not persisted across reloads — a refresh returns to the real gate.
   const [demo, setDemo] = useState(false);
   const { user, loading, isConfigured } = useSession();
+  // Token refreshes mint a new user OBJECT for the same account; keying
+  // effects on the id stops them re-running and clobbering local edits.
+  const accountId = user?.id ?? null;
+
+  // Service inserts must land before anything that references them — the
+  // transactions table now carries a foreign key. Chaining every dependent
+  // write behind the last service insert closes the race. persist() never
+  // rejects, so the chain can't wedge.
+  const serviceChain = useRef<Promise<void>>(Promise.resolve());
 
   /**
    * Writes go through here so one failed save can't lose what's on screen.
@@ -52,7 +64,7 @@ export default function UploadScreen() {
 
   // Pull the ledger back down once we know who's signed in.
   useEffect(() => {
-    if (!user) return;
+    if (!accountId) return;
     let cancelled = false;
 
     loadTransactions()
@@ -69,10 +81,19 @@ export default function UploadScreen() {
         setStatus("error");
       });
 
+    loadServices()
+      .then((rows) => {
+        if (!cancelled) setServices(rows);
+      })
+      .catch((cause) => {
+        // The numpad still works without chips; don't block the app on this.
+        console.error("Services load failed:", cause);
+      });
+
     return () => {
       cancelled = true;
     };
-  }, [user]);
+  }, [accountId]);
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -173,9 +194,32 @@ export default function UploadScreen() {
   if (quickAdd) {
     return (
       <QuickAdd
+        services={services}
         onSave={(tx) => {
           setTransactions((current) => [...current, tx]);
-          if (user) void persist(() => insertTransactions([tx], user.id));
+          if (user) {
+            const accountFor = user.id;
+            // Behind the chain: this row may reference a service whose
+            // insert is still in flight.
+            void serviceChain.current.then(() =>
+              persist(() => insertTransactions([tx], accountFor)),
+            );
+          }
+        }}
+        onCreateService={(service) => {
+          setServices((current) => [...current, service]);
+          if (user) {
+            const accountFor = user.id;
+            serviceChain.current = serviceChain.current.then(() =>
+              persist(() => insertService(service, accountFor)),
+            );
+          }
+        }}
+        onLinkService={(txId, serviceId) => {
+          updateTransaction(txId, { serviceId });
+          void serviceChain.current.then(() =>
+            persist(() => saveTransaction(txId, { serviceId })),
+          );
         }}
         onClose={() => setQuickAdd(false)}
       />

@@ -58,6 +58,7 @@ const validateTransaction = (
     date: asIsoDate(raw.date),
     memo: asString(raw.memo),
     source: "screenshot",
+    serviceId: null,
     business: null,
     confidence: {
       payer: asConfidence(rawConfidence.payer),
