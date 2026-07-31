@@ -73,6 +73,13 @@ don't hard-couple account = one user, but multi-user stays parked.
   across overlapping screenshots.
 - Venmo's social feed shows no amounts — detect it and show
   "screenshot your Transactions tab instead." Never fail silently.
+- Logic lives in src/lib as pure TypeScript; components only render.
+  Money math, extraction, validation, dedupe — none of it touches the
+  DOM. Server work stays behind API routes. This is not style: it is
+  what keeps a future native port a screen rewrite instead of an app
+  rewrite, and it keeps the door open for free. Native itself stays
+  parked (see Hard boundaries + IDEAS.md) — the reason to revisit is
+  install friction on iOS, where there is no install prompt at all.
 - Commit early/often, suggest messages. One feature per session.
   Ask before ANY new dependency; boring wins. Test data only — my
   own or synthetic screenshots, never real customer data.
