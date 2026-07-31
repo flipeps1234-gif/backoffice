@@ -7,7 +7,10 @@ import { getSupabase } from "@/lib/supabase/client";
  * Magic link: one field, no password to forget on a phone in a driveway.
  * Supabase emails a link; clicking it returns here already signed in.
  */
-export default function SignIn() {
+/** Type this instead of an email to skip the inbox round-trip while testing. */
+const DEMO_WORD = "tester";
+
+export default function SignIn({ onDemo }: { onDemo: () => void }) {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
@@ -15,6 +18,15 @@ export default function SignIn() {
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+
+    // Demo mode is not a sign-in: no session, no account, nothing saved.
+    // It just unlocks the same in-memory app you get with no project
+    // configured, so it can never reach another account's rows.
+    if (email.trim().toLowerCase() === DEMO_WORD) {
+      onDemo();
+      return;
+    }
+
     const supabase = getSupabase();
     if (!supabase) return;
 
@@ -51,9 +63,13 @@ export default function SignIn() {
         >
           Your email
         </label>
+        {/* type=text, not email: the browser's own validation would reject
+            the demo word before submit ever ran. Supabase still rejects
+            malformed real addresses server-side. */}
         <input
           id="email"
-          type="email"
+          type="text"
+          inputMode="email"
           required
           autoComplete="email"
           className="w-full rounded-md border border-neutral-300 bg-white px-3 py-3 text-base text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none"

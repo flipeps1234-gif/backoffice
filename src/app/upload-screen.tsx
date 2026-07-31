@@ -29,11 +29,18 @@ export default function UploadScreen() {
   const [error, setError] = useState("");
   const [decided, setDecided] = useState<string[]>([]);
   const [quickAdd, setQuickAdd] = useState(false);
+  // Demo mode: the sign-in gate steps aside, nothing is saved. Deliberately
+  // not persisted across reloads — a refresh returns to the real gate.
+  const [demo, setDemo] = useState(false);
   const { user, loading, isConfigured } = useSession();
 
-  /** Writes go through here so one failed save can't lose what's on screen. */
+  /**
+   * Writes go through here so one failed save can't lose what's on screen.
+   * No signed-in user (unconfigured, or demo mode) means nothing to save —
+   * row level security would reject the write anyway.
+   */
   const persist = useCallback(async (work: () => Promise<void>) => {
-    if (!isConfigured) return;
+    if (!isConfigured || !user) return;
     try {
       await work();
     } catch (cause) {
@@ -41,7 +48,7 @@ export default function UploadScreen() {
       setError("Saved on screen but not to your account. Check your connection.");
       setStatus("error");
     }
-  }, [isConfigured]);
+  }, [isConfigured, user]);
 
   // Pull the ledger back down once we know who's signed in.
   useEffect(() => {
@@ -158,8 +165,8 @@ export default function UploadScreen() {
   }
 
   // Configured but signed out: the ledger belongs to an account.
-  if (isConfigured && !user) {
-    return <SignIn />;
+  if (isConfigured && !user && !demo) {
+    return <SignIn onDemo={() => setDemo(true)} />;
   }
 
   // The numpad owns the screen while it's open — one hand, one thing at a time.
@@ -190,6 +197,19 @@ export default function UploadScreen() {
             onClick={() => getSupabase()?.auth.signOut()}
           >
             Sign out
+          </button>
+        </p>
+      )}
+
+      {demo && !user && (
+        <p className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <span>Demo mode — nothing is saved.</span>
+          <button
+            type="button"
+            className="font-medium hover:underline"
+            onClick={() => setDemo(false)}
+          >
+            Sign in
           </button>
         </p>
       )}
