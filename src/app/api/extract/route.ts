@@ -17,7 +17,10 @@ import {
  */
 
 const MAX_FILES = 20;
-const MAX_BYTES = 8 * 1024 * 1024;
+// Vercel rejects request bodies over 4.5MB before this code runs, so a
+// bigger per-file limit would be a lie. The client compresses before
+// uploading; a file this large here is an undecodable original (rare HEIC).
+const MAX_BYTES = 4 * 1024 * 1024;
 
 /** What OpenAI's vision endpoint accepts. Anything else is refused early. */
 const IMAGE_TYPES = new Set([
@@ -33,7 +36,9 @@ const IMAGE_TYPES = new Set([
  * check above is the real gate; this just blunts casual abuse.
  */
 const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 10;
+// Uploads arrive in chunks now (several requests per selection), so the
+// brake sits higher — auth is the real gate on the paid path.
+const MAX_PER_WINDOW = 30;
 const hits = new Map<string, { count: number; windowStart: number }>();
 
 const rateLimited = (ip: string): boolean => {
@@ -83,7 +88,7 @@ export async function POST(request: Request) {
   for (const file of files) {
     if (file.size > MAX_BYTES) {
       return Response.json(
-        { error: `${file.name} is larger than 8MB.` },
+        { error: `${file.name} is too large even after compression. Try a screenshot of it instead.` },
         { status: 400 },
       );
     }

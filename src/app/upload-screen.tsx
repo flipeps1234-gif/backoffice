@@ -8,7 +8,8 @@ import QuickAdd from "./quick-add";
 import RunningTotals from "./running-totals";
 import SignIn from "./sign-in";
 import SwipeDeck from "./swipe-deck";
-import { isDuplicate } from "@/lib/extract/dedupe";
+import { chunkForUpload, compressImage } from "@/lib/compress-image";
+import { dedupe, isDuplicate } from "@/lib/extract/dedupe";
 import { warningMessage, type ExtractionWarning } from "@/lib/extract/types";
 import { getSupabase } from "@/lib/supabase/client";
 import { insertService, loadServices } from "@/lib/supabase/services";
@@ -75,6 +76,7 @@ function Ledger({
   const [services, setServices] = useState<Service[]>([]);
   const [warnings, setWarnings] = useState<ExtractionWarning[]>([]);
   const [batchNotice, setBatchNotice] = useState("");
+  const [readingNote, setReadingNote] = useState("");
   const [error, setError] = useState("");
   const [decided, setDecided] = useState<string[]>([]);
   const [quickAdd, setQuickAdd] = useState(false);
@@ -152,9 +154,13 @@ function Ledger({
 
     setStatus("reading");
     setError("");
+    setReadingNote("");
 
-    const body = new FormData();
-    for (const file of files) body.append("screenshots", file);
+    // Compress in the browser first: Vercel rejects request bodies over
+    // 4.5MB before our code runs, and smaller images cost less to extract.
+    const compressed = await Promise.all([...files].map(compressImage));
+    // Then send in chunks that stay under the body cap.
+    const chunks = chunkForUpload(compressed);
 
     // The paid extraction path is gated on being signed in; the token proves
     // it. Demo and unconfigured callers send none and get the free mock.
@@ -162,23 +168,61 @@ function Ledger({
     const session = (await getSupabase()?.auth.getSession())?.data.session;
     if (session) headers.authorization = `Bearer ${session.access_token}`;
 
-    try {
-      const response = await fetch("/api/extract", {
-        method: "POST",
-        headers,
-        body,
-      });
-      const data = await response.json();
+    const collected: Transaction[] = [];
+    const collectedWarnings: typeof warnings = [];
+    let failed = false;
 
-      if (!response.ok) {
-        setError(data.error ?? "Something went wrong reading those.");
-        setStatus("error");
-        return;
+    for (const [index, chunk] of chunks.entries()) {
+      if (chunks.length > 1) {
+        setReadingNote(`batch ${index + 1} of ${chunks.length}`);
       }
+      const body = new FormData();
+      for (const file of chunk) body.append("screenshots", file);
+
+      try {
+        const response = await fetch("/api/extract", {
+          method: "POST",
+          headers,
+          body,
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          setError(data.error ?? "Something went wrong reading those.");
+          failed = true;
+          break;
+        }
+        collected.push(...data.transactions);
+        collectedWarnings.push(...data.warnings);
+      } catch {
+        setError(
+          "Couldn't reach the server. Check your connection and try again.",
+        );
+        failed = true;
+        break;
+      }
+    }
+
+    setReadingNote("");
+    if (collected.length === 0 && collectedWarnings.length === 0) {
+      // Nothing was read at all — a pure failure.
+      setStatus("error");
+      return;
+    }
+    if (failed) {
+      // Partial batch: keep what succeeded, and the error banner explains.
+      setStatus("error");
+    } else {
+      setStatus("idle");
+    }
+
+    {
+      // The same payment can appear in two chunks (overlapping screenshots
+      // split across requests) — server dedupe only ever saw one chunk.
+      const merged = dedupe(collected);
 
       // Re-id on arrival: extraction ids are derived from payer + amount, so
       // two batches containing the same payment would otherwise collide.
-      const batch: Transaction[] = data.transactions.map((tx: Transaction) => ({
+      const batch: Transaction[] = merged.map((tx: Transaction) => ({
         ...tx,
         id: crypto.randomUUID(),
       }));
@@ -202,17 +246,13 @@ function Ledger({
 
       // Append — a new batch must never wipe what's already here.
       setTransactions((current) => [...current, ...fresh]);
-      setWarnings(data.warnings);
+      setWarnings(collectedWarnings);
       setLastBatchIds(fresh.map((tx) => tx.id));
-      setStatus("idle");
       if (fresh.length > 0) setStage("confirm");
 
       // Save on arrival, not after confirming — closing the tab mid-sheet
       // shouldn't cost you the extraction you just paid for.
       if (accountId) await persist(() => insertTransactions(fresh, accountId));
-    } catch {
-      setError("Couldn't reach the server. Check your connection and try again.");
-      setStatus("error");
     }
   }
 
@@ -400,7 +440,9 @@ function Ledger({
       )}
 
       {status === "reading" && (
-        <p className="text-sm text-neutral-500">Reading your screenshots…</p>
+        <p className="text-sm text-neutral-500">
+          Reading your screenshots…{readingNote && ` (${readingNote})`}
+        </p>
       )}
 
       {status === "error" && (
