@@ -128,10 +128,14 @@ export async function POST(request: Request) {
           { status: 401 },
         );
       }
-      // The shared tester account is a real session anyone can mint via
-      // /api/demo-session — letting it reach the paid provider would reopen
-      // the exact spend-the-owner's-budget hole the token check closes.
-      if (isDemoAccount(verified.email)) provider = "mock";
+      // The shared tester account gets the REAL provider — an accepted,
+      // deliberately bounded cost: the owner caps spend on the OpenAI side,
+      // and anyone who types the demo word draws from that cap. Setting
+      // DEMO_EXTRACTION=mock in the environment flips tester back to the
+      // free mock without a code change.
+      if (isDemoAccount(verified.email) && process.env.DEMO_EXTRACTION === "mock") {
+        provider = "mock";
+      }
     }
   }
 

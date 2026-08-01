@@ -7,9 +7,9 @@ import { createClient } from "@supabase/supabase-js";
  * DEMO_PASSWORD) — never in the browser bundle. By design, anyone who types
  * the demo word gets in, so this endpoint is deliberately public: it can
  * only ever mint sessions for that one account, whose rows are fenced off
- * from every real account by row level security. The tester session is
- * additionally pinned to the free mock extractor in /api/extract, so it
- * cannot spend OpenAI budget.
+ * from every real account by row level security. The tester session uses
+ * the real extraction provider by design — the owner caps spend on the
+ * OpenAI side, and DEMO_EXTRACTION=mock flips it back to the free mock.
  */
 
 const WINDOW_MS = 60_000;
