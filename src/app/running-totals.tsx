@@ -22,8 +22,25 @@ export default function RunningTotals({
 
   return (
     <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-neutral-200 bg-background/95 px-4 py-3 backdrop-blur">
+      {/* Personal left, business right — matching the swipe directions:
+          left = personal, right = business. The totals sit where the cards
+          fly. */}
       <div className="flex items-end justify-between gap-4">
         <div>
+          <p className="text-xs uppercase tracking-wide text-neutral-500">
+            Personal
+          </p>
+          <p className="text-lg font-medium tabular-nums text-neutral-500">
+            {formatCents(personal.inCents)}
+          </p>
+          <p className="text-xs text-neutral-500">
+            {personal.outCents > 0 ? (
+              <span>−{formatCents(personal.outCents)} spent · </span>
+            ) : null}
+            {personalCount} item{personalCount === 1 ? "" : "s"}
+          </p>
+        </div>
+        <div className="text-right">
           <p className="text-xs uppercase tracking-wide text-neutral-500">
             Business
           </p>
@@ -37,20 +54,6 @@ export default function RunningTotals({
               </span>
             ) : null}
             {businessCount} item{businessCount === 1 ? "" : "s"}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs uppercase tracking-wide text-neutral-500">
-            Personal
-          </p>
-          <p className="text-lg font-medium tabular-nums text-neutral-500">
-            {formatCents(personal.inCents)}
-          </p>
-          <p className="text-xs text-neutral-500">
-            {personal.outCents > 0 ? (
-              <span>−{formatCents(personal.outCents)} spent · </span>
-            ) : null}
-            {personalCount} item{personalCount === 1 ? "" : "s"}
           </p>
         </div>
       </div>
