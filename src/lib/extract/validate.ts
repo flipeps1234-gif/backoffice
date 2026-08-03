@@ -67,6 +67,7 @@ const validateTransaction = (
     // user confirms every row and income is what these documents mostly are.
     direction: raw.direction === "out" ? "out" : "in",
     serviceId: null,
+    quantity: null,
     business: null,
     confidence: {
       payer: asConfidence(rawConfidence.payer),

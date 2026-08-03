@@ -18,6 +18,7 @@ type Row = {
   source: string;
   direction: string;
   service_id: string | null;
+  quantity: number | null;
   business: boolean | null;
 };
 
@@ -30,6 +31,7 @@ const toTransaction = (row: Row): Transaction => ({
   source: row.source === "manual" ? "manual" : "screenshot",
   direction: row.direction === "out" ? "out" : "in",
   serviceId: row.service_id,
+  quantity: row.quantity,
   business: row.business,
   confidence: {},
 });
@@ -45,6 +47,7 @@ const toRow = (tx: Transaction, accountId: string) => ({
   source: tx.source satisfies TransactionSource,
   direction: tx.direction,
   service_id: tx.serviceId,
+  quantity: tx.quantity,
   business: tx.business,
 });
 
@@ -55,7 +58,7 @@ export const loadTransactions = async (): Promise<Transaction[]> => {
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "id, payer, amount_cents, occurred_on, memo, source, direction, service_id, business",
+      "id, payer, amount_cents, occurred_on, memo, source, direction, service_id, quantity, business",
     )
     .order("occurred_on", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
@@ -93,6 +96,7 @@ export const updateTransaction = async (
   if (patch.memo !== undefined) row.memo = patch.memo;
   if (patch.direction !== undefined) row.direction = patch.direction;
   if (patch.serviceId !== undefined) row.service_id = patch.serviceId;
+  if (patch.quantity !== undefined) row.quantity = patch.quantity;
   if (patch.business !== undefined) row.business = patch.business;
   if (Object.keys(row).length === 0) return;
 

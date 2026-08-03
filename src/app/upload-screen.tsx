@@ -9,6 +9,7 @@ import RunningTotals from "./running-totals";
 import SignIn from "./sign-in";
 import SwipeDeck from "./swipe-deck";
 import { chunkForUpload, compressImage } from "@/lib/compress-image";
+import { knownPayers, rememberedFor } from "@/lib/customer-memory";
 import { dedupe, isDuplicate } from "@/lib/extract/dedupe";
 import { warningMessage, type ExtractionWarning } from "@/lib/extract/types";
 import { getSupabase } from "@/lib/supabase/client";
@@ -244,8 +245,10 @@ function Ledger({
           : "",
       );
 
-      // Append — a new batch must never wipe what's already here.
-      setTransactions((current) => [...current, ...fresh]);
+      // Prepend — the array is newest-first EVERYWHERE: database loads come
+      // newest-first, so in-session additions must too. Customer memory and
+      // the payer list both break ties by position and rely on this.
+      setTransactions((current) => [...fresh, ...current]);
       setWarnings(collectedWarnings);
       setLastBatchIds(fresh.map((tx) => tx.id));
       if (fresh.length > 0) setStage("confirm");
@@ -321,8 +324,13 @@ function Ledger({
       <QuickAdd
         services={services}
         prefill={logAgain ?? undefined}
+        remember={(payer, serviceId) =>
+          rememberedFor(transactions, payer, serviceId)
+        }
+        payerSuggestions={knownPayers(transactions)}
         onSave={(tx) => {
-          setTransactions((current) => [...current, tx]);
+          // Prepend: the array stays newest-first (see the batch comment).
+          setTransactions((current) => [tx, ...current]);
           if (accountId) {
             void persist(() => insertTransactions([tx], accountId));
           }

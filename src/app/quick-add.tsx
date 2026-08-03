@@ -9,6 +9,7 @@ import {
   type RateUnit,
   type Service,
 } from "@/lib/service";
+import type { Remembered } from "@/lib/customer-memory";
 import {
   dollarsToCents,
   formatCents,
@@ -57,6 +58,8 @@ export type QuickAddPrefill = {
   payer: string;
   amountCents: number;
   serviceId: string | null;
+  /** Last time's units — without it, re-saving would erase remembered size. */
+  quantity: number | null;
   business: boolean;
   direction: TransactionDirection;
 };
@@ -64,6 +67,8 @@ export type QuickAddPrefill = {
 export default function QuickAdd({
   services,
   prefill,
+  remember,
+  payerSuggestions,
   onSave,
   onCreateService,
   onLinkService,
@@ -71,6 +76,9 @@ export default function QuickAdd({
 }: {
   services: Service[];
   prefill?: QuickAddPrefill;
+  /** What this payer paid last time for a service — see customer-memory. */
+  remember: (payer: string, serviceId: string) => Remembered | undefined;
+  payerSuggestions: string[];
   onSave: (tx: Transaction) => void;
   onCreateService: (service: Service) => void;
   onLinkService: (txId: string, serviceId: string) => void;
@@ -91,8 +99,16 @@ export default function QuickAdd({
   const [selected, setSelected] = useState<Service | null>(
     () => services.find((s) => s.id === prefill?.serviceId) ?? null,
   );
-  const [qty, setQty] = useState("");
+  const [qty, setQty] = useState(
+    prefill?.quantity != null ? String(prefill.quantity) : "",
+  );
   const [fromChip, setFromChip] = useState(Boolean(prefill));
+  /** True only while amount+qty are untouched auto-fill (chip default or
+   *  memory). The moment the user edits either, their numbers win — typing
+   *  a payer name must never overwrite a hand-entered quantity. */
+  const [autoFilled, setAutoFilled] = useState(false);
+  /** "Rosa's usual: $200 (4000 sq ft)" — shown when memory prefilled. */
+  const [usualHint, setUsualHint] = useState("");
 
   // The save-as-service prompt. The payment is ALREADY saved by the time this
   // is set — it holds only what's needed to link the new service afterwards.
@@ -110,6 +126,7 @@ export default function QuickAdd({
     // Typing overrides the mini-calc but keeps the service link — a custom
     // price for this job is still that service.
     setQty("");
+    setAutoFilled(false);
     if (fromChip) {
       // First keystroke after a chip fill starts fresh: tapping the chip
       // then typing 7 means $0.07, not $650.07.
@@ -127,20 +144,55 @@ export default function QuickAdd({
     });
   }
 
+  /** Chip defaults — or this payer's remembered price and size, if known. */
+  function applyChip(service: Service, payerName: string) {
+    const past = remember(payerName, service.id);
+    if (past) {
+      setCents(Math.min(MAX_CENTS, past.amountCents));
+      setQty(past.quantity != null ? String(past.quantity) : "");
+      const size =
+        past.quantity != null && service.pricing.type === "rate"
+          ? ` (${past.quantity} ${
+              service.pricing.unit === "sqft"
+                ? "sq ft"
+                : UNIT_LABELS[service.pricing.unit] +
+                  (past.quantity === 1 ? "" : "s")
+            })`
+          : "";
+      setUsualHint(
+        `${payerName.trim()}'s usual: ${formatCents(past.amountCents)}${size}`,
+      );
+    } else {
+      // One tap = one unit. "1" is right for an hour or a room, and for
+      // sqft it's a visible starting point the user immediately overtypes.
+      setQty("1");
+      setCents(Math.min(MAX_CENTS, priceFor(service, 1)));
+      setUsualHint("");
+    }
+    setFromChip(true);
+    setAutoFilled(true);
+  }
+
   function tapChip(service: Service) {
     if (selected?.id === service.id) {
       setSelected(null);
       setQty("");
       setCents(0);
       setFromChip(false);
+      setAutoFilled(false);
+      setUsualHint("");
       return;
     }
     setSelected(service);
-    // One tap = one unit. "1" is right for an hour or a room, and for sqft
-    // it's a visible starting point the user immediately overtypes.
-    setQty("1");
-    setCents(Math.min(MAX_CENTS, priceFor(service, 1)));
-    setFromChip(true);
+    applyChip(service, payer);
+  }
+
+  function changePayer(value: string) {
+    setPayer(value);
+    // Re-apply memory only while everything on screen is still auto-fill —
+    // typing "Rosa" swaps in Rosa's price, but never clobbers a quantity or
+    // amount the user entered by hand.
+    if (selected && autoFilled && !spending) applyChip(selected, value);
   }
 
   function changeQty(value: string) {
@@ -149,6 +201,8 @@ export default function QuickAdd({
     // Clamped: a stray "1e9" sqft must not overflow the amount column.
     setCents(selected ? Math.min(MAX_CENTS, priceFor(selected, quantity)) : 0);
     setFromChip(true);
+    // A hand-typed size is the user's — memory must not overwrite it.
+    setAutoFilled(false);
   }
 
   function build(): Transaction {
@@ -163,9 +217,17 @@ export default function QuickAdd({
       direction,
       // Chips are things you SELL — they don't apply to money out.
       serviceId: spending ? null : (selected?.id ?? null),
+      quantity: quantityForSave(),
       business,
       confidence: {},
     };
+  }
+
+  /** Units are only meaningful on a rate-chip income log with a valid qty. */
+  function quantityForSave(): number | null {
+    if (spending || selected?.pricing.type !== "rate") return null;
+    const parsed = Number.parseFloat(qty);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
 
   /** Reset for the next entry (keep date + business/personal) or close. */
@@ -184,6 +246,8 @@ export default function QuickAdd({
     setSelected(null);
     setQty("");
     setFromChip(false);
+    setAutoFilled(false);
+    setUsualHint("");
   }
 
   function save(stay: boolean) {
@@ -398,7 +462,14 @@ export default function QuickAdd({
             // would keep computing this expense from your selling rate.
             setSelected(null);
             setQty("");
+            // An amount the user didn't type doesn't survive the switch —
+            // clearing fromChip alone would leave a chip/memory-filled $200
+            // that the next digit APPENDS to ($2,000.07 instead of $0.07).
+            // A hand-typed amount is the user's and stays.
+            if (fromChip) setCents(0);
             setFromChip(false);
+            setAutoFilled(false);
+            setUsualHint("");
           }}
         >
           Spent
@@ -452,6 +523,12 @@ export default function QuickAdd({
             onChange={(event) => changeQty(event.target.value)}
           />
         </div>
+      )}
+
+      {usualHint && (
+        <p aria-live="polite" className="text-center text-xs text-emerald-600">
+          {usualHint}
+        </p>
       )}
 
       {justSaved && (
@@ -515,8 +592,16 @@ export default function QuickAdd({
             className={fieldClass}
             placeholder={spending ? "Gas station" : "Name"}
             value={payer}
-            onChange={(event) => setPayer(event.target.value)}
+            list={spending ? undefined : "known-payers"}
+            onChange={(event) => changePayer(event.target.value)}
           />
+          {!spending && (
+            <datalist id="known-payers">
+              {payerSuggestions.map((name) => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+          )}
         </div>
         <div className="w-40">
           <label className={labelClass} htmlFor="quick-date">

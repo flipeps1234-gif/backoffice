@@ -14,6 +14,7 @@ export type LogAgainPrefill = {
   payer: string;
   amountCents: number;
   serviceId: string | null;
+  quantity: number | null;
   business: boolean;
   direction: "in" | "out";
 };
@@ -111,6 +112,7 @@ export default function HistoryList({
                           payer: tx.payer,
                           amountCents: tx.amountCents,
                           serviceId: tx.serviceId,
+                          quantity: tx.quantity,
                           business: tx.business === true,
                           direction: tx.direction,
                         })

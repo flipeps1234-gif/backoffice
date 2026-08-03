@@ -19,6 +19,8 @@ export type Transaction = {
   direction: TransactionDirection;
   /** Which catalog service this was, if logged via a chip. */
   serviceId: string | null;
+  /** Units for rate-priced jobs (sqft / hours / rooms). null when flat. */
+  quantity: number | null;
   /** null until the user swipes. true = business, false = personal. */
   business: boolean | null;
   /** 0..1 per field. Anything below LOW_CONFIDENCE gets flagged in the sheet. */
