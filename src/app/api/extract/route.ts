@@ -1,5 +1,6 @@
 import { activeProviderName, extract } from "@/lib/extract";
 import type { ExtractionInput } from "@/lib/extract";
+import { IMAGE_TYPES } from "@/lib/extract/image-types";
 import {
   isDemoAccount,
   isSupabaseConfigured,
@@ -22,13 +23,6 @@ const MAX_FILES = 20;
 // uploading; a file this large here is an undecodable original (rare HEIC).
 const MAX_BYTES = 4 * 1024 * 1024;
 
-/** What OpenAI's vision endpoint accepts. Anything else is refused early. */
-const IMAGE_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "image/gif",
-]);
 
 /**
  * Cheap per-IP brake: N requests per window, in memory. Per-instance only —

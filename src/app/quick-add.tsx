@@ -43,6 +43,20 @@ const today = () => {
   return `${now.getFullYear()}-${month}-${day}`;
 };
 
+/**
+ * Which half of a toggle is on has to read at a glance, one-handed, outdoors.
+ * The old pairing was bg-foreground for the pressed side against bg-white for
+ * the other — in dark mode those are both near-white, so nothing looked
+ * chosen. Now the pressed side is a filled pill in the app's money colors and
+ * the other side goes quiet.
+ */
+const segment = (on: boolean, onClass: string): string =>
+  `flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-colors ${
+    on
+      ? onClass
+      : "border border-neutral-300 bg-white text-neutral-500 hover:bg-neutral-50"
+  }`;
+
 const labelClass = "mb-1 block text-xs font-medium text-neutral-500";
 const fieldClass =
   "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 " +
@@ -460,11 +474,7 @@ export default function QuickAdd({
         <button
           type="button"
           aria-pressed={!spending}
-          className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium ${
-            !spending
-              ? "bg-foreground text-background"
-              : "border border-neutral-300 bg-white text-neutral-900"
-          }`}
+          className={segment(!spending, "bg-emerald-700 text-white")}
           onClick={() => setDirection("in")}
         >
           Got paid
@@ -472,11 +482,7 @@ export default function QuickAdd({
         <button
           type="button"
           aria-pressed={spending}
-          className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium ${
-            spending
-              ? "bg-foreground text-background"
-              : "border border-neutral-300 bg-white text-neutral-900"
-          }`}
+          className={segment(spending, "bg-red-600 text-white")}
           onClick={() => {
             setDirection("out");
             // Chips price what you SELL. Left selected, the rate mini-calc
@@ -521,12 +527,31 @@ export default function QuickAdd({
         </div>
       )}
 
-      <p
-        aria-live="polite"
-        className="text-center text-5xl font-semibold tabular-nums"
-      >
-        {formatCents(cents)}
-      </p>
+      {/* The number is where the eye lands, so it carries the direction too:
+          a minus sign and red for money out. Between this and the filled
+          toggle above, "which way is this going" is answered twice. */}
+      <div className="text-center">
+        <p
+          aria-live="polite"
+          className={`text-5xl font-semibold tabular-nums ${
+            spending ? "text-red-500" : ""
+          }`}
+        >
+          {spending && "−"}
+          {formatCents(cents)}
+        </p>
+        <p
+          // Paired shades: the caption sits on the page background, and no
+          // single green or red clears 4.5:1 against both white and near-black.
+          className={`mt-1 text-xs font-medium uppercase tracking-wide ${
+            spending
+              ? "text-red-700 dark:text-red-400"
+              : "text-emerald-700 dark:text-emerald-400"
+          }`}
+        >
+          {spending ? "Money out" : "Money in"}
+        </p>
+      </div>
 
       {!spending && selected?.pricing.type === "rate" && (
         <div className="mx-auto flex w-56 items-center gap-2">
@@ -580,11 +605,7 @@ export default function QuickAdd({
         <button
           type="button"
           aria-pressed={business}
-          className={`flex-1 rounded-lg px-4 py-3 text-sm font-medium ${
-            business
-              ? "bg-emerald-600 text-white"
-              : "border border-neutral-300 bg-white text-neutral-900"
-          }`}
+          className={segment(business, "bg-emerald-700 text-white")}
           onClick={() => setBusiness(true)}
         >
           Business
@@ -592,11 +613,8 @@ export default function QuickAdd({
         <button
           type="button"
           aria-pressed={!business}
-          className={`flex-1 rounded-lg px-4 py-3 text-sm font-medium ${
-            business
-              ? "border border-neutral-300 bg-white text-neutral-900"
-              : "bg-foreground text-background"
-          }`}
+          // Grey, not the money colours: personal isn't a third direction.
+          className={segment(!business, "bg-neutral-500 text-white")}
           onClick={() => setBusiness(false)}
         >
           Personal

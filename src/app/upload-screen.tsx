@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import ConfirmationSheet from "./confirmation-sheet";
+import DropZone from "./drop-zone";
 import Dashboard from "./dashboard";
 import HistoryList, { type LogAgainPrefill } from "./history-list";
 import Insights from "./insights";
@@ -10,6 +11,7 @@ import RunningTotals from "./running-totals";
 import SignIn from "./sign-in";
 import SwipeDeck from "./swipe-deck";
 import { chunkForUpload, compressImage } from "@/lib/compress-image";
+import { isSupportedImage } from "@/lib/extract/image-types";
 import { knownPayers, rememberedFor } from "@/lib/customer-memory";
 import { dedupe, isDuplicate } from "@/lib/extract/dedupe";
 import { warningMessage, type ExtractionWarning } from "@/lib/extract/types";
@@ -152,8 +154,65 @@ function Ledger({
     };
   }, [accountId]);
 
+  // A file dropped anywhere but the box makes the browser navigate to that
+  // file, which throws away everything on screen that hasn't been saved yet.
+  // Swallowing the page-level drop turns a near-miss into a no-op.
+  //
+  // Only for drags CARRYING FILES. A blanket preventDefault here would also
+  // cancel dropping selected text into the payer, memo, and amount fields —
+  // the field would show a caret, accept the drop, and silently discard it.
+  useEffect(() => {
+    const swallow = (event: DragEvent) => {
+      if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
+    };
+    window.addEventListener("dragover", swallow);
+    window.addEventListener("drop", swallow);
+    return () => {
+      window.removeEventListener("dragover", swallow);
+      window.removeEventListener("drop", swallow);
+    };
+  }, []);
+
+  /**
+   * One upload at a time, enforced with a ref rather than `status`.
+   *
+   * A second upload starting mid-flight is how the ledger doubles: the first
+   * call already captured `transactions` for its duplicate screen, so the
+   * second screens the same screenshots against a snapshot that doesn't
+   * contain the first batch, every row looks new, and both copies persist —
+   * with fresh uuids, so the database can't catch it either. isDuplicate is
+   * the only thing standing between a re-drop and double revenue.
+   *
+   * A ref, not state: the check has to see the truth at call time, not the
+   * value the handler closed over when it rendered.
+   */
+  const reading = useRef(false);
+
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
+    if (reading.current) return;
+    reading.current = true;
+    try {
+      await readFiles(files);
+    } finally {
+      reading.current = false;
+    }
+  }
+
+  async function readFiles(files: FileList) {
+    // accept="image/*" is only advice: the file dialog lets you switch it off,
+    // and a drag-and-drop never consults it at all. Filter here so both ways
+    // in are covered, rather than letting a PDF reach the compressor.
+    const images = [...files].filter((file) => file.type.startsWith("image/"));
+    if (images.length === 0) {
+      setError("Those aren't images. Screenshots or photos of receipts only.");
+      setStatus("error");
+      // Don't leave the last batch's messages sitting under a new error.
+      setBatchNotice("");
+      setWarnings([]);
+      return;
+    }
+    const nonImages = files.length - images.length;
 
     setStatus("reading");
     setError("");
@@ -161,9 +220,26 @@ function Ledger({
 
     // Compress in the browser first: Vercel rejects request bodies over
     // 4.5MB before our code runs, and smaller images cost less to extract.
-    const compressed = await Promise.all([...files].map(compressImage));
+    const compressed = await Promise.all(images.map(compressImage));
+
+    // Allowlist AFTER compressing, not before: compressImage re-encodes to
+    // JPEG whenever the browser can decode the original, so an iPhone HEIC
+    // usually arrives here already supported. What's left is what nothing
+    // could read — and sending it would 400 and abort the rest of the batch.
+    const usable = compressed.filter(isSupportedImage);
+    const unsupported = compressed.length - usable.length;
+    if (usable.length === 0) {
+      setError(
+        "Couldn't read that format. A screenshot works best — or set your " +
+          "camera to Most Compatible.",
+      );
+      setStatus("error");
+      setBatchNotice("");
+      setWarnings([]);
+      return;
+    }
     // Then send in chunks that stay under the body cap.
-    const chunks = chunkForUpload(compressed);
+    const chunks = chunkForUpload(usable);
 
     // The paid extraction path is gated on being signed in; the token proves
     // it. Demo and unconfigured callers send none and get the free mock.
@@ -241,11 +317,19 @@ function Ledger({
         (tx) => !priorScreens.some((prev) => isDuplicate(prev, tx)),
       );
       const skipped = batch.length - fresh.length;
-      setBatchNotice(
-        skipped > 0
-          ? `Skipped ${skipped} payment${skipped === 1 ? "" : "s"} already on your ledger.`
-          : "",
-      );
+      const notices: string[] = [];
+      const ignored = nonImages + unsupported;
+      if (ignored > 0) {
+        notices.push(
+          `Ignored ${ignored} file${ignored === 1 ? "" : "s"} we couldn't read.`,
+        );
+      }
+      if (skipped > 0) {
+        notices.push(
+          `Skipped ${skipped} payment${skipped === 1 ? "" : "s"} already on your ledger.`,
+        );
+      }
+      setBatchNotice(notices.join(" "));
 
       // Prepend — the array is newest-first EVERYWHERE: database loads come
       // newest-first, so in-session additions must too. Customer memory and
@@ -406,31 +490,26 @@ function Ledger({
       )}
 
       {stage === "upload" && (
-        <label className="block cursor-pointer rounded-lg border-2 border-dashed border-neutral-300 px-6 py-10 text-center hover:border-neutral-500">
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            className="sr-only"
-            onChange={(event) => handleFiles(event.target.files)}
-          />
-          <span className="block text-base font-medium">
-            Add screenshots of your payments
-          </span>
-          <span className="mt-1 block text-sm text-neutral-500">
-            Venmo, Cash App, or Zelle. Pick as many as you like.
-          </span>
-        </label>
+        <DropZone busy={status === "reading"} onFiles={handleFiles} />
       )}
 
       {stage === "upload" && (
-        <label className="block cursor-pointer rounded-lg border border-neutral-300 px-4 py-4 text-center text-base font-medium hover:bg-neutral-50">
+        <label
+          // Inert while a batch is in flight, for the same reason as the drop
+          // zone: a second upload mid-flight double-books the first.
+          className={`block rounded-lg border border-neutral-300 px-4 py-4 text-center text-base font-medium ${
+            status === "reading"
+              ? "pointer-events-none opacity-50"
+              : "cursor-pointer hover:bg-neutral-50"
+          }`}
+        >
           {/* capture jumps straight into the camera on phones. */}
           <input
             type="file"
             accept="image/*"
             capture="environment"
             multiple
+            disabled={status === "reading"}
             className="sr-only"
             onChange={(event) => handleFiles(event.target.files)}
           />
