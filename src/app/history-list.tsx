@@ -35,7 +35,8 @@ export default function HistoryList({
   transactions: Transaction[];
   services: Service[];
   onLogAgain: (prefill: LogAgainPrefill) => void;
-  onClose: () => void;
+  /** Omitted when embedded in the desktop rail — no takeover, no Close. */
+  onClose?: () => void;
 }) {
   const groups = groupByDay(transactions, localToday());
   const serviceName = (id: string | null) =>
@@ -45,13 +46,15 @@ export default function HistoryList({
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold">History</h2>
-        <button
-          type="button"
-          className="text-sm text-neutral-500 hover:underline"
-          onClick={onClose}
-        >
-          Close
-        </button>
+        {onClose && (
+          <button
+            type="button"
+            className="text-sm text-neutral-500 hover:underline"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        )}
       </div>
 
       {groups.length === 0 && (

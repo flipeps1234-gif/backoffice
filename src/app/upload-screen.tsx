@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import ConfirmationSheet from "./confirmation-sheet";
+import Dashboard from "./dashboard";
 import HistoryList, { type LogAgainPrefill } from "./history-list";
 import Insights from "./insights";
 import QuickAdd from "./quick-add";
@@ -82,6 +83,7 @@ function Ledger({
   const [decided, setDecided] = useState<string[]>([]);
   const [quickAdd, setQuickAdd] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
   /** Set by History's "Log again" — opens the numpad pre-filled. */
   const [logAgain, setLogAgain] = useState<LogAgainPrefill | null>(null);
   /** Ids of the most recently read batch — what the insights describe. */
@@ -318,9 +320,12 @@ function Ledger({
   const sorted = transactions.filter((tx) => tx.business !== null);
   const lastBatch = transactions.filter((tx) => lastBatchIds.includes(tx.id));
 
-  // The numpad owns the screen while it's open — one hand, one thing at a time.
+  // The flow column shows exactly one thing at a time: a takeover — the
+  // numpad, or (on phones only, where there's no rail) history/dashboard —
+  // and otherwise the main loop below. null means "nothing took over".
+  let takeover: React.ReactNode = null;
   if (quickAdd || logAgain) {
-    return (
+    takeover = (
       <QuickAdd
         services={services}
         prefill={logAgain ?? undefined}
@@ -351,10 +356,16 @@ function Ledger({
         }}
       />
     );
-  }
-
-  if (showHistory) {
-    return (
+  } else if (showDashboard) {
+    takeover = (
+      <Dashboard
+        transactions={transactions}
+        services={services}
+        onClose={() => setShowDashboard(false)}
+      />
+    );
+  } else if (showHistory) {
+    takeover = (
       <HistoryList
         transactions={transactions}
         services={services}
@@ -367,7 +378,8 @@ function Ledger({
     );
   }
 
-  return (
+  // The main loop: totals, the upload targets, the sheet, the swipe deck.
+  const mainLoop = (
     <div className="space-y-6">
       {(stage === "sort" || sorted.length > 0) && (
         <RunningTotals transactions={transactions} />
@@ -436,13 +448,22 @@ function Ledger({
             Log a cash payment
           </button>
           {sorted.length > 0 && (
-            <button
-              type="button"
-              className="rounded-lg border border-neutral-300 px-4 py-4 text-base font-medium hover:bg-neutral-50"
-              onClick={() => setShowHistory(true)}
-            >
-              History
-            </button>
+            <>
+              <button
+                type="button"
+                className="rounded-lg border border-neutral-300 px-4 py-4 text-base font-medium hover:bg-neutral-50 lg:hidden"
+                onClick={() => setShowHistory(true)}
+              >
+                History
+              </button>
+              <button
+                type="button"
+                className="rounded-lg border border-neutral-300 px-4 py-4 text-base font-medium hover:bg-neutral-50 lg:hidden"
+                onClick={() => setShowDashboard(true)}
+              >
+                Dashboard
+              </button>
+            </>
           )}
         </div>
       )}
@@ -553,6 +574,25 @@ function Ledger({
           )}
         </>
       )}
+    </div>
+  );
+
+  // Desktop gets what the big screen is for: the flow on the left, and the
+  // dashboard + history always visible in a rail — the sit-down view. On a
+  // phone the rail hides and the takeover buttons do the same job.
+  return (
+    <div className="lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
+      {/* Sticky so a long history in the rail scrolls past the flow instead
+          of dragging it off the top of the screen. */}
+      <div className="min-w-0 lg:sticky lg:top-8">{takeover ?? mainLoop}</div>
+      <aside className="mt-10 hidden min-w-0 space-y-10 border-neutral-200 lg:mt-0 lg:block lg:border-l lg:pl-10">
+        <Dashboard transactions={transactions} services={services} />
+        <HistoryList
+          transactions={transactions}
+          services={services}
+          onLogAgain={(prefill) => setLogAgain(prefill)}
+        />
+      </aside>
     </div>
   );
 }

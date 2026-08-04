@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   findByName,
   priceFor,
@@ -121,6 +121,27 @@ export default function QuickAdd({
   const [promptPricing, setPromptPricing] = useState<PricingChoice>("flat");
   const [promptRate, setPromptRate] = useState("");
   const [promptCost, setPromptCost] = useState("");
+
+  // Desktop: type amounts on the physical keyboard. Ignored while focus is
+  // in a text field, and while the save-as-service prompt is up.
+  const pressRef = useRef<(key: string) => void>(() => {});
+  const promptOpenRef = useRef(false);
+  useEffect(() => {
+    pressRef.current = press;
+    promptOpenRef.current = pending !== null;
+  });
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      if (promptOpenRef.current) return;
+      if (/^[0-9]$/.test(event.key)) pressRef.current(event.key);
+      else if (event.key === "Backspace") pressRef.current("⌫");
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   function press(key: string) {
     // Typing overrides the mini-calc but keeps the service link — a custom
