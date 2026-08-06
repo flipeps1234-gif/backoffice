@@ -150,6 +150,9 @@ export default function QuickAdd({
       const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
       if (promptOpenRef.current) return;
+      // A chord is a browser command, not a digit. Cmd+0 resets zoom — and
+      // without this it also turned $60.00 into $600.00 and saved it.
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (/^[0-9]$/.test(event.key)) pressRef.current(event.key);
       else if (event.key === "Backspace") pressRef.current("⌫");
     };

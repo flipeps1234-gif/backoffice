@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import ConfirmationSheet from "./confirmation-sheet";
 import DropZone from "./drop-zone";
 import Dashboard from "./dashboard";
@@ -25,6 +31,31 @@ import {
 import { useSession } from "@/lib/supabase/use-session";
 import type { Service } from "@/lib/service";
 import type { Transaction } from "@/lib/transaction";
+
+/**
+ * Is the desktop rail on screen? `lg:hidden` would only make it INVISIBLE —
+ * React still renders it, so a phone would recompute the whole dashboard
+ * (byMonth, revenueByService, marginByService) and reconcile every history
+ * row on each keystroke in the confirmation sheet, for markup no one can
+ * see. This gates the rail on the same breakpoint so phones don't build it
+ * at all.
+ *
+ * useSyncExternalStore rather than an effect: it is SSR-safe via the third
+ * argument, and it subscribes instead of writing state during render.
+ */
+const DESKTOP = "(min-width: 64rem)";
+const subscribeToDesktop = (onChange: () => void) => {
+  const query = window.matchMedia(DESKTOP);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+const useIsDesktop = (): boolean =>
+  useSyncExternalStore(
+    subscribeToDesktop,
+    () => window.matchMedia(DESKTOP).matches,
+    // Server and first paint: assume phone. The rail appears on hydration.
+    () => false,
+  );
 
 type Status = "idle" | "reading" | "error";
 /** upload → confirm what we read → sort each one → totals. */
@@ -88,6 +119,26 @@ function Ledger({
   const [showDashboard, setShowDashboard] = useState(false);
   /** Set by History's "Log again" — opens the numpad pre-filled. */
   const [logAgain, setLogAgain] = useState<LogAgainPrefill | null>(null);
+  /**
+   * Bumped on every "log again", and used as QuickAdd's key so a new prefill
+   * REMOUNTS it. QuickAdd seeds every field from `prefill` in useState
+   * initialisers, which run once — before the desktop rail existed that was
+   * safe, because History was a takeover and picking a row always unmounted
+   * it first. Now History sits beside the open numpad, so a second click
+   * would change `logAgain` while React reused the same instance: the numpad
+   * would keep showing the PREVIOUS row's payer and amount, and saving would
+   * log that one again instead of the row just picked.
+   *
+   * A counter, not a key derived from the prefill: two identical rows (same
+   * payer, same amount, same service) are exactly the repeat business this
+   * app is for, and a content key would collide on precisely those.
+   */
+  const [logAgainSeq, setLogAgainSeq] = useState(0);
+  const isDesktop = useIsDesktop();
+  const pickLogAgain = useCallback((prefill: LogAgainPrefill) => {
+    setLogAgain(prefill);
+    setLogAgainSeq((n) => n + 1);
+  }, []);
   /** Ids of the most recently read batch — what the insights describe. */
   const [lastBatchIds, setLastBatchIds] = useState<string[]>([]);
 
@@ -259,6 +310,11 @@ function Ledger({
     const collected: Transaction[] = [];
     const collectedWarnings: typeof warnings = [];
     let failed = false;
+    // The message travels in a local, not in `error` state. Reading state
+    // back here would read the closure's value — "" at every point in this
+    // run — so the specific reason ("Check your connection", the route's 429
+    // text) got replaced by a generic one at the zero-result exit below.
+    let failMessage = "";
 
     for (const [index, chunk] of chunks.entries()) {
       if (chunks.length > 1) {
@@ -275,16 +331,17 @@ function Ledger({
         });
         const data = await response.json();
         if (!response.ok) {
-          setError(data.error ?? "Something went wrong reading those.");
+          failMessage = data.error ?? "Something went wrong reading those.";
+          setError(failMessage);
           failed = true;
           break;
         }
         collected.push(...data.transactions);
         collectedWarnings.push(...data.warnings);
       } catch {
-        setError(
-          "Couldn't reach the server. Check your connection and try again.",
-        );
+        failMessage =
+          "Couldn't reach the server. Check your connection and try again.";
+        setError(failMessage);
         failed = true;
         break;
       }
@@ -300,7 +357,7 @@ function Ledger({
       const ignored = nonImages + unsupported;
       setError(
         failed
-          ? error ||
+          ? failMessage ||
               "Something went wrong reading those, and nothing came back."
           : "We couldn't read any payments from those. Screenshot your " +
               "Transactions list — a social feed hides the amounts.",
@@ -439,6 +496,7 @@ function Ledger({
   if (quickAdd || logAgain) {
     takeover = (
       <QuickAdd
+        key={`quick-add-${logAgainSeq}`}
         services={services}
         prefill={logAgain ?? undefined}
         remember={(payer, serviceId) =>
@@ -483,7 +541,7 @@ function Ledger({
         services={services}
         onLogAgain={(prefill) => {
           setShowHistory(false);
-          setLogAgain(prefill);
+          pickLogAgain(prefill);
         }}
         onClose={() => setShowHistory(false)}
       />
@@ -692,14 +750,16 @@ function Ledger({
       {/* Sticky so a long history in the rail scrolls past the flow instead
           of dragging it off the top of the screen. */}
       <div className="min-w-0 lg:sticky lg:top-8">{takeover ?? mainLoop}</div>
-      <aside className="mt-10 hidden min-w-0 space-y-10 border-neutral-200 lg:mt-0 lg:block lg:border-l lg:pl-10">
-        <Dashboard transactions={transactions} services={services} />
-        <HistoryList
-          transactions={transactions}
-          services={services}
-          onLogAgain={(prefill) => setLogAgain(prefill)}
-        />
-      </aside>
+      {isDesktop && (
+        <aside className="min-w-0 space-y-10 border-neutral-200 lg:border-l lg:pl-10">
+          <Dashboard transactions={transactions} services={services} />
+          <HistoryList
+            transactions={transactions}
+            services={services}
+            onLogAgain={pickLogAgain}
+          />
+        </aside>
+      )}
     </div>
   );
 }
