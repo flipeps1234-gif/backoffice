@@ -38,11 +38,19 @@ EXISTS AND WORKS (I have driven each of these myself):
   out by month, revenue by service, margin, CSV tax export.
 - Desktop layout: rail, sticky flow column, keyboard numpad.
 - Drag-and-drop upload; one-upload-at-a-time guard.
+- The real OpenAI extraction path, end to end. Confirmed by you, not
+  by me — every run I made used the mock or a stubbed fetch.
+- Sign-in by magic link. The 6-digit code was reverted: the email body
+  comes from Supabase's template, so a code needs {{ .Token }} in the
+  Magic Link and Confirm signup templates, which needs custom SMTP.
 
 EXISTS BUT UNTESTED / UNPROVEN:
-- The real OpenAI extraction path. Every end-to-end run I have done
-  used the mock or a stubbed fetch. The prompt has never been graded
-  against a corpus of real screenshots.
+- The real OpenAI extraction path is NOT in this list — you ran it and
+  it works. Moved up. What is still untested is the prompt's ACCURACY:
+  it has never been graded against a corpus, because /eval is not
+  wired (see MISSING). "It read my screenshot" and "it reads real
+  screenshots reliably" are different claims and only the first is
+  established.
 - Venmo social-feed detection. The warning, the message and the UI
   path all exist and are correct, but detection is ONE SENTENCE OF
   PROMPT — the model's judgment, not code. Nothing measures its hit

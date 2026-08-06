@@ -118,8 +118,10 @@ The mock triggers on a filename containing "social" — test-only. So the
 one behaviour that has ever been exercised is the one that cannot ship.
 
 *Trigger:* a real Venmo social-feed screenshot.
-*User sees:* either the right message, or item #3 above. Unknown which,
-because it has never been measured against a real one.
+*User sees:* either the right message, or item #3 above. Unknown which.
+The extraction path as a whole is confirmed working — this is narrower:
+no one has fed it a social feed, which is the one input this branch
+exists for.
 
 ## 8. The database-reload path skips dedupe entirely
 
@@ -151,10 +153,13 @@ No runner, no test file, no test script — `package.json` has `dev`,
 that is the entire safety net.
 
 Every behaviour claimed to work in CLAUDE.md was verified by hand, in a
-browser, once, by me. Several were verified against *stubbed* network
-responses rather than the real extractor. Nothing prevents any of it
-regressing, and the review passes that found real bugs in this codebase
-found them by reading, not by running.
+browser, once. Most of mine ran against *stubbed* network responses; the
+real extraction path is confirmed working by the owner, not by me.
+
+Either way the gap is the same: one manual pass proves a thing worked
+once, on one input, on one machine. Nothing prevents any of it
+regressing, and every review pass that found a real bug in this codebase
+found it by reading the code, not by running it.
 
 ---
 
