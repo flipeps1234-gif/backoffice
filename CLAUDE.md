@@ -17,13 +17,73 @@ fields flagged, tap to fix) → swipe right = business, left =
 personal → running totals climb. Manual quick-add covers cash. The
 law: every flow survives "ten seconds, one hand, in a driveway."
 
-## Status
-- EXISTS (parked): invoice-builder prototype from the old direction
-  (src/lib/invoice.ts, invoice-builder.tsx, invoice-preview.tsx).
-  Keep the files, remove from homepage, do NOT extend. No PDF. It
-  seeds a future payment-links module; reuse its line-item form
-  pattern in the sheet and quick-add.
-- Ledger v0.1: NOT STARTED. Current milestone.
+## Status — audited 2026-08-04, no optimism
+Typecheck, lint and `next build` all pass with zero errors. That is
+the only automated signal this project has: there is NO test runner,
+NO test file and NO test script anywhere (package.json has dev,
+build, start, lint). Every "verified" claim below was verified by
+hand, in a browser, once. Nothing is protected against regression.
+
+EXISTS AND WORKS (I have driven each of these myself):
+- Upload → extract → confirmation sheet → swipe → running totals.
+- Instant insights: period total, busiest day, top payer, scoped to
+  the batch just confirmed. The hard requirement is met.
+- Numpad quick-add with service chips, rate mini-calc, save-as-a-
+  service prompt, per-customer remembered price and size.
+- Services catalog with flat/rate pricing and an optional cost.
+- Expenses via direction in/out; receipt/check capture on phones.
+- Supabase auth (6-digit code) + RLS. Policies are correct: all four
+  of select/insert/update/delete gate on auth.uid() = account_id.
+- History grouped by day with "log again"; dashboard with money in/
+  out by month, revenue by service, margin, CSV tax export.
+- Desktop layout: rail, sticky flow column, keyboard numpad.
+- Drag-and-drop upload; one-upload-at-a-time guard.
+
+EXISTS BUT UNTESTED / UNPROVEN:
+- The real OpenAI extraction path. Every end-to-end run I have done
+  used the mock or a stubbed fetch. The prompt has never been graded
+  against a corpus of real screenshots.
+- Venmo social-feed detection. The warning, the message and the UI
+  path all exist and are correct, but detection is ONE SENTENCE OF
+  PROMPT — the model's judgment, not code. Nothing measures its hit
+  rate. See FRAGILE.md.
+- Migrations 0003 (direction) and 0004 (quantity). I have never
+  confirmed these were run against the live Supabase project. If
+  they were not, every insert AND every load fails in production.
+  Run them before trusting anything above.
+- Chunked upload across >4 files / >3.5MB. The path exists and the
+  compression numbers were measured once; multi-chunk failure and
+  partial-batch recovery have never been exercised.
+- Everything on a real phone. All verification was desktop browser.
+
+MISSING / BROKEN:
+- /eval is a FAIL, not a partial. The folder exists with one
+  expected.json, but nothing captures corrections: ConfirmationSheet
+  exposes only onChange(id, patch), which overwrites the extraction
+  in place. The original is discarded, the image is never retained,
+  and no corrections table exists. The bake-off this folder was for
+  cannot happen. The only two mentions of /eval in src/ are comments.
+- Extraction CAN fail silently, which the engineering rules forbid.
+  A 200 response with zero transactions and zero warnings sets
+  status="error" while error is still "" — an empty red box.
+- Dedupe does not cover the database-reload path: rows loaded from
+  Supabase go straight into the sheet unscreened.
+- Money parsing is en-US only. "1.234,56" becomes $1.23, silently, on
+  the confirmation sheet's amount field. v0.5 is bilingual EN/ES/PT;
+  this must be fixed as part of it, not after.
+- No delete anywhere. A wrong row cannot be removed, only edited.
+
+PARKED, CONFIRMED UNREACHABLE:
+- invoice-builder prototype (src/lib/invoice.ts, invoice-builder.tsx,
+  invoice-preview.tsx). Verified: nothing outside those three files
+  imports them; page.tsx renders only UploadScreen. Keep, do NOT
+  extend. No PDF. Its float money math is still unmigrated — that is
+  fine while it stays unreachable, and must be fixed before any of it
+  is reused.
+
+Audited invariants: 5 PASS (integer cents, extraction module, source
+field, zero billing, hard boundaries), 3 PARTIAL (dedupe, Venmo
+detection, lib purity), 1 FAIL (/eval). Details in FRAGILE.md.
 
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →
