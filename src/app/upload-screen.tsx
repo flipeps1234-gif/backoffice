@@ -141,6 +141,8 @@ function Ledger({
   }, []);
   /** Ids of the most recently read batch — what the insights describe. */
   const [lastBatchIds, setLastBatchIds] = useState<string[]>([]);
+  /** Set when any database write failed — see the finish copy. */
+  const [saveFailed, setSaveFailed] = useState(false);
 
   /**
    * ALL database writes flow through here, one at a time, in call order.
@@ -163,6 +165,11 @@ function Ledger({
             "Saved on screen but not to your account. Check your connection.",
           );
           setStatus("error");
+          // Remembered, not just flashed: the finish copy below promises the
+          // batch is on the user's account "next time you open this on any
+          // device". After a failed write that sentence is false, and it is
+          // the only thing standing between them and losing the batch.
+          setSaveFailed(true);
         }
       });
       writeChain.current = next;
@@ -315,6 +322,13 @@ function Ledger({
     // run — so the specific reason ("Check your connection", the route's 429
     // text) got replaced by a generic one at the zero-result exit below.
     let failMessage = "";
+    // Files in chunks we never got to. The loop breaks on the first failure,
+    // and every exit below except one skips the ignored-count notice — so a
+    // 12-screenshot upload that died on chunk 2 used to show 5 payments and
+    // say nothing at all about the 4 that were never sent.
+    let unsentFiles = 0;
+    const remaining = (index: number) =>
+      chunks.slice(index).reduce((n, c) => n + c.length, 0);
 
     for (const [index, chunk] of chunks.entries()) {
       if (chunks.length > 1) {
@@ -332,6 +346,7 @@ function Ledger({
         const data = await response.json();
         if (!response.ok) {
           failMessage = data.error ?? "Something went wrong reading those.";
+          unsentFiles = remaining(index);
           setError(failMessage);
           failed = true;
           break;
@@ -343,6 +358,7 @@ function Ledger({
         if (accountId && data.provider === "mock") {
           failMessage =
             "Reading screenshots is unavailable right now. Nothing was read.";
+          unsentFiles = remaining(index);
           setError(failMessage);
           failed = true;
           break;
@@ -352,6 +368,7 @@ function Ledger({
       } catch {
         failMessage =
           "Couldn't reach the server. Check your connection and try again.";
+        unsentFiles = remaining(index);
         setError(failMessage);
         failed = true;
         break;
@@ -365,7 +382,7 @@ function Ledger({
       // returns 200 with nothing in it, no code path has set it since — so
       // setStatus("error") alone renders an empty red box. "Never fail
       // silently" is the rule this was breaking.
-      const ignored = nonImages + unsupported;
+      const ignored = nonImages + unsupported + unsentFiles;
       setError(
         failed
           ? failMessage ||
@@ -415,6 +432,11 @@ function Ledger({
       const skipped = batch.length - fresh.length;
       const notices: string[] = [];
       const ignored = nonImages + unsupported;
+      if (unsentFiles > 0) {
+        notices.push(
+          `${unsentFiles} screenshot${unsentFiles === 1 ? " was" : "s were"} never read — upload ${unsentFiles === 1 ? "it" : "them"} again.`,
+        );
+      }
       if (ignored > 0) {
         notices.push(
           `Ignored ${ignored} file${ignored === 1 ? "" : "s"} we couldn't read.`,
@@ -726,10 +748,20 @@ function Ledger({
               >
                 Add more screenshots
               </button>
-              {accountId ? (
+              {accountId && !saveFailed ? (
                 <p className="text-xs text-neutral-500">
                   Saved to your account. It&apos;ll be here next time you open
                   this on any device.
+                </p>
+              ) : accountId ? (
+                // The reassurance above was printed unconditionally, including
+                // right after a write that failed — so the one moment the user
+                // needed to know their batch was only on screen was the one
+                // moment the app told them it was safe.
+                <p className="text-xs text-red-700 dark:text-red-400">
+                  Some of this is on screen only — a save didn&apos;t reach your
+                  account. Stay on this page and check your connection; closing
+                  the tab now would lose it.
                 </p>
               ) : (
                 <>
