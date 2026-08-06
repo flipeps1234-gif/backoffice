@@ -1,4 +1,5 @@
 import { getSupabase } from "./client";
+import { loadAllPages } from "./paginate";
 import type { Transaction, TransactionSource } from "@/lib/transaction";
 
 /**
@@ -55,16 +56,25 @@ export const loadTransactions = async (): Promise<Transaction[]> => {
   const supabase = getSupabase();
   if (!supabase) return [];
 
-  const { data, error } = await supabase
-    .from("transactions")
-    .select(
-      "id, payer, amount_cents, occurred_on, memo, source, direction, service_id, quantity, business",
-    )
-    .order("occurred_on", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
+  // Paged, not a bare select: PostgREST silently caps a response at the
+  // project's max-rows and this one array feeds the totals, the history, the
+  // dashboard AND the tax CSV. See loadAllPages. Sibling call site with the
+  // same shape: loadServices in ./services.ts.
+  const rows = await loadAllPages<Row>((from, to) =>
+    supabase
+      .from("transactions")
+      .select(
+        "id, payer, amount_cents, occurred_on, memo, source, direction, service_id, quantity, business",
+      )
+      .order("occurred_on", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false })
+      // A stable tiebreak, so a row can't sit on a page boundary and be
+      // returned twice or skipped when two rows share a date and timestamp.
+      .order("id", { ascending: false })
+      .range(from, to),
+  );
 
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(toTransaction);
+  return rows.map(toTransaction);
 };
 
 export const insertTransactions = async (

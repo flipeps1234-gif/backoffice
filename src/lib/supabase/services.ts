@@ -1,4 +1,5 @@
 import { getSupabase } from "./client";
+import { loadAllPages } from "./paginate";
 import type { Pricing, RateUnit, Service } from "@/lib/service";
 
 /** Maps between the Service the UI uses and the row shape in Postgres. */
@@ -38,13 +39,20 @@ export const loadServices = async (): Promise<Service[]> => {
   const supabase = getSupabase();
   if (!supabase) return [];
 
-  const { data, error } = await supabase
-    .from("services")
-    .select("id, name, pricing_type, price_cents, rate_unit, cost_cents")
-    .order("created_at", { ascending: true });
+  // Paged for the same reason as loadTransactions: PostgREST caps a response
+  // at the project's max-rows without saying so. A catalog is unlikely to pass
+  // 1000 today, but a chip that silently stops appearing is the kind of bug
+  // nobody reports — they just assume they never saved it.
+  const rows = await loadAllPages<Row>((from, to) =>
+    supabase
+      .from("services")
+      .select("id, name, pricing_type, price_cents, rate_unit, cost_cents")
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to),
+  );
 
-  if (error) throw new Error(error.message);
-  return (data ?? []).map(toService);
+  return rows.map(toService);
 };
 
 export const insertService = async (
