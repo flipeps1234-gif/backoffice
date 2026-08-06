@@ -194,6 +194,15 @@ function Ledger({
     reading.current = true;
     try {
       await readFiles(files);
+    } catch (cause) {
+      // Anything readFiles doesn't handle itself lands here — notably
+      // auth.getSession(), which is awaited outside its own try. Without this
+      // catch the ref is released but `status` stays "reading" forever, and
+      // since the upload targets go inert while reading, the user is locked
+      // out of uploading with no error on screen until they reload.
+      console.error("Upload failed:", cause);
+      setError("Something went wrong reading those. Try again.");
+      setStatus("error");
     } finally {
       reading.current = false;
     }
@@ -283,7 +292,26 @@ function Ledger({
 
     setReadingNote("");
     if (collected.length === 0 && collectedWarnings.length === 0) {
-      // Nothing was read at all — a pure failure.
+      // Nothing was read at all — a pure failure. It needs its OWN message:
+      // `error` was cleared at the top of this run and, when every chunk
+      // returns 200 with nothing in it, no code path has set it since — so
+      // setStatus("error") alone renders an empty red box. "Never fail
+      // silently" is the rule this was breaking.
+      const ignored = nonImages + unsupported;
+      setError(
+        failed
+          ? error ||
+              "Something went wrong reading those, and nothing came back."
+          : "We couldn't read any payments from those. Screenshot your " +
+              "Transactions list — a social feed hides the amounts.",
+      );
+      // This is also the one exit that skipped the ignored-file count, so a
+      // dropped PDF plus an unreadable screenshot said nothing about either.
+      setBatchNotice(
+        ignored > 0
+          ? `Ignored ${ignored} file${ignored === 1 ? "" : "s"} we couldn't read.`
+          : "",
+      );
       setStatus("error");
       return;
     }
