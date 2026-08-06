@@ -336,6 +336,17 @@ function Ledger({
           failed = true;
           break;
         }
+        // Defence in depth against invented rows. The mock fabricates payers,
+        // amounts and confidences high enough that the sheet won't flag them,
+        // and rows are written to the database before the swipe — so a real
+        // account must never accept them, whatever the server decided.
+        if (accountId && data.provider === "mock") {
+          failMessage =
+            "Reading screenshots is unavailable right now. Nothing was read.";
+          setError(failMessage);
+          failed = true;
+          break;
+        }
         collected.push(...data.transactions);
         collectedWarnings.push(...data.warnings);
       } catch {

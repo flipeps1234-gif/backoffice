@@ -101,47 +101,95 @@ export async function POST(request: Request) {
     });
   }
 
-  // Who pays decides who may call. The paid provider requires a signed-in
-  // user whenever accounts exist. No token at all means demo or a signed-out
-  // tab — they get the free mock, which is what demo expects. A token that
-  // FAILS verification is different: that's a signed-in user whose session
-  // broke, and silently feeding them plausible fake rows would be worse than
-  // an error, so they get a 401 and the client re-auths. Without Supabase
-  // there is no way to authenticate, so local dev keeps whatever env selects.
-  let provider = activeProviderName();
-  if (provider !== "mock" && isSupabaseConfigured) {
+  // Who pays decides who may call — and, just as important, NOBODY gets the
+  // mock by accident. The mock invents plausible payers, $20–$200 amounts and
+  // 0.95–0.99 confidences, which is below the sheet's amber-flag threshold. In
+  // a ledger, quietly answering a real request with invented rows is worse
+  // than any error: the user confirms them, they are written to Postgres
+  // before the swipe, nothing can delete them, and they flow on into the
+  // insights, the dashboard and the CSV that goes to a tax preparer.
+  //
+  // So the mock runs only when it was ASKED for, never as a fallback.
+  // The rule, stated once: where accounts exist, the ONLY caller who may
+  // receive the mock is the demo account. Not a missing key, not a stray
+  // EXTRACT_PROVIDER=mock, not a broken session.
+  const provider = activeProviderName();
+
+  if (isSupabaseConfigured) {
     const token =
       request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
+    // With Supabase configured the UI cannot reach this without a session —
+    // UploadScreen renders SignIn instead. So a tokenless request is a broken
+    // session or a direct call, and previously both were answered with
+    // fabricated rows and a 200.
     if (!token) {
-      provider = "mock";
-    } else {
-      const verified = await verifyAccessToken(token);
-      if (!verified) {
-        return Response.json(
-          { error: "Your session expired. Sign in again and retry." },
-          { status: 401 },
-        );
-      }
-      // The shared tester account gets the REAL provider — an accepted,
-      // deliberately bounded cost: the owner caps spend on the OpenAI side,
-      // and anyone who types the demo word draws from that cap. Setting
-      // DEMO_EXTRACTION=mock in the environment flips tester back to the
-      // free mock without a code change.
-      if (isDemoAccount(verified.email) && process.env.DEMO_EXTRACTION === "mock") {
-        provider = "mock";
-      }
+      return Response.json(
+        { error: "Sign in again and retry." },
+        { status: 401 },
+      );
     }
+    const verified = await verifyAccessToken(token);
+    if (!verified) {
+      return Response.json(
+        { error: "Your session expired. Sign in again and retry." },
+        { status: 401 },
+      );
+    }
+    // The shared tester account gets the REAL provider — an accepted,
+    // deliberately bounded cost: the owner caps spend on the OpenAI side,
+    // and anyone who types the demo word draws from that cap. Setting
+    // DEMO_EXTRACTION=mock in the environment flips tester back to the
+    // free mock without a code change.
+    if (isDemoAccount(verified.email) && process.env.DEMO_EXTRACTION === "mock") {
+      return await run("mock");
+    }
+
+    // The demo branch above is the only way out with "mock". Reaching here
+    // still holding it means OPENAI_API_KEY is missing, or someone set
+    // EXTRACT_PROVIDER=mock against a real account system — either way this
+    // is a real user, and inventing their financial records is not an option.
+    if (provider === "mock") {
+      console.error("Extraction unavailable: no usable provider configured.");
+      return Response.json(
+        {
+          error:
+            "Reading screenshots is unavailable right now. Nothing was read.",
+        },
+        { status: 503 },
+      );
+    }
+  } else if (process.env.NODE_ENV === "production") {
+    // A production deploy with no Supabase has no way to authenticate anyone,
+    // so serving the paid provider here would be a free OpenAI proxy on the
+    // open internet, billed to the owner. Fail closed instead of open.
+    return Response.json(
+      { error: "This deployment isn't set up for uploads yet." },
+      { status: 503 },
+    );
   }
 
-  try {
-    const result = await extract(inputs, provider);
-    return Response.json({ ...result, provider });
-  } catch (cause) {
-    // Never fail silently — log the real reason, show the user a usable one.
-    console.error("Extraction failed:", cause);
-    return Response.json(
-      { error: "We couldn't read those right now. Try again in a moment." },
-      { status: 502 },
-    );
+  // No account system at all — local dev. Whatever the env selected is fine;
+  // there is no real user here and no ledger to corrupt.
+  return await run(provider);
+
+  /**
+   * The single exit that actually reads images. Declared here so every path
+   * above returns through one place — the demo branch included, which is the
+   * one legitimate way to reach the mock with a verified token.
+   */
+  async function run(chosen: string) {
+    try {
+      const result = await extract(inputs, chosen);
+      // The client checks this: a signed-in caller that somehow receives
+      // "mock" refuses the rows rather than showing invented payments.
+      return Response.json({ ...result, provider: chosen });
+    } catch (cause) {
+      // Never fail silently — log the real reason, show the user a usable one.
+      console.error("Extraction failed:", cause);
+      return Response.json(
+        { error: "We couldn't read those right now. Try again in a moment." },
+        { status: 502 },
+      );
+    }
   }
 }
