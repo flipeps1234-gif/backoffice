@@ -4,10 +4,17 @@ import { useState } from "react";
 import { getSupabase } from "@/lib/supabase/client";
 
 /**
- * Sign in with a 6-digit emailed code, typed HERE — no link to click. A
- * magic link always opens in the browser, so it can never sign in the
- * installed home-screen app; a code works wherever it's typed. Sessions
- * persist on the device, so this happens once per device, not per visit.
+ * Sign in with an emailed magic link. Sessions persist on the device, so this
+ * happens once per device, not per visit.
+ *
+ * We tried a typed 6-digit code instead, because a link always opens in the
+ * browser and so can never sign in an installed home-screen app. It was
+ * reverted: the email body is decided by Supabase's template, not by this
+ * code — signInWithOtp sends whatever the template renders. Emitting a code
+ * needs {{ .Token }} in the Magic Link AND Confirm signup templates, and
+ * editing those needs a custom SMTP provider. Until that exists, asking the
+ * user to type a code that never arrives is worse than a link that works.
+ * The home-screen-app caveat below is the price, and it is real.
  *
  * Typing the demo word instead signs into the shared TESTER account — a
  * real Supabase account with real saved data, no inbox round-trip.
@@ -15,9 +22,8 @@ import { getSupabase } from "@/lib/supabase/client";
 const DEMO_WORD = "tester";
 
 export default function SignIn() {
-  const [step, setStep] = useState<"email" | "code">("email");
+  const [sent, setSent] = useState(false);
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [resent, setResent] = useState(false);
@@ -50,7 +56,7 @@ export default function SignIn() {
     }
   }
 
-  async function sendCode() {
+  async function sendLink() {
     const supabase = getSupabase();
     if (!supabase) return;
 
@@ -59,6 +65,12 @@ export default function SignIn() {
 
     const { error: sendError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
+      options: {
+        // Where the link lands. Must also be listed under Supabase →
+        // Authentication → URL Configuration → Redirect URLs, or the link
+        // bounces to the site URL and the session never arrives.
+        emailRedirectTo: window.location.origin,
+      },
     });
 
     setBusy(false);
@@ -66,7 +78,7 @@ export default function SignIn() {
       setError(sendError.message);
       return;
     }
-    setStep("code");
+    setSent(true);
   }
 
   async function submitEmail(event: React.FormEvent) {
@@ -76,70 +88,31 @@ export default function SignIn() {
       return;
     }
     setResent(false);
-    await sendCode();
-  }
-
-  async function submitCode(event: React.FormEvent) {
-    event.preventDefault();
-    const supabase = getSupabase();
-    if (!supabase) return;
-
-    setBusy(true);
-    setError("");
-
-    // On success a session is set and onAuthStateChange opens the app.
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email: email.trim(),
-      token: code.trim(),
-      type: "email",
-    });
-
-    setBusy(false);
-    if (verifyError) {
-      setError(
-        verifyError.message.toLowerCase().includes("expired") ||
-          verifyError.message.toLowerCase().includes("invalid")
-          ? "That code didn't match. Check the newest email, or resend."
-          : verifyError.message,
-      );
-    }
+    await sendLink();
   }
 
   async function resend() {
-    setCode("");
     setResent(true);
-    await sendCode();
+    await sendLink();
   }
 
-  if (step === "code") {
+  if (sent) {
     return (
-      <form className="space-y-4" onSubmit={submitCode}>
+      <div className="space-y-4">
         <div>
           <h2 className="text-sm font-semibold">Check your email</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            We emailed a 6-digit code to {email.trim()}. Type it here.
+            We sent a sign-in link to {email.trim()}. Open it{" "}
+            <strong className="font-medium text-foreground">
+              on this device
+            </strong>{" "}
+            — the link signs in whichever browser opens it.
           </p>
         </div>
 
-        <input
-          aria-label="6-digit code"
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          pattern="[0-9]*"
-          maxLength={6}
-          required
-          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-3 text-center text-2xl tracking-[0.5em] text-neutral-900 placeholder:text-neutral-300 placeholder:tracking-normal focus:border-neutral-900 focus:outline-none"
-          placeholder="000000"
-          value={code}
-          onChange={(event) =>
-            setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
-          }
-        />
-
         {resent && !error && (
-          <p aria-live="polite" className="text-sm text-emerald-600">
-            New code sent.
+          <p aria-live="polite" className="text-sm text-emerald-700 dark:text-emerald-400">
+            New link sent.
           </p>
         )}
 
@@ -149,13 +122,9 @@ export default function SignIn() {
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={busy || code.length < 6}
-          className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90 disabled:opacity-40"
-        >
-          {busy ? "Checking…" : "Sign in"}
-        </button>
+        <p className="text-sm text-neutral-500">
+          Nothing yet? Give it a minute, then check spam.
+        </p>
 
         <div className="flex justify-between text-sm text-neutral-500">
           <button
@@ -163,8 +132,7 @@ export default function SignIn() {
             className="hover:underline"
             disabled={busy}
             onClick={() => {
-              setStep("email");
-              setCode("");
+              setSent(false);
               setError("");
               setResent(false);
             }}
@@ -177,10 +145,10 @@ export default function SignIn() {
             disabled={busy}
             onClick={resend}
           >
-            Resend code
+            {busy ? "Sending…" : "Resend link"}
           </button>
         </div>
-      </form>
+      </div>
     );
   }
 
@@ -220,7 +188,7 @@ export default function SignIn() {
         disabled={busy}
         className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90 disabled:opacity-40"
       >
-        {busy ? "Sending…" : "Email me a code"}
+        {busy ? "Sending…" : "Email me a sign-in link"}
       </button>
     </form>
   );
