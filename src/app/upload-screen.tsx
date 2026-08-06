@@ -16,6 +16,7 @@ import QuickAdd from "./quick-add";
 import RunningTotals from "./running-totals";
 import SignIn from "./sign-in";
 import SwipeDeck from "./swipe-deck";
+import TermsGate, { useAcceptedTerms } from "./terms-gate";
 import { chunkForUpload, compressImage } from "@/lib/compress-image";
 import { isSupportedImage } from "@/lib/extract/image-types";
 import { knownPayers, rememberedFor } from "@/lib/customer-memory";
@@ -29,6 +30,7 @@ import {
   updateTransaction as saveTransaction,
 } from "@/lib/supabase/transactions";
 import { useSession } from "@/lib/supabase/use-session";
+import { acceptTerms, TERMS_VERSION } from "@/lib/terms";
 import type { Service } from "@/lib/service";
 import type { Transaction } from "@/lib/transaction";
 
@@ -68,11 +70,20 @@ type Stage = "upload" | "confirm" | "sort";
  * shared device: the component holding them is gone.
  */
 export default function UploadScreen() {
+  const accepted = useAcceptedTerms();
   const { user, loading, isConfigured } = useSession();
 
-  // Don't flash the sign-in form at someone who is already signed in.
-  if (loading) {
+  // Don't flash the sign-in form at someone who is already signed in, and
+  // don't flash the terms at someone who has already accepted them: `accepted`
+  // is undefined until localStorage has actually been read.
+  if (loading || accepted === undefined) {
     return <p className="text-sm text-neutral-500">Loading…</p>;
+  }
+
+  // Before sign-in, deliberately. The disclosure that screenshots leave the
+  // device has to come before we ask for an email address.
+  if (accepted !== TERMS_VERSION) {
+    return <TermsGate onAccept={acceptTerms} />;
   }
 
   // Configured but signed out: the ledger belongs to an account. Typing the
