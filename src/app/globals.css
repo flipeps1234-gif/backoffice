@@ -24,3 +24,28 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* The indeterminate progress stripe — see progress-bar.tsx for why some
+   states genuinely have no percentage to report. */
+@keyframes progress-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.progress-indeterminate {
+  animation: progress-sweep 1.4s ease-in-out infinite;
+}
+
+/* Someone who asked the OS to stop moving things still needs to see that
+   work is happening — pulse in place instead of sweeping across. */
+@media (prefers-reduced-motion: reduce) {
+  .progress-indeterminate {
+    animation: none;
+    width: 100%;
+    opacity: 0.55;
+  }
+}

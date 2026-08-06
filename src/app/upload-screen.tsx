@@ -12,6 +12,7 @@ import DropZone from "./drop-zone";
 import Dashboard from "./dashboard";
 import HistoryList, { type LogAgainPrefill } from "./history-list";
 import Insights from "./insights";
+import ProgressBar from "./progress-bar";
 import QuickAdd from "./quick-add";
 import RunningTotals from "./running-totals";
 import SignIn from "./sign-in";
@@ -58,6 +59,9 @@ const useIsDesktop = (): boolean =>
     // Server and first paint: assume phone. The rail appears on hydration.
     () => false,
   );
+
+/** How much of the bar the compress-before-upload phase owns. */
+const READY_SHARE = 0.15;
 
 type Status = "idle" | "reading" | "error";
 /** upload → confirm what we read → sort each one → totals. */
@@ -122,7 +126,16 @@ function Ledger({
   const [services, setServices] = useState<Service[]>([]);
   const [warnings, setWarnings] = useState<ExtractionWarning[]>([]);
   const [batchNotice, setBatchNotice] = useState("");
-  const [readingNote, setReadingNote] = useState("");
+  /**
+   * What the progress bar shows. `fraction` is null while the work is real but
+   * unmeasurable — one request to a vision model reports nothing between "sent"
+   * and "came back", and inventing a percentage there would be a lie.
+   */
+  const [progress, setProgress] = useState<{
+    label: string;
+    detail?: string;
+    fraction: number | null;
+  } | null>(null);
   const [error, setError] = useState("");
   const [decided, setDecided] = useState<string[]>([]);
   const [quickAdd, setQuickAdd] = useState(false);
@@ -294,11 +307,32 @@ function Ledger({
 
     setStatus("reading");
     setError("");
-    setReadingNote("");
+    setProgress(null);
 
     // Compress in the browser first: Vercel rejects request bodies over
     // 4.5MB before our code runs, and smaller images cost less to extract.
-    const compressed = await Promise.all(images.map(compressImage));
+    // Counted as it goes, so the bar moves on a slow phone chewing through
+    // twenty photos rather than sitting at zero.
+    let readied = 0;
+    setProgress({
+      label: "Getting your screenshots ready",
+      detail: `${images.length} to shrink`,
+      fraction: 0,
+    });
+    const compressed = await Promise.all(
+      images.map(async (file) => {
+        const out = await compressImage(file);
+        readied += 1;
+        setProgress({
+          label: "Getting your screenshots ready",
+          detail: `${readied} of ${images.length}`,
+          // Compression is the quick part; it owns the first slice of the bar
+          // so the long wait that follows still has most of it to travel.
+          fraction: READY_SHARE * (readied / images.length),
+        });
+        return out;
+      }),
+    );
 
     // Allowlist AFTER compressing, not before: compressImage re-encodes to
     // JPEG whenever the browser can decode the original, so an iPhone HEIC
@@ -342,9 +376,19 @@ function Ledger({
       chunks.slice(index).reduce((n, c) => n + c.length, 0);
 
     for (const [index, chunk] of chunks.entries()) {
-      if (chunks.length > 1) {
-        setReadingNote(`batch ${index + 1} of ${chunks.length}`);
-      }
+      setProgress({
+        label: "Reading your screenshots",
+        detail:
+          chunks.length > 1
+            ? `Batch ${index + 1} of ${chunks.length}`
+            : "This is the slow bit — a few seconds.",
+        // One batch is one model call: we know it started and we will know it
+        // finished, and nothing in between. Say so with a moving stripe.
+        fraction:
+          chunks.length > 1
+            ? READY_SHARE + (1 - READY_SHARE) * (index / chunks.length)
+            : null,
+      });
       const body = new FormData();
       for (const file of chunk) body.append("screenshots", file);
 
@@ -386,7 +430,7 @@ function Ledger({
       }
     }
 
-    setReadingNote("");
+    setProgress(null);
     if (collected.length === 0 && collectedWarnings.length === 0) {
       // Nothing was read at all — a pure failure. It needs its OWN message:
       // `error` was cleared at the top of this run and, when every chunk
@@ -623,6 +667,14 @@ function Ledger({
         <DropZone busy={status === "reading"} onFiles={handleFiles} />
       )}
 
+      {status === "reading" && progress && (
+        <ProgressBar
+          label={progress.label}
+          detail={progress.detail}
+          fraction={progress.fraction}
+        />
+      )}
+
       {stage === "upload" && (
         <label
           // Inert while a batch is in flight, for the same reason as the drop
@@ -675,12 +727,6 @@ function Ledger({
             </>
           )}
         </div>
-      )}
-
-      {status === "reading" && (
-        <p className="text-sm text-neutral-500">
-          Reading your screenshots…{readingNote && ` (${readingNote})`}
-        </p>
       )}
 
       {status === "error" && (
