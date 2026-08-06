@@ -1,7 +1,7 @@
 "use client";
 
 import { byMonth, marginByService, revenueByService } from "@/lib/dashboard";
-import { taxCsv } from "@/lib/csv";
+import { everythingCsv, taxCsv } from "@/lib/csv";
 import { formatCents, type Transaction } from "@/lib/transaction";
 import type { Service } from "@/lib/service";
 
@@ -40,17 +40,27 @@ export default function Dashboard({
   );
   const maxRevenue = Math.max(1, ...revenue.map((r) => r.revenueCents));
 
-  function downloadCsv() {
-    const blob = new Blob([taxCsv(transactions, services)], {
-      type: "text/csv;charset=utf-8",
-    });
+  function download(csv: string, filename: string) {
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "swipebooks-for-your-tax-preparer.csv";
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
   }
+
+  const downloadTaxCsv = () =>
+    download(
+      taxCsv(transactions, services),
+      "swipebooks-for-your-tax-preparer.csv",
+    );
+
+  const downloadEverythingCsv = () =>
+    download(
+      everythingCsv(transactions, services),
+      "swipebooks-everything.csv",
+    );
 
   return (
     <div className="space-y-6">
@@ -187,10 +197,19 @@ export default function Dashboard({
             </section>
           )}
 
+        </>
+      )}
+
+      {/* Outside the branch above on purpose. These used to live inside it, so
+          a user whose rows were all personal or all still unsorted had NO
+          export at all — and "never gate viewing or exporting a user's own
+          data" is a permanent boundary, not a nice-to-have. */}
+      {transactions.length > 0 && (
+        <section className="space-y-3 border-t border-neutral-200 pt-5 dark:border-neutral-800">
           <button
             type="button"
             className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"
-            onClick={downloadCsv}
+            onClick={downloadTaxCsv}
           >
             Download CSV for your tax preparer
           </button>
@@ -198,7 +217,20 @@ export default function Dashboard({
             Actual business income and expenses, oldest first. Estimates are
             never included.
           </p>
-        </>
+
+          <button
+            type="button"
+            className="w-full rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+            onClick={downloadEverythingCsv}
+          >
+            Download everything
+          </button>
+          <p className="text-xs text-neutral-500">
+            Every row you&apos;ve logged — business, personal and not yet
+            sorted — with a column saying which is which. Your data, whenever
+            you want it.
+          </p>
+        </section>
       )}
     </div>
   );
