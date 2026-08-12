@@ -134,6 +134,28 @@ Two minutes. Do it after any push that touched upload, auth, or the database.
 - [ ] Download both CSVs; open one in a spreadsheet and check the totals
       match what is on screen
 
+## Symptom: everything past sign-in is broken
+
+`/api/health` returns `{"ok":false,"supabase":"TypeError: fetch failed"}`, the
+sign-in screen says "Load failed" (Safari) or "Failed to fetch" (Chrome), and
+the project host does not resolve:
+
+```bash
+nslookup <your-ref>.supabase.co     # NXDOMAIN
+```
+
+**That is a PAUSED Supabase project, not a deleted one.** A paused free-tier
+project stops resolving in DNS entirely, which looks identical to deletion
+from outside — this cost a diagnosis once already. The app shell still loads
+because it is static; only the database is gone.
+
+**Fix:** Supabase dashboard → the project → **Restore**. Data and schema
+survive a pause, so migrations you already ran are still there. Then re-check
+`/api/health` before anything else.
+
+Once paused, nothing the app does can wake it — the daily cron's request
+cannot reach a host that no longer resolves. Only the dashboard can.
+
 ## Rollback
 
 There is no monitoring, so the trigger is what a user tells you or what
@@ -162,4 +184,4 @@ that were written while the bad version was live. The app has no delete.
 | Vercel 4.5MB request body | Handled client-side by compression + chunking at 4 files |
 | Vercel function duration | A large batch is sequential model calls — long uploads |
 | Supabase 500MB | Thousands of rows away; not a near-term concern |
-| Supabase pausing after 7 idle days | The daily `/api/health` cron exists to prevent this |
+| Supabase pausing after ~7 idle days | **Has already happened once (2026-08-12), with the cron in place.** Treat the ping as risk reduction, not a guarantee |

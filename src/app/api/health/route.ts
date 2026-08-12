@@ -2,8 +2,14 @@ import { createClient } from "@supabase/supabase-js";
 
 /**
  * Pinged daily by a Vercel cron (see vercel.json). Supabase's free tier
- * pauses projects after a week without activity — this trivial query counts
- * as activity, so a slow week can't take the database down.
+ * pauses a project after about a week without activity, and this trivial
+ * query is meant to count as that activity.
+ *
+ * "Meant to" is doing real work in that sentence: the project paused anyway,
+ * on 2026-08-12, with this cron in place since 2026-07-31. Treat the ping as
+ * a reduction in risk, not a guarantee — and note that once a project IS
+ * paused it stops resolving in DNS entirely, so this endpoint can no longer
+ * wake it. Only the Supabase dashboard can. See DEPLOY.md.
  *
  * Public and harmless: RLS means the anonymous query can see zero rows.
  */
@@ -12,7 +18,14 @@ export async function GET() {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anonKey) {
-    return Response.json({ ok: true, supabase: "not configured" });
+    // Fine locally — the app runs in-memory without credentials. In
+    // production it means someone shipped without the env vars, which is
+    // an outage, so it should read as one.
+    const configuredElsewhere = process.env.NODE_ENV === "production";
+    return Response.json(
+      { ok: !configuredElsewhere, supabase: "not configured" },
+      { status: configuredElsewhere ? 503 : 200 },
+    );
   }
 
   const supabase = createClient(url, anonKey, {
@@ -22,5 +35,15 @@ export async function GET() {
     .from("transactions")
     .select("id", { head: true, count: "exact" });
 
-  return Response.json({ ok: !error, supabase: error ? error.message : "reached" });
+  // 503, not 200-with-a-sad-body. This endpoint reported {"ok":false} for
+  // days while the database was gone and NOTHING noticed, because the cron
+  // that calls it and every uptime checker on earth read the status code,
+  // not the JSON. A health check that cannot fail is not a health check.
+  //
+  // A non-2xx also makes the daily cron show up as FAILED in Vercel's log,
+  // which is the only free alarm this project has.
+  return Response.json(
+    { ok: !error, supabase: error ? error.message : "reached" },
+    { status: error ? 503 : 200 },
+  );
 }
