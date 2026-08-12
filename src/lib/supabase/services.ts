@@ -67,3 +67,22 @@ export const insertService = async (
     .insert(toRow(service, accountId));
   if (error) throw new Error(error.message);
 };
+
+/** Patch one service — the products page's edit form. Same serial-queue
+ *  caveat as every other update: a zero-row match "succeeds" silently. */
+export const updateService = async (service: Service): Promise<void> => {
+  const supabase = getSupabase();
+  if (!supabase) return;
+
+  const { error } = await supabase
+    .from("services")
+    .update({
+      name: service.name,
+      pricing_type: service.pricing.type,
+      price_cents: service.pricing.cents,
+      rate_unit: service.pricing.type === "rate" ? service.pricing.unit : null,
+      cost_cents: service.costCents,
+    })
+    .eq("id", service.id);
+  if (error) throw new Error(error.message);
+};

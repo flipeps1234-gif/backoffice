@@ -131,3 +131,25 @@ export const matchBatch = (
 
   return { links, suggestions };
 };
+
+/**
+ * The checkout-time question, sale-major: which already-ingested
+ * transactions could be THIS sale's payment? matchBatch answers the
+ * txn-major version and greedily claims first-come — fine for a batch
+ * scan, wrong for "several candidates → show a list". Exactly one result
+ * auto-links upstream; zero waits as EXPECTED; several is a picker.
+ */
+export const txnCandidatesForSale = (
+  transactions: Transaction[],
+  sale: Sale,
+  clientName: string,
+): Transaction[] =>
+  transactions.filter(
+    (txn) =>
+      txn.direction === "in" &&
+      !txn.matchedSaleId &&
+      txn.business !== false &&
+      txn.amountCents === saleTotalCents(sale) &&
+      sameName(clientName, txn.payer) &&
+      datesCompatible(txn.date, sale.date),
+  );

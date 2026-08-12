@@ -1,0 +1,223 @@
+"use client";
+
+import { useState } from "react";
+import type { Client } from "@/lib/client";
+import {
+  EXPECTED_FLAG_DAYS,
+  OWED_FLAG_DAYS,
+  owedCents,
+  saleAgeDays,
+  saleTotalCents,
+  type Sale,
+} from "@/lib/sale";
+import { formatCents } from "@/lib/transaction";
+
+/**
+ * The Owed tab — FLOW.md's left box. Everything OPEN, grouped by client,
+ * aged, with the total big. An OPEN sale clears by cash mark (here) or by
+ * the matching engine (elsewhere). Past OWED_FLAG_DAYS it gets a gentle
+ * age flag — a nudge, not a siren; chasing clients is the owner's craft.
+ *
+ * EXPECTED sales that outstayed EXPECTED_FLAG_DAYS also surface here with
+ * the resolve sheet: keep waiting / actually unpaid / it was cash.
+ */
+
+const todayIso = (): string => {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+};
+
+export default function OwedTab({
+  sales,
+  clients,
+  onMarkCash,
+  onMoveToOwed,
+  onLogAgain,
+  onClose,
+}: {
+  sales: Sale[];
+  clients: Client[];
+  /** Cash arrived for this sale — OPEN or EXPECTED alike. */
+  onMarkCash: (saleId: string) => void;
+  /** EXPECTED resolve: "actually unpaid". */
+  onMoveToOwed: (saleId: string) => void;
+  onLogAgain: (sale: Sale) => void;
+  onClose?: () => void;
+}) {
+  const [resolving, setResolving] = useState<string | null>(null);
+  const today = todayIso();
+  const nameOf = (id: string | null) =>
+    clients.find((c) => c.id === id)?.name ?? "No client";
+
+  const open = sales.filter((s) => s.state === "open");
+  const staleExpected = sales.filter(
+    (s) =>
+      s.state === "expected" && saleAgeDays(s, today) >= EXPECTED_FLAG_DAYS,
+  );
+
+  // Group by client, biggest debtor first — that's who to call.
+  const groups = new Map<string, Sale[]>();
+  for (const sale of open) {
+    const key = sale.clientId ?? "";
+    groups.set(key, [...(groups.get(key) ?? []), sale]);
+  }
+  const sorted = [...groups.entries()].sort(
+    (a, b) =>
+      owedCents(b[1]) - owedCents(a[1]) ||
+      nameOf(a[0] || null).localeCompare(nameOf(b[0] || null)),
+  );
+
+  const totalOwed = owedCents(open);
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold">Owed</h2>
+        {onClose && (
+          <button
+            type="button"
+            className="text-sm text-neutral-500 hover:underline"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        )}
+      </div>
+
+      <p className="text-center text-4xl font-semibold tabular-nums">
+        {formatCents(totalOwed)}
+      </p>
+
+      {open.length === 0 && staleExpected.length === 0 && (
+        <p className="text-sm text-neutral-500">
+          Nobody owes you anything. As it should be.
+        </p>
+      )}
+
+      {sorted.map(([clientKey, clientSales]) => (
+        <section key={clientKey || "none"}>
+          <h3 className="mb-2 text-sm font-medium">
+            {nameOf(clientKey || null)}
+            <span className="ml-2 text-neutral-500">
+              {formatCents(owedCents(clientSales))} · {clientSales.length}{" "}
+              sale{clientSales.length === 1 ? "" : "s"}
+            </span>
+          </h3>
+          <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
+            {clientSales.map((sale) => {
+              const age = saleAgeDays(sale, today);
+              return (
+                <li key={sale.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm">
+                      {sale.lineItems.map((i) => i.name).join(", ") || "Sale"}
+                      {sale.recurringTemplateId && (
+                        <span className="ml-1 text-xs text-neutral-500">
+                          · recurring
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-neutral-500">
+                      {sale.date}
+                      {age >= OWED_FLAG_DAYS && (
+                        <span className="ml-1 text-amber-700 dark:text-amber-400">
+                          · {age} days
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums">
+                    {formatCents(saleTotalCents(sale))}
+                  </span>
+                  <button
+                    type="button"
+                    className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                    onClick={() => onMarkCash(sale.id)}
+                  >
+                    Got cash
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                    onClick={() => onLogAgain(sale)}
+                  >
+                    Log again
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
+
+      {staleExpected.length > 0 && (
+        <section>
+          <h3 className="mb-2 text-sm font-medium text-amber-700 dark:text-amber-400">
+            Marked paid, never seen
+          </h3>
+          <p className="mb-2 text-xs text-neutral-500">
+            You marked these paid digitally over {EXPECTED_FLAG_DAYS} days ago,
+            and no matching payment has shown up in your screenshots.
+          </p>
+          <ul className="divide-y divide-neutral-200 rounded-lg border border-amber-300 bg-white dark:divide-neutral-800 dark:border-amber-700 dark:bg-neutral-900">
+            {staleExpected.map((sale) => (
+              <li key={sale.id} className="px-3 py-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="min-w-0 truncate text-sm">
+                    {nameOf(sale.clientId)} ·{" "}
+                    {sale.lineItems.map((i) => i.name).join(", ") || "Sale"} ·{" "}
+                    {sale.date}
+                  </p>
+                  <span className="text-sm font-semibold tabular-nums">
+                    {formatCents(saleTotalCents(sale))}
+                  </span>
+                </div>
+                {resolving === sale.id ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="rounded-md border border-neutral-300 px-3 py-2 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                      onClick={() => setResolving(null)}
+                    >
+                      Keep waiting
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-md border border-neutral-300 px-3 py-2 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                      onClick={() => {
+                        onMoveToOwed(sale.id);
+                        setResolving(null);
+                      }}
+                    >
+                      Actually unpaid → Owed
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-md border border-neutral-300 px-3 py-2 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                      onClick={() => {
+                        onMarkCash(sale.id);
+                        setResolving(null);
+                      }}
+                    >
+                      It was cash → paid
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="mt-1 text-xs text-neutral-500 hover:underline"
+                    onClick={() => setResolving(sale.id)}
+                  >
+                    Resolve…
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}

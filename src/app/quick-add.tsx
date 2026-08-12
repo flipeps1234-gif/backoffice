@@ -81,6 +81,7 @@ export type QuickAddPrefill = {
 export default function QuickAdd({
   services,
   prefill,
+  expense = false,
   remember,
   payerSuggestions,
   onSave,
@@ -90,6 +91,12 @@ export default function QuickAdd({
 }: {
   services: Service[];
   prefill?: QuickAddPrefill;
+  /**
+   * v0.5: sales own all money IN, so the homepage opens the numpad in
+   * expense mode — direction pinned to "out", no Got paid/Spent toggle.
+   * The full toggle survives for history-row "log again" on old expenses.
+   */
+  expense?: boolean;
   /** What this payer paid last time for a service — see customer-memory. */
   remember: (payer: string, serviceId: string) => Remembered | undefined;
   payerSuggestions: string[];
@@ -103,7 +110,7 @@ export default function QuickAdd({
   const [date, setDate] = useState(today);
   const [business, setBusiness] = useState(prefill?.business ?? true);
   const [direction, setDirection] = useState<TransactionDirection>(
-    prefill?.direction ?? "in",
+    expense ? "out" : (prefill?.direction ?? "in"),
   );
   const [justSaved, setJustSaved] = useState("");
   const spending = direction === "out";
@@ -474,6 +481,7 @@ export default function QuickAdd({
         </button>
       </div>
 
+      {!expense && (
       <div className="flex gap-2" role="group" aria-label="Money in or out">
         <button
           type="button"
@@ -506,6 +514,7 @@ export default function QuickAdd({
           Spent
         </button>
       </div>
+      )}
 
       {!spending && services.length > 0 && (
         <div

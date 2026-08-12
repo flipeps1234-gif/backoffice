@@ -7,8 +7,15 @@ import {
 /** The number that climbs. Sticky, so it stays in view while sorting. */
 export default function RunningTotals({
   transactions,
+  expectedCents = 0,
+  owedCents = 0,
 }: {
   transactions: Transaction[];
+  /** EXPECTED sales — owner says paid, no matched payment yet. Counted in
+   *  the received figure per the owner's "show both" decision. */
+  expectedCents?: number;
+  /** OPEN sales. Shown beside received, NEVER blended into it. */
+  owedCents?: number;
 }) {
   const business = totalsByDirection(
     transactions.filter((tx) => tx.business === true),
@@ -45,8 +52,13 @@ export default function RunningTotals({
             Business
           </p>
           <p className="text-2xl font-semibold tabular-nums text-emerald-600">
-            {formatCents(business.inCents)}
+            {formatCents(business.inCents + expectedCents)}
           </p>
+          {owedCents > 0 && (
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+              + {formatCents(owedCents)} owed
+            </p>
+          )}
           <p className="text-xs text-neutral-500">
             {business.outCents > 0 ? (
               <span className="text-red-500">

@@ -7,11 +7,16 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import ClientsPage from "./clients-page";
 import ConfirmationSheet from "./confirmation-sheet";
 import DropZone from "./drop-zone";
 import Dashboard from "./dashboard";
 import HistoryList, { type LogAgainPrefill } from "./history-list";
 import Insights from "./insights";
+import NewSale, { type SalePrefill, type SaleResult } from "./new-sale";
+import OwedTab from "./owed-tab";
+import ProductsPage from "./products-page";
+import RecentSales from "./recent-sales";
 import ProgressBar from "./progress-bar";
 import QuickAdd from "./quick-add";
 import RunningTotals from "./running-totals";
@@ -21,10 +26,38 @@ import TermsGate, { useAcceptedTerms } from "./terms-gate";
 import { chunkForUpload, compressImage } from "@/lib/compress-image";
 import { isSupportedImage } from "@/lib/extract/image-types";
 import { knownPayers, rememberedFor } from "@/lib/customer-memory";
+import type { Client } from "@/lib/client";
+import { matchBatch, txnCandidatesForSale } from "@/lib/matching";
+import { generateDue, type RecurringTemplate } from "@/lib/recurring";
+import {
+  owedCents,
+  saleTotalCents,
+  type PaymentMethod,
+  type Sale,
+} from "@/lib/sale";
 import { dedupe, isDuplicate } from "@/lib/extract/dedupe";
 import { warningMessage, type ExtractionWarning } from "@/lib/extract/types";
 import { getSupabase } from "@/lib/supabase/client";
-import { insertService, loadServices } from "@/lib/supabase/services";
+import {
+  insertClient,
+  loadClients,
+  updateClient as saveClient,
+} from "@/lib/supabase/clients";
+import {
+  insertTemplate,
+  loadTemplates,
+  updateTemplate as saveTemplate,
+} from "@/lib/supabase/recurring";
+import {
+  insertSales,
+  loadSales,
+  updateSale as saveSale,
+} from "@/lib/supabase/sales";
+import {
+  insertService,
+  loadServices,
+  updateService as saveService,
+} from "@/lib/supabase/services";
 import {
   insertTransactions,
   loadTransactions,
@@ -33,7 +66,7 @@ import {
 import { useSession } from "@/lib/supabase/use-session";
 import { acceptTerms, TERMS_VERSION } from "@/lib/terms";
 import type { Service } from "@/lib/service";
-import type { Transaction } from "@/lib/transaction";
+import { formatCents, type Transaction } from "@/lib/transaction";
 
 /**
  * Is the desktop rail on screen? `lg:hidden` would only make it INVISIBLE —
@@ -59,6 +92,15 @@ const useIsDesktop = (): boolean =>
     // Server and first paint: assume phone. The rail appears on hydration.
     () => false,
   );
+
+/** Local calendar date, YYYY-MM-DD — toISOString would give tomorrow for
+ *  an evening save anywhere in the Americas (same rule as the numpad). */
+const localToday = (): string => {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+};
 
 /** How much of the bar the compress-before-upload phase owns. */
 const READY_SHARE = 0.15;
@@ -168,6 +210,40 @@ function Ledger({
   /** Set when any database write failed — see the finish copy. */
   const [saveFailed, setSaveFailed] = useState(false);
 
+  // ---- v0.5: sales, clients, recurring (see FLOW.md) ----
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [templates, setTemplates] = useState<RecurringTemplate[]>([]);
+  const [showNewSale, setShowNewSale] = useState(false);
+  /** "Log again" for SALES: prefill + a remount counter, same pattern
+   *  (and same reason) as logAgainSeq above. */
+  const [salePrefill, setSalePrefill] = useState<SalePrefill | null>(null);
+  const [saleSeq, setSaleSeq] = useState(0);
+  const [showRecentSales, setShowRecentSales] = useState(false);
+  const [showOwed, setShowOwed] = useState(false);
+  const [showClients, setShowClients] = useState(false);
+  const [showProducts, setShowProducts] = useState(false);
+  /** One line of good news after a sale/match, with undo where honest. */
+  const [saleNotice, setSaleNotice] = useState("");
+  /** Auto-link undo: everything needed to put both sides back. */
+  const [matchUndo, setMatchUndo] = useState<
+    {
+      saleId: string;
+      txnId: string;
+      prevState: Sale["state"];
+      prevMethod: PaymentMethod | null;
+      prevBusiness: boolean | null;
+    }[]
+  >([]);
+  /** Ambiguous matches waiting on the owner. Never a silent guess.
+   *  Payment-major from batch scans; sale-major from digital checkout. */
+  const [suggestions, setSuggestions] = useState<
+    (
+      | { kind: "payment"; txnId: string; saleIds: string[] }
+      | { kind: "sale"; saleId: string; txnIds: string[] }
+    )[]
+  >([]);
+
   /**
    * ALL database writes flow through here, one at a time, in call order.
    * Serialising them closes a whole family of races at once: a service
@@ -231,10 +307,73 @@ function Ledger({
         console.error("Services load failed:", cause);
       });
 
+    loadClients()
+      .then((rows) => {
+        if (!cancelled) setClients(rows);
+      })
+      .catch((cause) => console.error("Clients load failed:", cause));
+
+    // Sales and templates load together because generation needs BOTH:
+    // whether an instance already exists (idempotency) and whether its
+    // predecessor is still open (misses) both live in the sales list.
+    Promise.all([loadSales(), loadTemplates()])
+      .then(([saleRows, templateRows]) => {
+        if (cancelled) return;
+
+        // Recurring generation, on app open, with catch-up — never ahead
+        // of today (src/lib/recurring.ts owns the walk; this is just I/O).
+        const today = localToday();
+        let allSales = saleRows;
+        const nextTemplates: RecurringTemplate[] = [];
+        const createdAll: Sale[] = [];
+        const pausedNames: string[] = [];
+
+        for (const template of templateRows) {
+          const result = generateDue(template, allSales, today, () =>
+            crypto.randomUUID(),
+          );
+          nextTemplates.push(result.template);
+          if (result.created.length > 0) {
+            // Newest-first invariant: instances prepend.
+            allSales = [...result.created, ...allSales];
+            createdAll.push(...result.created);
+          }
+          if (result.justPaused) pausedNames.push(template.clientId);
+        }
+
+        setSales(allSales);
+        setTemplates(nextTemplates);
+        if (createdAll.length > 0 && accountId) {
+          void persist(() => insertSales(createdAll, accountId));
+        }
+        for (const [i, template] of templateRows.entries()) {
+          const next = nextTemplates[i];
+          if (
+            next.nextDue !== template.nextDue ||
+            next.active !== template.active ||
+            next.consecutiveMisses !== template.consecutiveMisses
+          ) {
+            void persist(() =>
+              saveTemplate(next.id, {
+                nextDue: next.nextDue,
+                active: next.active,
+                consecutiveMisses: next.consecutiveMisses,
+              }),
+            );
+          }
+        }
+        if (pausedNames.length > 0) {
+          setSaleNotice(
+            "A recurring sale was paused after 3 misses — check Clients.",
+          );
+        }
+      })
+      .catch((cause) => console.error("Sales load failed:", cause));
+
     return () => {
       cancelled = true;
     };
-  }, [accountId]);
+  }, [accountId, persist]);
 
   // A file dropped anywhere but the box makes the browser navigate to that
   // file, which throws away everything on screen that hasn't been saved yet.
@@ -555,6 +694,32 @@ function Ledger({
         }),
       );
     }
+
+    // FLOW.md's ═══ arrow: every confirmed batch rescans OPEN + EXPECTED.
+    // AFTER confirmation, not at arrival — the user just vouched for the
+    // amounts and payers, so the engine matches against checked data.
+    const outcome = matchBatch(pending, sales, clients);
+    if (outcome.links.length > 0) {
+      setMatchUndo([]);
+      for (const link of outcome.links) {
+        const sale = sales.find((s) => s.id === link.saleId);
+        const txn = pending.find((t) => t.id === link.txnId);
+        if (sale && txn) linkSaleToTxn(sale, txn);
+      }
+      setSaleNotice(
+        `${outcome.links.length} payment${outcome.links.length === 1 ? "" : "s"} matched to sales you'd logged.`,
+      );
+    }
+    if (outcome.suggestions.length > 0) {
+      setSuggestions((current) => [
+        ...current,
+        ...outcome.suggestions.map((sug) => ({
+          kind: "payment" as const,
+          txnId: sug.txnId,
+          saleIds: sug.saleIds,
+        })),
+      ]);
+    }
   }
 
   function moreScreenshots() {
@@ -573,6 +738,269 @@ function Ledger({
     setStage("upload");
   }
 
+  // ---- v0.5 sale plumbing ----
+
+  const clientNameOf = (id: string | null): string =>
+    clients.find((c) => c.id === id)?.name ?? "";
+
+  /** Replace one sale in state; persistence is the caller's decision. */
+  function patchSale(id: string, patch: Partial<Sale>) {
+    setSales((current) =>
+      current.map((sale) => (sale.id === id ? { ...sale, ...patch } : sale)),
+    );
+  }
+
+  /**
+   * Cash confirmed for a sale (checkout "Cash", Owed "Got cash", or the
+   * EXPECTED resolve sheet). Creates the mirror TRANSACTION — the ledger,
+   * dashboard and tax CSV all read the transaction stream, so a cash sale
+   * without one would vanish from every total. Linked both ways at birth,
+   * which is what keeps "one payment, one sale" true by construction.
+   */
+  function paySaleCash(sale: Sale) {
+    const txn: Transaction = {
+      id: crypto.randomUUID(),
+      payer: clientNameOf(sale.clientId),
+      amountCents: saleTotalCents(sale),
+      date: sale.date,
+      memo: sale.lineItems.map((i) => i.name).join(", "),
+      source: "manual",
+      direction: "in",
+      serviceId:
+        sale.lineItems.length === 1 ? sale.lineItems[0].serviceId : null,
+      quantity: null,
+      business: true,
+      matchedSaleId: sale.id,
+      confidence: {},
+    };
+    patchSale(sale.id, { state: "paid", method: "cash", matchedTxnId: txn.id });
+    setTransactions((current) => [txn, ...current]);
+    if (accountId) {
+      void persist(() => insertSales([], accountId)); // keep queue ordering explicit
+      void persist(() => insertTransactions([txn], accountId));
+      void persist(() =>
+        saveSale(sale.id, {
+          state: "paid",
+          method: "cash",
+          matchedTxnId: txn.id,
+        }),
+      );
+    }
+  }
+
+  /** Link one sale to one ingested transaction — the engine's yes. */
+  function linkSaleToTxn(sale: Sale, txn: Transaction) {
+    setMatchUndo((current) => [
+      ...current,
+      {
+        saleId: sale.id,
+        txnId: txn.id,
+        prevState: sale.state,
+        prevMethod: sale.method,
+        prevBusiness: txn.business,
+      },
+    ]);
+    patchSale(sale.id, {
+      state: "paid",
+      method: "digital",
+      matchedTxnId: txn.id,
+    });
+    // The match IS the evidence this payment was business — it skips the
+    // swipe deck. Undo puts it back exactly as it was.
+    updateTransaction(txn.id, { matchedSaleId: sale.id, business: true });
+    void persist(() =>
+      saveSale(sale.id, {
+        state: "paid",
+        method: "digital",
+        matchedTxnId: txn.id,
+      }),
+    );
+    void persist(() =>
+      saveTransaction(txn.id, { matchedSaleId: sale.id, business: true }),
+    );
+  }
+
+  function undoMatches() {
+    for (const undo of matchUndo) {
+      patchSale(undo.saleId, {
+        state: undo.prevState,
+        method: undo.prevMethod,
+        matchedTxnId: null,
+      });
+      updateTransaction(undo.txnId, {
+        matchedSaleId: null,
+        business: undo.prevBusiness,
+      });
+      void persist(() =>
+        saveSale(undo.saleId, {
+          state: undo.prevState,
+          method: undo.prevMethod,
+          matchedTxnId: null,
+        }),
+      );
+      void persist(() =>
+        saveTransaction(undo.txnId, {
+          matchedSaleId: null,
+          business: undo.prevBusiness,
+        }),
+      );
+    }
+    setMatchUndo([]);
+    setSaleNotice("");
+  }
+
+  /** Everything a finished checkout hands up. See NewSale's SaleResult. */
+  function handleSaleDone(
+    result: SaleResult,
+    paid: boolean,
+    method: PaymentMethod | null,
+  ) {
+    setShowNewSale(false);
+    setSalePrefill(null);
+    setMatchUndo([]);
+
+    // Client first: the sale (and template) reference its id, and the
+    // serial write queue guarantees the insert lands before them.
+    let nextClients = clients;
+    if (result.newClient) {
+      nextClients = [...clients, result.newClient];
+      setClients(nextClients);
+      if (accountId) {
+        const client = result.newClient;
+        void persist(() => insertClient(client, accountId));
+      }
+    }
+
+    let sale = result.sale;
+
+    if (paid && method === "cash") {
+      // One mirror transaction, linked both ways — see paySaleCash.
+      const txn: Transaction = {
+        id: crypto.randomUUID(),
+        payer: result.newClient?.name ?? clientNameOf(sale.clientId),
+        amountCents: saleTotalCents(sale),
+        date: sale.date,
+        memo: sale.lineItems.map((i) => i.name).join(", "),
+        source: "manual",
+        direction: "in",
+        serviceId:
+          sale.lineItems.length === 1 ? sale.lineItems[0].serviceId : null,
+        quantity: null,
+        business: true,
+        matchedSaleId: sale.id,
+        confidence: {},
+      };
+      sale = { ...sale, state: "paid", method: "cash", matchedTxnId: txn.id };
+      setTransactions((current) => [txn, ...current]);
+      if (accountId) {
+        void persist(() => insertTransactions([txn], accountId));
+      }
+      setSaleNotice(`${formatCents(saleTotalCents(sale))} — paid, done.`);
+    } else if (paid && method === "digital") {
+      // FLOW.md: exactly one high-confidence hit → LINKED · PAID (undo);
+      // several or none → candidates + "expected in next screenshots".
+      const name = result.newClient?.name ?? clientNameOf(sale.clientId);
+      const candidates = txnCandidatesForSale(transactions, sale, name);
+      if (candidates.length === 1) {
+        const txn = candidates[0];
+        sale = { ...sale, state: "paid", method: "digital", matchedTxnId: txn.id };
+        setMatchUndo([
+          {
+            saleId: sale.id,
+            txnId: txn.id,
+            prevState: "expected",
+            prevMethod: "digital",
+            prevBusiness: txn.business,
+          },
+        ]);
+        updateTransaction(txn.id, { matchedSaleId: sale.id, business: true });
+        void persist(() =>
+          saveTransaction(txn.id, { matchedSaleId: sale.id, business: true }),
+        );
+        setSaleNotice(
+          `Matched to ${txn.payer || "a payment"} on ${txn.date || "your ledger"}.`,
+        );
+      } else {
+        // Zero or several: the sale waits as EXPECTED, rescanned on every
+        // batch. Several ALSO waits — the picker shows what it found.
+        if (candidates.length > 1) {
+          const saleId = sale.id;
+          setSuggestions((current) => [
+            ...current,
+            { kind: "sale", saleId, txnIds: candidates.map((t) => t.id) },
+          ]);
+        }
+        setSaleNotice(
+          candidates.length === 0
+            ? "Marked paid — we'll match it in your next screenshots."
+            : `${candidates.length} payments could be this sale — pick below.`,
+        );
+      }
+    } else {
+      setSaleNotice(
+        `Saved — ${result.newClient?.name ?? clientNameOf(sale.clientId) ?? "client"} owes ${formatCents(saleTotalCents(sale))}.`,
+      );
+    }
+
+    // Newest-first invariant, same as transactions.
+    setSales((current) => [sale, ...current]);
+    if (accountId) {
+      void persist(() => insertSales([sale], accountId));
+    }
+
+    if (result.template) {
+      const template: RecurringTemplate = {
+        ...result.template,
+        id: crypto.randomUUID(),
+      };
+      setTemplates((current) => [...current, template]);
+      if (accountId) {
+        void persist(() => insertTemplate(template, accountId));
+      }
+    }
+  }
+
+  /**
+   * History rows route by direction: money OUT re-opens the numpad (its
+   * only remaining job), money IN becomes a sale prefill — one custom
+   * line holding the amount, the payer as client. The old income numpad
+   * path is gone on purpose: sales own money in now.
+   */
+  function routeLogAgain(prefill: LogAgainPrefill) {
+    if (prefill.direction === "out") {
+      pickLogAgain(prefill);
+      return;
+    }
+    const service = services.find((svc) => svc.id === prefill.serviceId);
+    setSalePrefill({
+      lineItems: [
+        {
+          serviceId: prefill.serviceId,
+          name: service?.name ?? "Payment",
+          quantity: 1,
+          unitCents: prefill.amountCents,
+          unitCostCents: service?.costCents ?? null,
+        },
+      ],
+      clientName: prefill.payer,
+    });
+    setSaleSeq((n) => n + 1);
+    setShowNewSale(true);
+  }
+
+  /** "Log again" for a sale: prefill, jump straight to PAID?. */
+  function pickSaleAgain(sale: Sale) {
+    setSalePrefill({
+      lineItems: sale.lineItems.map((item) => ({ ...item })),
+      clientName: clientNameOf(sale.clientId),
+    });
+    setSaleSeq((n) => n + 1);
+    setShowRecentSales(false);
+    setShowOwed(false);
+    setShowClients(false);
+    setShowNewSale(true);
+  }
+
   const pending = transactions.filter((tx) => tx.business === null);
   const sorted = transactions.filter((tx) => tx.business !== null);
   const lastBatch = transactions.filter((tx) => lastBatchIds.includes(tx.id));
@@ -581,11 +1009,93 @@ function Ledger({
   // numpad, or (on phones only, where there's no rail) history/dashboard —
   // and otherwise the main loop below. null means "nothing took over".
   let takeover: React.ReactNode = null;
-  if (quickAdd || logAgain) {
+  if (showNewSale) {
+    takeover = (
+      <NewSale
+        key={`sale-${saleSeq}`}
+        services={services}
+        clients={clients}
+        prefill={salePrefill ?? undefined}
+        onDone={handleSaleDone}
+        onClose={() => {
+          setShowNewSale(false);
+          setSalePrefill(null);
+        }}
+      />
+    );
+  } else if (showRecentSales) {
+    takeover = (
+      <RecentSales
+        sales={sales}
+        clients={clients}
+        onPick={pickSaleAgain}
+        onClose={() => setShowRecentSales(false)}
+      />
+    );
+  } else if (showOwed) {
+    takeover = (
+      <OwedTab
+        sales={sales}
+        clients={clients}
+        onMarkCash={(saleId) => {
+          const sale = sales.find((s) => s.id === saleId);
+          if (sale) paySaleCash(sale);
+        }}
+        onMoveToOwed={(saleId) => {
+          patchSale(saleId, { state: "open", method: null });
+          void persist(() => saveSale(saleId, { state: "open", method: null }));
+        }}
+        onLogAgain={pickSaleAgain}
+        onClose={() => setShowOwed(false)}
+      />
+    );
+  } else if (showClients) {
+    takeover = (
+      <ClientsPage
+        clients={clients}
+        sales={sales}
+        templates={templates}
+        onUpdateClient={(id, patch) => {
+          setClients((current) =>
+            current.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+          );
+          void persist(() => saveClient(id, patch));
+        }}
+        onUpdateTemplate={(id, patch) => {
+          setTemplates((current) =>
+            current.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+          );
+          void persist(() => saveTemplate(id, patch));
+        }}
+        onLogAgain={pickSaleAgain}
+        onClose={() => setShowClients(false)}
+      />
+    );
+  } else if (showProducts) {
+    takeover = (
+      <ProductsPage
+        services={services}
+        onCreate={(service) => {
+          setServices((current) => [...current, service]);
+          if (accountId) {
+            void persist(() => insertService(service, accountId));
+          }
+        }}
+        onUpdate={(service) => {
+          setServices((current) =>
+            current.map((old) => (old.id === service.id ? service : old)),
+          );
+          void persist(() => saveService(service));
+        }}
+        onClose={() => setShowProducts(false)}
+      />
+    );
+  } else if (quickAdd || logAgain) {
     takeover = (
       <QuickAdd
         key={`quick-add-${logAgainSeq}`}
         services={services}
+        expense={!logAgain}
         prefill={logAgain ?? undefined}
         remember={(payer, serviceId) =>
           rememberedFor(transactions, payer, serviceId)
@@ -629,7 +1139,7 @@ function Ledger({
         services={services}
         onLogAgain={(prefill) => {
           setShowHistory(false);
-          pickLogAgain(prefill);
+          routeLogAgain(prefill);
         }}
         onClose={() => setShowHistory(false)}
       />
@@ -639,8 +1149,14 @@ function Ledger({
   // The main loop: totals, the upload targets, the sheet, the swipe deck.
   const mainLoop = (
     <div className="space-y-6">
-      {(stage === "sort" || sorted.length > 0) && (
-        <RunningTotals transactions={transactions} />
+      {(stage === "sort" || sorted.length > 0 || sales.length > 0) && (
+        <RunningTotals
+          transactions={transactions}
+          expectedCents={sales
+            .filter((s) => s.state === "expected")
+            .reduce((sum, s) => sum + saleTotalCents(s), 0)}
+          owedCents={owedCents(sales)}
+        />
       )}
 
       {accountId && (
@@ -700,32 +1216,86 @@ function Ledger({
       )}
 
       {stage !== "confirm" && (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="flex-1 rounded-lg border border-neutral-300 px-4 py-4 text-base font-medium hover:bg-neutral-50"
-            onClick={() => setQuickAdd(true)}
-          >
-            Log a cash payment
-          </button>
-          {sorted.length > 0 && (
-            <>
-              <button
-                type="button"
-                className="rounded-lg border border-neutral-300 px-4 py-4 text-base font-medium hover:bg-neutral-50 lg:hidden"
-                onClick={() => setShowHistory(true)}
-              >
-                History
-              </button>
-              <button
-                type="button"
-                className="rounded-lg border border-neutral-300 px-4 py-4 text-base font-medium hover:bg-neutral-50 lg:hidden"
-                onClick={() => setShowDashboard(true)}
-              >
-                Dashboard
-              </button>
-            </>
-          )}
+        <div className="space-y-3">
+          {/* Separate but connected, new sale on top — the owner's spec.
+              One frame, shared border, divided; two distinct buttons. */}
+          <div className="overflow-hidden rounded-xl border border-neutral-400 dark:border-neutral-600">
+            <button
+              type="button"
+              className="block w-full bg-foreground px-4 py-4 text-base font-semibold text-background hover:opacity-90"
+              onClick={() => {
+                setSalePrefill(null);
+                setSaleSeq((n) => n + 1);
+                setShowNewSale(true);
+              }}
+            >
+              New sale
+            </button>
+            <button
+              type="button"
+              className="block w-full border-t border-neutral-400 px-4 py-3 text-base font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-900"
+              onClick={() => setShowRecentSales(true)}
+            >
+              Log again
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className="rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-900"
+              onClick={() => setShowProducts(true)}
+            >
+              Products &amp; services
+            </button>
+            <button
+              type="button"
+              className="rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-900"
+              onClick={() => setShowClients(true)}
+            >
+              Clients
+            </button>
+          </div>
+
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="flex-1 rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-900"
+              onClick={() => setQuickAdd(true)}
+            >
+              Log an expense
+            </button>
+            <button
+              type="button"
+              className="flex-1 rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-900"
+              onClick={() => setShowOwed(true)}
+            >
+              Owed
+              {owedCents(sales) > 0 && (
+                <span className="ml-1 tabular-nums text-amber-700 dark:text-amber-400">
+                  {formatCents(owedCents(sales))}
+                </span>
+              )}
+            </button>
+            {sorted.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  className="rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 lg:hidden"
+                  onClick={() => setShowHistory(true)}
+                >
+                  History
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 lg:hidden"
+                  onClick={() => setShowDashboard(true)}
+                >
+                  Dashboard
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -742,6 +1312,92 @@ function Ledger({
           {batchNotice}
         </p>
       )}
+
+      {saleNotice && (
+        <p
+          aria-live="polite"
+          className="flex items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+        >
+          <span>{saleNotice}</span>
+          {matchUndo.length > 0 && (
+            <button
+              type="button"
+              className="shrink-0 font-medium underline"
+              onClick={undoMatches}
+            >
+              Undo
+            </button>
+          )}
+          {matchUndo.length === 0 && (
+            <button
+              type="button"
+              aria-label="Dismiss"
+              className="shrink-0 font-medium"
+              onClick={() => setSaleNotice("")}
+            >
+              ×
+            </button>
+          )}
+        </p>
+      )}
+
+      {suggestions.map((sug) => {
+        // Ambiguity is resolved by a human, never a guess. Each entry
+        // pairs one side with its candidates; a tap links, "None" drops.
+        const isPayment = sug.kind === "payment";
+        const txnOf = (id: string) => transactions.find((t) => t.id === id);
+        const saleOf = (id: string) => sales.find((sl) => sl.id === id);
+        const anchor = isPayment ? txnOf(sug.txnId) : saleOf(sug.saleId);
+        if (!anchor) return null;
+        const dismiss = () =>
+          setSuggestions((current) => current.filter((x) => x !== sug));
+        return (
+          <div
+            key={isPayment ? `p-${sug.txnId}` : `s-${sug.saleId}`}
+            className="space-y-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          >
+            <p>
+              {isPayment
+                ? `A ${formatCents((anchor as Transaction).amountCents)} payment from ${(anchor as Transaction).payer || "someone"} could be one of these sales:`
+                : `This ${formatCents(saleTotalCents(anchor as Sale))} sale could match one of these payments:`}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(isPayment ? sug.saleIds : sug.txnIds).map((otherId) => {
+                const sale = isPayment
+                  ? saleOf(otherId)
+                  : (anchor as Sale);
+                const txn = isPayment
+                  ? (anchor as Transaction)
+                  : txnOf(otherId);
+                if (!sale || !txn) return null;
+                return (
+                  <button
+                    key={otherId}
+                    type="button"
+                    className="rounded-md border border-amber-300 bg-white px-2 py-1.5 text-xs font-medium"
+                    onClick={() => {
+                      linkSaleToTxn(sale, txn);
+                      setSaleNotice("Matched.");
+                      dismiss();
+                    }}
+                  >
+                    {isPayment
+                      ? `${clientNameOf(sale.clientId) || "Sale"} · ${sale.date}`
+                      : `${txn.payer || "Payment"} · ${txn.date || "no date"}`}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                className="rounded-md px-2 py-1.5 text-xs font-medium underline"
+                onClick={dismiss}
+              >
+                None of these
+              </button>
+            </div>
+          </div>
+        );
+      })}
 
       {warnings.map((warning, index) => (
         <p
@@ -852,11 +1508,26 @@ function Ledger({
       <div className="min-w-0 lg:sticky lg:top-8">{takeover ?? mainLoop}</div>
       {isDesktop && (
         <aside className="min-w-0 space-y-10 border-neutral-200 lg:border-l lg:pl-10">
+          <OwedTab
+            sales={sales}
+            clients={clients}
+            onMarkCash={(saleId) => {
+              const sale = sales.find((sl) => sl.id === saleId);
+              if (sale) paySaleCash(sale);
+            }}
+            onMoveToOwed={(saleId) => {
+              patchSale(saleId, { state: "open", method: null });
+              void persist(() =>
+                saveSale(saleId, { state: "open", method: null }),
+              );
+            }}
+            onLogAgain={pickSaleAgain}
+          />
           <Dashboard transactions={transactions} services={services} />
           <HistoryList
             transactions={transactions}
             services={services}
-            onLogAgain={pickLogAgain}
+            onLogAgain={routeLogAgain}
           />
         </aside>
       )}
