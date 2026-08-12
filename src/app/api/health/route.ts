@@ -31,9 +31,30 @@ export async function GET() {
   const supabase = createClient(url, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from("transactions")
     .select("id", { head: true, count: "exact" });
+
+  // Assert something POSITIVE, don't just check for absence of an error.
+  // With head:true there is no response body, and supabase-js does not
+  // surface a 404 as an error — so when the transactions table did not
+  // exist at all, this endpoint cheerfully reported {"ok":true,"reached"}
+  // while every upload silently failed to save. Verified against the live
+  // project: the identical request returns HTTP 404 (PGRST205) and `error`
+  // is still null.
+  //
+  // A successful count is a number, even under RLS where it is 0. Null means
+  // the query never really ran.
+  if (!error && typeof count !== "number") {
+    return Response.json(
+      {
+        ok: false,
+        supabase:
+          "reached, but the transactions table is missing — run the migrations in supabase/migrations",
+      },
+      { status: 503 },
+    );
+  }
 
   // 503, not 200-with-a-sad-body. This endpoint reported {"ok":false} for
   // days while the database was gone and NOTHING noticed, because the cron
