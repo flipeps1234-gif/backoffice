@@ -21,6 +21,7 @@ type Row = {
   service_id: string | null;
   quantity: number | null;
   business: boolean | null;
+  matched_sale_id: string | null;
 };
 
 const toTransaction = (row: Row): Transaction => ({
@@ -34,6 +35,7 @@ const toTransaction = (row: Row): Transaction => ({
   serviceId: row.service_id,
   quantity: row.quantity,
   business: row.business,
+  matchedSaleId: row.matched_sale_id,
   confidence: {},
 });
 
@@ -50,6 +52,7 @@ const toRow = (tx: Transaction, accountId: string) => ({
   service_id: tx.serviceId,
   quantity: tx.quantity,
   business: tx.business,
+  matched_sale_id: tx.matchedSaleId,
 });
 
 export const loadTransactions = async (): Promise<Transaction[]> => {
@@ -64,7 +67,7 @@ export const loadTransactions = async (): Promise<Transaction[]> => {
     supabase
       .from("transactions")
       .select(
-        "id, payer, amount_cents, occurred_on, memo, source, direction, service_id, quantity, business",
+        "id, payer, amount_cents, occurred_on, memo, source, direction, service_id, quantity, business, matched_sale_id",
       )
       .order("occurred_on", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })

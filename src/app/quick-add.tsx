@@ -257,6 +257,7 @@ export default function QuickAdd({
       serviceId: spending ? null : (selected?.id ?? null),
       quantity: quantityForSave(),
       business,
+      matchedSaleId: null,
       confidence: {},
     };
   }

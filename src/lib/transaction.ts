@@ -23,6 +23,12 @@ export type Transaction = {
   quantity: number | null;
   /** null until the user swipes. true = business, false = personal. */
   business: boolean | null;
+  /**
+   * The sale this payment was matched to, or null. Set by the matching
+   * engine (or an undo). A matched transaction is counted through its sale
+   * — "one payment, one sale" — so totals must skip it. See FLOW.md.
+   */
+  matchedSaleId: string | null;
   /** 0..1 per field. Anything below LOW_CONFIDENCE gets flagged in the sheet. */
   confidence: Partial<Record<FieldName, number>>;
 };
