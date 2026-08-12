@@ -1,0 +1,147 @@
+# Deploying swipebooks
+
+Read this before pushing. It exists because the same three config items
+have been "I'll do it later" for several sessions, and two of them break
+production silently.
+
+## What "deploy" means here
+
+**Pushing to `main` IS deploying.** Vercel builds and promotes every push
+automatically — `vercel.json` has no ignore command and there is no branch
+gate. There is no staging environment.
+
+There is also **no CI and no test suite**, so nothing runs on push except
+Vercel's own build. The entire automated gate is the three commands below,
+run by you, locally, before you push.
+
+```bash
+npx tsc --noEmit && npm run lint && npm run build
+```
+
+All three must exit 0. `npm run build` runs the type-check again, but run
+`tsc` separately anyway — it fails faster and its errors are clearer.
+
+---
+
+## Before the first real user
+
+These are one-time, and two of them are the difference between a working
+app and a broken one. **Do them before telling anyone the URL.**
+
+### 1. Run every migration — BLOCKING
+
+The app writes `direction` and `quantity` on every insert and selects them
+on every load. If `0003` and `0004` were never run against the live
+project, **every insert and every load fails** for signed-in users, while
+the local anonymous build works perfectly — so you will not notice until
+someone else does.
+
+Supabase → SQL Editor → run in order, checking each succeeds:
+
+```
+supabase/migrations/0001_transactions.sql
+supabase/migrations/0002_services.sql
+supabase/migrations/0003_direction.sql
+supabase/migrations/0004_quantity.sql
+```
+
+Verify, don't assume:
+
+```sql
+select column_name from information_schema.columns
+where table_name = 'transactions'
+order by column_name;
+```
+
+You need `direction` and `quantity` in that list. If either is missing,
+stop and run the migration.
+
+### 2. Add the app's origin to Supabase Redirect URLs — BLOCKING for sign-in
+
+Supabase → Authentication → URL Configuration → Redirect URLs.
+
+Add the exact production origin (e.g. `https://swipebooks.vercel.app`).
+Without it the magic link bounces to the Site URL and no session is ever
+created — sign-in appears to work and then silently does nothing.
+
+**List exact origins. Do not add a wildcard** like `https://*.vercel.app`
+to make preview deploys work: any Vercel subdomain would then be a valid
+redirect target for a magic-link token, which is an account-takeover path.
+
+### 3. Set `DEMO_EXTRACTION=mock` in Vercel — costs you nothing
+
+The shared tester account otherwise uses the real OpenAI provider, and the
+demo word ships in the public JavaScript bundle. The rate limiter is an
+in-memory `Map`, so it is per serverless instance and cannot hold a line.
+Anyone who views source can spend against your $50 cap.
+
+Setting this flips tester to the free mock with no code change.
+
+### Environment variables
+
+| Variable | Where | Missing means |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Vercel | No accounts; in production `/api/extract` returns 503 |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Vercel | Same |
+| `OPENAI_API_KEY` | Vercel | Uploads return 503 — deliberately, rather than inventing rows |
+| `DEMO_EMAIL` / `DEMO_PASSWORD` | Vercel, server-only | The demo word stops working |
+| `DEMO_EXTRACTION=mock` | Vercel | Tester spends your OpenAI budget |
+
+---
+
+## Every push
+
+- [ ] `npx tsc --noEmit && npm run lint && npm run build` — all exit 0
+- [ ] Working tree clean; you are pushing what you tested
+- [ ] If you changed anything under `supabase/migrations/`, run it in the
+      SQL editor **before** pushing — the code ships instantly and expects
+      the column to already exist
+- [ ] If you changed the sign-in flow, re-check the Redirect URLs above
+- [ ] Watch the Vercel build finish. A red build means the previous
+      deployment is still live, which is fine — fix forward or revert
+
+## Smoke test, on production, signed in
+
+Two minutes. Do it after any push that touched upload, auth, or the database.
+
+- [ ] `/api/health` returns `{"ok":true,"supabase":"reached"}`
+- [ ] First visit shows the terms screen; OK dismisses it; reload does not
+      bring it back
+- [ ] Sign in with a real email — the link arrives and opens a session
+- [ ] Upload one screenshot: the progress bar appears, rows come back, and
+      they are YOUR payments and not invented names
+- [ ] Swipe one row, then reload the page — it is still there. This is the
+      one that catches missing migrations
+- [ ] Log a cash payment; check the amount is what you typed
+- [ ] Download both CSVs; open one in a spreadsheet and check the totals
+      match what is on screen
+
+## Rollback
+
+There is no monitoring, so the trigger is what a user tells you or what
+you see yourself. Roll back on any of:
+
+- Rows do not survive a reload (missing migration)
+- Payments appear that the user did not make (fabricated rows)
+- Sign-in never completes
+- Totals on screen disagree with the CSV
+- Uploads fail for everyone
+
+**How:** Vercel → Deployments → the last known-good one → Promote to
+Production. That is instant and needs no git operation.
+
+Then fix forward on a branch, or `git revert <sha>` and push. Do not force-push
+`main` — the deployment history is the rollback mechanism.
+
+Note that a rollback does **not** undo a migration, and it cannot delete rows
+that were written while the bad version was live. The app has no delete.
+
+## Free-tier ceilings to keep an eye on
+
+| Limit | Where it bites first |
+|---|---|
+| OpenAI $50/month | Uploads start failing; set `DEMO_EXTRACTION=mock` first |
+| Vercel 4.5MB request body | Handled client-side by compression + chunking at 4 files |
+| Vercel function duration | A large batch is sequential model calls — long uploads |
+| Supabase 500MB | Thousands of rows away; not a near-term concern |
+| Supabase pausing after 7 idle days | The daily `/api/health` cron exists to prevent this |

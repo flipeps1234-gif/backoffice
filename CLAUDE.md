@@ -171,6 +171,12 @@ accounts — users upload their own screenshots. Permanent: never
 gate viewing or exporting a user's own data. No ads. No selling
 data. No charging for language.
 
+## Deploying
+Pushing to main IS deploying — Vercel promotes every push and there is
+no staging, no CI and no tests. See DEPLOY.md: the gate is
+`npx tsc --noEmit && npm run lint && npm run build` run locally, and
+three one-time config items that break production silently if skipped.
+
 ## Session ritual
 End every session: what changed, one concept I should now be able
 to explain, the exact next step.
