@@ -77,6 +77,21 @@ Anyone who views source can spend against your $50 cap.
 
 Setting this flips tester to the free mock with no code change.
 
+### Changing an env var is not enough — you must redeploy
+
+`NEXT_PUBLIC_*` values are **inlined into the client bundle at build time**,
+not read at runtime. Editing one in the Vercel dashboard changes nothing
+until a new build runs. Redeploy after any change, and confirm the new
+value actually shipped:
+
+```bash
+# the URL the LIVE bundle was built with, whatever the dashboard says
+curl -s https://<your-app>/ | grep -o 'src="[^"]*\.js"' | head -20
+```
+
+This is not hypothetical: the first production smoke test found the app
+built against a Supabase host that no longer exists in DNS.
+
 ### Environment variables
 
 | Variable | Where | Missing means |
@@ -104,7 +119,10 @@ Setting this flips tester to the free mock with no code change.
 
 Two minutes. Do it after any push that touched upload, auth, or the database.
 
-- [ ] `/api/health` returns `{"ok":true,"supabase":"reached"}`
+- [ ] `/api/health` returns `{"ok":true,"supabase":"reached"}` — **do this
+      one first.** `{"ok":false,...}` means the database is unreachable and
+      every step below will fail; stop and fix that. Nothing alerts on this
+      endpoint, so it is only checked when a human checks it.
 - [ ] First visit shows the terms screen; OK dismisses it; reload does not
       bring it back
 - [ ] Sign in with a real email — the link arrives and opens a session
