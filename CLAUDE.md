@@ -116,7 +116,17 @@ detection, lib purity), 1 FAIL (/eval). Details in FRAGILE.md.
   Margin view — revenue minus estimated costs per service. Margin
   uses catalog cost ESTIMATES; the tax export uses ACTUAL logged
   expenses only. Never mix the two.
-- v0.5 Bilingual EN/ES/PT + polish. This build is the demo.
+- v0.5 Sales, clients, recurring & matching — THIS BUILD. FLOW.md is
+  the authoritative spec for this flow; any change to the flow updates
+  FLOW.md in the same commit. Clients (self-building from sales), the
+  sale flow (products → checkout → Paid? → cash/digital), sale states
+  OPEN | EXPECTED | PAID, the Owed tab, recurring templates as
+  EXPECTED REVENUE (never scheduling), and the matching engine that
+  links ingested transactions to sales. Totals show received and owed
+  as two separate figures — owed is never blended into revenue.
+- v0.6 Bilingual EN/ES/PT + polish. This build is the demo.
+- v0.7 Native/Expo port. Revisit trigger unchanged: install friction
+  on iOS, where there is no install prompt at all (see IDEAS.md).
 Never start the next milestone or out-of-scope features unprompted —
 make me say "milestone done" first.
 
@@ -161,6 +171,11 @@ don't hard-couple account = one user, but multi-user stays parked.
 - Commit early/often, suggest messages. One feature per session.
   Ask before ANY new dependency; boring wins. Test data only — my
   own or synthetic screenshots, never real customer data.
+- One payment, one sale: an ingested transaction linked to a sale
+  counts ONCE. Ledger totals = sales + unmatched ingested business
+  transactions. Never double-count across streams.
+- Recurring = expected revenue, NOT scheduling: no times, no job
+  reminders, no client notifications. Calendar remains parked.
 
 ## Hard boundaries — see IDEAS.md; refuse and remind me if I drift
 No payments or Stripe. No billing, subscriptions, paywalls, or
