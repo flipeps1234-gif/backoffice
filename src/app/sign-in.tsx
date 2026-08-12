@@ -21,6 +21,37 @@ import { getSupabase } from "@/lib/supabase/client";
  */
 const DEMO_WORD = "tester";
 
+/**
+ * Supabase hands back the browser's own network error verbatim, and the
+ * browser's wording depends on which browser you're in: Safari says "Load
+ * failed", Chrome says "Failed to fetch", Firefox says "NetworkError when
+ * attempting to fetch resource". We were printing whichever one arrived
+ * straight onto the sign-in screen, where it means nothing to anyone.
+ *
+ * They all mean the same thing — the request never reached a server — and
+ * that has exactly two causes worth telling a user apart: their connection,
+ * or ours. Since we can't tell which from here, say both, and say the second
+ * one plainly rather than leaving them retyping an email that was never the
+ * problem. The raw error still goes to the console for whoever is debugging.
+ *
+ * Exported so the mapping can be checked without a browser.
+ */
+export const humanAuthError = (raw: string): string => {
+  const unreachable =
+    /failed to fetch|load failed|networkerror|fetch failed|network request failed/i.test(
+      raw,
+    );
+  if (unreachable) {
+    return (
+      "Couldn't reach the server. Check your connection and try again — " +
+      "if it keeps failing, it's us, not you."
+    );
+  }
+  // Supabase's own messages (rate limits, malformed address) are already
+  // written for humans, so they pass through untouched.
+  return raw || "Something went wrong. Try again in a moment.";
+};
+
 export default function SignIn() {
   const [sent, setSent] = useState(false);
   const [email, setEmail] = useState("");
@@ -48,7 +79,12 @@ export default function SignIn() {
         access_token: data.access_token,
         refresh_token: data.refresh_token,
       });
-      if (sessionError) setError(sessionError.message);
+      // Same treatment as sendLink — setSession does its own network call,
+      // so it can fail the same way and used to print the same raw string.
+      if (sessionError) {
+        console.error("Demo sign-in failed:", sessionError);
+        setError(humanAuthError(sessionError.message));
+      }
     } catch {
       setError("Couldn't reach the server. Check your connection and try again.");
     } finally {
@@ -75,7 +111,8 @@ export default function SignIn() {
 
     setBusy(false);
     if (sendError) {
-      setError(sendError.message);
+      console.error("Sign-in request failed:", sendError);
+      setError(humanAuthError(sendError.message));
       return;
     }
     setSent(true);
