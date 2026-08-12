@@ -111,6 +111,8 @@ export const updateTransaction = async (
   if (patch.serviceId !== undefined) row.service_id = patch.serviceId;
   if (patch.quantity !== undefined) row.quantity = patch.quantity;
   if (patch.business !== undefined) row.business = patch.business;
+  // Set by the matching engine's auto-link, cleared by its undo.
+  if (patch.matchedSaleId !== undefined) row.matched_sale_id = patch.matchedSaleId;
   if (Object.keys(row).length === 0) return;
 
   const { error } = await supabase.from("transactions").update(row).eq("id", id);
