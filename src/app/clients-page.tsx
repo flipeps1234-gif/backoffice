@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Client } from "@/lib/client";
 import {
   cadenceLabel,
+  fastForwardPastGap,
   RECURRING_PAUSE_AFTER_MISSES,
   type RecurringTemplate,
 } from "@/lib/recurring";
@@ -16,6 +17,13 @@ import { formatCents } from "@/lib/transaction";
  * and their recurring templates with the pause/resume/end controls.
  * Template EDITS apply to future instances only — history is a record.
  */
+
+const localToday = (): string => {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+};
 
 const labelClass = "mb-1 block text-xs font-medium text-neutral-500";
 const fieldClass =
@@ -180,8 +188,19 @@ export default function ClientsPage({
                           onUpdateTemplate(tpl.id, {
                             active: !tpl.active,
                             // Resuming forgives the misses that paused it —
-                            // otherwise it re-pauses on the next generation.
-                            ...(tpl.active ? {} : { consecutiveMisses: 0 }),
+                            // otherwise it re-pauses on the next generation —
+                            // and fast-forwards past the paused gap. Without
+                            // that, generation back-fills every skipped due
+                            // date as OPEN sales the client never owed and
+                            // re-pauses on its own creations: resume would
+                            // be a trap. The gap is money the owner CHOSE
+                            // not to expect.
+                            ...(tpl.active
+                              ? {}
+                              : {
+                                  consecutiveMisses: 0,
+                                  nextDue: fastForwardPastGap(tpl, localToday()),
+                                }),
                           })
                         }
                       >

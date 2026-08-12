@@ -49,6 +49,7 @@ import {
   updateTemplate as saveTemplate,
 } from "@/lib/supabase/recurring";
 import {
+  insertGeneratedSales,
   insertSales,
   loadSales,
   updateSale as saveSale,
@@ -343,23 +344,33 @@ function Ledger({
 
         setSales(allSales);
         setTemplates(nextTemplates);
-        if (createdAll.length > 0 && accountId) {
-          void persist(() => insertSales(createdAll, accountId));
-        }
-        for (const [i, template] of templateRows.entries()) {
-          const next = nextTemplates[i];
-          if (
-            next.nextDue !== template.nextDue ||
-            next.active !== template.active ||
-            next.consecutiveMisses !== template.consecutiveMisses
-          ) {
-            void persist(() =>
-              saveTemplate(next.id, {
-                nextDue: next.nextDue,
-                active: next.active,
-                consecutiveMisses: next.consecutiveMisses,
-              }),
+        if (accountId) {
+          const changed = nextTemplates.filter((next, i) => {
+            const before = templateRows[i];
+            return (
+              next.nextDue !== before.nextDue ||
+              next.active !== before.active ||
+              next.consecutiveMisses !== before.consecutiveMisses
             );
+          });
+          if (createdAll.length > 0 || changed.length > 0) {
+            // ONE queue item, instances before advances: if the instance
+            // insert fails, the template save never runs, and the next app
+            // open re-walks from the stale nextDue — the instance is late,
+            // not lost. As separate items, a failed insert followed by a
+            // successful advance loses the instance permanently. The insert
+            // is an upsert against 0008's unique index, so a concurrent
+            // open racing this one no-ops instead of duplicating.
+            void persist(async () => {
+              await insertGeneratedSales(createdAll, accountId);
+              for (const next of changed) {
+                await saveTemplate(next.id, {
+                  nextDue: next.nextDue,
+                  active: next.active,
+                  consecutiveMisses: next.consecutiveMisses,
+                });
+              }
+            });
           }
         }
         if (pausedNames.length > 0) {
@@ -762,21 +773,32 @@ function Ledger({
       id: crypto.randomUUID(),
       payer: clientNameOf(sale.clientId),
       amountCents: saleTotalCents(sale),
-      date: sale.date,
+      // The day the CASH ARRIVED, not the job date — this row is the money
+      // movement, and "Got cash" on an aged sale can cross a month or a tax
+      // year. The sale keeps its own date; the two record different events.
+      date: localToday(),
       memo: sale.lineItems.map((i) => i.name).join(", "),
       source: "manual",
       direction: "in",
       serviceId:
         sale.lineItems.length === 1 ? sale.lineItems[0].serviceId : null,
-      quantity: null,
+      // The size survives for customer memory ("Rosa's lawn is 4000 sqft"),
+      // but only when it means something: one line, a real service, and a
+      // quantity that isn't just "1 of a total".
+      quantity:
+        sale.lineItems.length === 1 &&
+        sale.lineItems[0].serviceId &&
+        sale.lineItems[0].quantity !== 1
+          ? sale.lineItems[0].quantity
+          : null,
       business: true,
       matchedSaleId: sale.id,
       confidence: {},
     };
     patchSale(sale.id, { state: "paid", method: "cash", matchedTxnId: txn.id });
     setTransactions((current) => [txn, ...current]);
+    resetTemplateMisses(sale);
     if (accountId) {
-      void persist(() => insertSales([], accountId)); // keep queue ordering explicit
       void persist(() => insertTransactions([txn], accountId));
       void persist(() =>
         saveSale(sale.id, {
@@ -788,8 +810,36 @@ function Ledger({
     }
   }
 
+  /**
+   * The written contract of consecutiveMisses is "resets on any payment"
+   * (recurring.ts, migration 0007) — and until this function, nothing
+   * implemented it. Without the reset, misses are cumulative-forever: a
+   * client who always pays a few days late ratchets the counter to the
+   * pause threshold while never actually missing, and the template
+   * silently stops creating the very instances that track their money.
+   */
+  function resetTemplateMisses(sale: Sale) {
+    if (!sale.recurringTemplateId) return;
+    const template = templates.find((t) => t.id === sale.recurringTemplateId);
+    if (!template || template.consecutiveMisses === 0) return;
+    setTemplates((current) =>
+      current.map((t) =>
+        t.id === template.id ? { ...t, consecutiveMisses: 0 } : t,
+      ),
+    );
+    void persist(() => saveTemplate(template.id, { consecutiveMisses: 0 }));
+  }
+
   /** Link one sale to one ingested transaction — the engine's yes. */
   function linkSaleToTxn(sale: Sale, txn: Transaction) {
+    // A sale can be paid exactly once and a payment spent exactly once.
+    // Stale suggestion cards and double-taps both used to slip through
+    // here and mint a second $80 of revenue from one job.
+    if (sale.state === "paid" || txn.matchedSaleId) {
+      setSaleNotice("Already settled — nothing changed.");
+      return;
+    }
+    resetTemplateMisses(sale);
     setMatchUndo((current) => [
       ...current,
       {
@@ -885,7 +935,12 @@ function Ledger({
         direction: "in",
         serviceId:
           sale.lineItems.length === 1 ? sale.lineItems[0].serviceId : null,
-        quantity: null,
+        quantity:
+          sale.lineItems.length === 1 &&
+          sale.lineItems[0].serviceId &&
+          sale.lineItems[0].quantity !== 1
+            ? sale.lineItems[0].quantity
+            : null,
         business: true,
         matchedSaleId: sale.id,
         confidence: {},
@@ -977,6 +1032,11 @@ function Ledger({
         {
           serviceId: prefill.serviceId,
           name: service?.name ?? "Payment",
+          // The TOTAL and the size both survive: unitCents is the historical
+          // amount divided over the historical quantity would risk rounding
+          // drift, so quantity 1 carries the total exactly and the real size
+          // rides along only when it divides cleanly. NewSale treats this
+          // line as a snapshot either way — it never re-prices from catalog.
           quantity: 1,
           unitCents: prefill.amountCents,
           unitCostCents: service?.costCents ?? null,
@@ -1044,6 +1104,26 @@ function Ledger({
         onMoveToOwed={(saleId) => {
           patchSale(saleId, { state: "open", method: null });
           void persist(() => saveSale(saleId, { state: "open", method: null }));
+        }}
+        onFindPayment={(saleId) => {
+          const sale = sales.find((sl) => sl.id === saleId);
+          if (!sale) return;
+          const candidates = txnCandidatesForSale(
+            transactions,
+            sale,
+            clientNameOf(sale.clientId),
+            { relaxName: true },
+          );
+          if (candidates.length === 0) {
+            setSaleNotice(
+              "No payment on your ledger matches that amount and window.",
+            );
+            return;
+          }
+          setSuggestions((current) => [
+            ...current,
+            { kind: "sale", saleId, txnIds: candidates.map((t) => t.id) },
+          ]);
         }}
         onLogAgain={pickSaleAgain}
         onClose={() => setShowOwed(false)}
@@ -1319,25 +1399,30 @@ function Ledger({
           className="flex items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
         >
           <span>{saleNotice}</span>
-          {matchUndo.length > 0 && (
-            <button
-              type="button"
-              className="shrink-0 font-medium underline"
-              onClick={undoMatches}
-            >
-              Undo
-            </button>
-          )}
-          {matchUndo.length === 0 && (
+          <span className="flex shrink-0 gap-3">
+            {matchUndo.length > 0 && (
+              <button
+                type="button"
+                className="font-medium underline"
+                onClick={undoMatches}
+              >
+                Undo
+              </button>
+            )}
             <button
               type="button"
               aria-label="Dismiss"
-              className="shrink-0 font-medium"
-              onClick={() => setSaleNotice("")}
+              className="font-medium"
+              onClick={() => {
+                // Dismissing accepts the matches: the undo window closes
+                // WITH the notice, so a later notice can never revive it.
+                setSaleNotice("");
+                setMatchUndo([]);
+              }}
             >
               ×
             </button>
-          )}
+          </span>
         </p>
       )}
 
@@ -1349,6 +1434,19 @@ function Ledger({
         const saleOf = (id: string) => sales.find((sl) => sl.id === id);
         const anchor = isPayment ? txnOf(sug.txnId) : saleOf(sug.saleId);
         if (!anchor) return null;
+        // A card whose anchor got settled some other way (cash mark, another
+        // match, an undo of the underlying batch) is stale — linking from it
+        // would double-pay. Drop resolved anchors and filter candidates to
+        // pairs that are still linkable.
+        if (isPayment && (anchor as Transaction).matchedSaleId) return null;
+        if (!isPayment && (anchor as Sale).state === "paid") return null;
+        const stillLinkable = (otherId: string) => {
+          const sale = isPayment ? saleOf(otherId) : (anchor as Sale);
+          const txn = isPayment ? (anchor as Transaction) : txnOf(otherId);
+          return (
+            sale && txn && sale.state !== "paid" && !txn.matchedSaleId
+          );
+        };
         const dismiss = () =>
           setSuggestions((current) => current.filter((x) => x !== sug));
         return (
@@ -1362,7 +1460,9 @@ function Ledger({
                 : `This ${formatCents(saleTotalCents(anchor as Sale))} sale could match one of these payments:`}
             </p>
             <div className="flex flex-wrap gap-2">
-              {(isPayment ? sug.saleIds : sug.txnIds).map((otherId) => {
+              {(isPayment ? sug.saleIds : sug.txnIds)
+                .filter(stillLinkable)
+                .map((otherId) => {
                 const sale = isPayment
                   ? saleOf(otherId)
                   : (anchor as Sale);
@@ -1376,6 +1476,10 @@ function Ledger({
                     type="button"
                     className="rounded-md border border-amber-300 bg-white px-2 py-1.5 text-xs font-medium"
                     onClick={() => {
+                      // The undo chip must revert THIS link only — never a
+                      // leftover batch of earlier auto-links behind the
+                      // same "Matched." message.
+                      setMatchUndo([]);
                       linkSaleToTxn(sale, txn);
                       setSaleNotice("Matched.");
                       dismiss();
@@ -1521,6 +1625,26 @@ function Ledger({
                 saveSale(saleId, { state: "open", method: null }),
               );
             }}
+                onFindPayment={(saleId) => {
+              const sale = sales.find((sl) => sl.id === saleId);
+              if (!sale) return;
+              const candidates = txnCandidatesForSale(
+                transactions,
+                sale,
+                clientNameOf(sale.clientId),
+                { relaxName: true },
+              );
+              if (candidates.length === 0) {
+                setSaleNotice(
+                  "No payment on your ledger matches that amount and window.",
+                );
+                return;
+              }
+              setSuggestions((current) => [
+                ...current,
+                { kind: "sale", saleId, txnIds: candidates.map((t) => t.id) },
+              ]);
+        }}
             onLogAgain={pickSaleAgain}
           />
           <Dashboard transactions={transactions} services={services} />

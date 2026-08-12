@@ -34,6 +34,7 @@ export default function OwedTab({
   clients,
   onMarkCash,
   onMoveToOwed,
+  onFindPayment,
   onLogAgain,
   onClose,
 }: {
@@ -43,6 +44,10 @@ export default function OwedTab({
   onMarkCash: (saleId: string) => void;
   /** EXPECTED resolve: "actually unpaid". */
   onMoveToOwed: (saleId: string) => void;
+  /** EXPECTED resolve: hand-link against payments already on the ledger,
+   *  with the name rule relaxed — the auto-matcher could not find it, and
+   *  the human is looking right at the list. */
+  onFindPayment: (saleId: string) => void;
   onLogAgain: (sale: Sale) => void;
   onClose?: () => void;
 }) {
@@ -202,6 +207,16 @@ export default function OwedTab({
                       }}
                     >
                       It was cash → paid
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-md border border-neutral-300 px-3 py-2 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                      onClick={() => {
+                        onFindPayment(sale.id);
+                        setResolving(null);
+                      }}
+                    >
+                      Find the payment…
                     </button>
                   </div>
                 ) : (

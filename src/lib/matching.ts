@@ -46,11 +46,40 @@ const editDistance = (a: string, b: string): number => {
   return previous[b.length];
 };
 
+const tokenMatches = (token: string, other: string): boolean => {
+  if (token === other) return true;
+  const allowed = Math.min(2, Math.floor(Math.max(token.length, other.length) / 4));
+  return editDistance(token, other) <= allowed;
+};
+
 export const sameName = (a: string, b: string): boolean => {
   const left = normName(a);
   const right = normName(b);
   if (left === right) return left !== "";
   if (left === "" || right === "") return false;
+
+  // Token subset FIRST: a client saved as "Rosa" must match the payment
+  // app's "Rosa Delgado". This product's modal client record is a first
+  // name — whole-string edit distance can never bridge that gap (distance
+  // 8 against an allowance of 2), which made such clients permanently
+  // unmatchable and every digitally-paid sale to them a double-count.
+  // Every token of the shorter name must claim a DISTINCT token of the
+  // longer, each within the per-token OCR allowance.
+  const leftTokens = left.split(" ");
+  const rightTokens = right.split(" ");
+  const [short, long] =
+    leftTokens.length <= rightTokens.length
+      ? [leftTokens, rightTokens]
+      : [rightTokens, leftTokens];
+  const free = [...long];
+  const allClaimed = short.every((token) => {
+    const at = free.findIndex((candidate) => tokenMatches(token, candidate));
+    if (at === -1) return false;
+    free.splice(at, 1);
+    return true;
+  });
+  if (allClaimed) return true;
+
   const allowed = Math.min(2, Math.floor(Math.max(left.length, right.length) / 4));
   return editDistance(left, right) <= allowed;
 };
@@ -143,6 +172,14 @@ export const txnCandidatesForSale = (
   transactions: Transaction[],
   sale: Sale,
   clientName: string,
+  options: {
+    /**
+     * The resolve sheet's hand-link path: the user is LOOKING at the list,
+     * so the name rule (which exists to prevent silent wrong guesses)
+     * relaxes and amount+date carry the filter. Auto-linking never relaxes.
+     */
+    relaxName?: boolean;
+  } = {},
 ): Transaction[] =>
   transactions.filter(
     (txn) =>
@@ -150,6 +187,6 @@ export const txnCandidatesForSale = (
       !txn.matchedSaleId &&
       txn.business !== false &&
       txn.amountCents === saleTotalCents(sale) &&
-      sameName(clientName, txn.payer) &&
+      (options.relaxName || sameName(clientName, txn.payer)) &&
       datesCompatible(txn.date, sale.date),
   );

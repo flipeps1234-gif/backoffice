@@ -131,17 +131,28 @@ export const generateDue = (
   let misses = template.consecutiveMisses;
   let active = true;
   let justPaused = false;
+  /** Each STORED instance counts as at most one miss per walk — a single
+   *  lingering unpaid instance must not ratchet the counter to the pause
+   *  threshold inside one catch-up. */
+  const counted = new Set<string>();
 
   // Hard ceiling so a corrupted nextDue years in the past cannot generate
   // thousands of rows. 120 covers two years of weekly catch-up.
   for (let step = 0; step < 120 && nextDue <= today; step += 1) {
-    // The previous instance (stored OR created this walk) still OPEN when
-    // this one generates = one miss. Payment resets the count elsewhere.
-    const previousStillOpen =
-      mine.some((s) => s.state === "open" && s.date < nextDue) ||
-      created.some((s) => s.state === "open" && s.date < nextDue);
-    if (created.length > 0 || mine.length > 0) {
-      if (previousStillOpen) {
+    // A miss is a STORED instance — one that existed before this walk and
+    // the owner has actually seen — still OPEN when its successor comes
+    // due. Instances created during THIS walk never count: the owner was
+    // simply away, nothing could have been paid, and punishing a week of
+    // not opening the app is not what "missed" means. A PAID most-recent
+    // predecessor resets the count, which is the module contract
+    // ("resets on any payment") applied inside the walk; the app layer
+    // also resets the stored counter the moment a payment lands.
+    const prior = mine
+      .filter((s) => s.date < nextDue)
+      .sort((a, b) => (a.date < b.date ? 1 : -1))[0];
+    if (prior && prior.state === "open") {
+      if (!counted.has(prior.id)) {
+        counted.add(prior.id);
         misses += 1;
         if (misses >= RECURRING_PAUSE_AFTER_MISSES) {
           active = false;
@@ -149,6 +160,8 @@ export const generateDue = (
           break; // paused: this due date is NOT created
         }
       }
+    } else if (prior && prior.state === "paid") {
+      misses = 0;
     }
 
     const alreadyExists = mine.some((s) => s.date === nextDue);
@@ -179,4 +192,23 @@ export const generateDue = (
     },
     justPaused,
   };
+};
+
+/**
+ * The resume half of pause/resume. Pausing freezes nothing — nextDue stays
+ * where it was — so resuming after a long gap would make generateDue
+ * back-fill the entire paused period as OPEN sales the client never owed,
+ * then re-pause itself on those very creations. A paused gap is money the
+ * owner CHOSE not to expect; fast-forward past it, generating nothing.
+ * Same 120-step ceiling as the walk, for the same corrupted-date reason.
+ */
+export const fastForwardPastGap = (
+  template: RecurringTemplate,
+  today: string,
+): string => {
+  let due = template.nextDue;
+  for (let step = 0; step < 120 && due < today; step += 1) {
+    due = advance(due, template.cadence);
+  }
+  return due;
 };

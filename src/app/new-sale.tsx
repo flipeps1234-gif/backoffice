@@ -16,7 +16,7 @@ import {
   type PaymentMethod,
   type Sale,
 } from "@/lib/sale";
-import type { Service } from "@/lib/service";
+import { UNIT_LABELS, type Service } from "@/lib/service";
 import { dollarsToCents, formatCents } from "@/lib/transaction";
 
 /**
@@ -82,6 +82,21 @@ export default function NewSale({
     }
     return map;
   });
+  /**
+   * Prefill lines are SNAPSHOTS of what was actually charged. Rebuilding
+   * them from the current catalog silently re-priced a $75 job to catalog
+   * price × 1 — wrong revenue written to the ledger and the tax CSV in two
+   * taps. These overrides carry the historical unit price (and cost, and
+   * name — the service may have been renamed or deleted) into the memo
+   * below; the catalog only prices lines the user adds fresh.
+   */
+  const [prefillLines] = useState<Map<string, LineItem>>(() => {
+    const map = new Map<string, LineItem>();
+    for (const item of prefill?.lineItems ?? []) {
+      if (item.serviceId) map.set(item.serviceId, item);
+    }
+    return map;
+  });
   // Custom amount: a sale with no catalog product behind it. Kept as
   // dollars text until checkout so typing feels like the numpad.
   const [customAmount, setCustomAmount] = useState(() => {
@@ -101,9 +116,19 @@ export default function NewSale({
 
   const lineItems = useMemo((): LineItem[] => {
     const items: LineItem[] = [];
-    for (const service of services) {
-      const qty = quantities.get(service.id) ?? 0;
-      if (qty > 0) items.push(lineFromService(service, qty));
+    for (const [serviceId, qty] of quantities) {
+      if (qty <= 0) continue;
+      const snapshot = prefillLines.get(serviceId);
+      if (snapshot) {
+        // The historical price, at whatever quantity the user now says.
+        items.push({ ...snapshot, quantity: qty });
+        continue;
+      }
+      const service = services.find((svc) => svc.id === serviceId);
+      if (service) items.push(lineFromService(service, qty));
+      // No snapshot and no catalog entry: nothing to price it with — the
+      // qty map can only contain such an id if the catalog changed mid-
+      // sale, and a silently-invented price would be worse than dropping.
     }
     const customCents = dollarsToCents(customAmount);
     if (customCents > 0) {
@@ -116,7 +141,7 @@ export default function NewSale({
       });
     }
     return items;
-  }, [services, quantities, customAmount, customLabel]);
+  }, [services, quantities, prefillLines, customAmount, customLabel]);
 
   const totalCents = saleTotalCents({ lineItems });
   const knownClient = findClientByName(clients, clientName);
@@ -255,12 +280,19 @@ export default function NewSale({
           </button>
           <button
             type="button"
-            className="flex-1 rounded-xl bg-foreground px-4 py-6 text-lg font-semibold text-background hover:opacity-90"
+            disabled={!clientName.trim()}
+            className="flex-1 rounded-xl bg-foreground px-4 py-6 text-lg font-semibold text-background hover:opacity-90 disabled:opacity-40"
             onClick={() => finish(true, "digital")}
           >
             Digital
           </button>
         </div>
+        {!clientName.trim() && (
+          <p className="text-center text-sm text-neutral-500">
+            Digital matching needs a client name — go back and add one, or
+            take it as cash.
+          </p>
+        )}
         <button
           type="button"
           className="w-full text-sm text-neutral-500 hover:underline"
@@ -422,13 +454,55 @@ export default function NewSale({
 
       <div className="space-y-3">
         {services.map((service) => (
-          <ProductCard
-            key={service.id}
-            service={service}
-            quantity={quantities.get(service.id) ?? 0}
-            onStep={(delta) => step_(service.id, delta)}
-          />
+          <div key={service.id} className="space-y-2">
+            <ProductCard
+              service={service}
+              quantity={quantities.get(service.id) ?? 0}
+              onStep={(delta) => step_(service.id, delta)}
+            />
+            {service.pricing.type === "rate" &&
+              (quantities.get(service.id) ?? 0) > 0 && (
+                <div className="flex items-center gap-2 px-2 text-sm">
+                  <label htmlFor={`size-${service.id}`}>
+                    How many {UNIT_LABELS[service.pricing.unit]}s?
+                  </label>
+                  <input
+                    id={`size-${service.id}`}
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="any"
+                    className={`${fieldClass} w-24 text-center`}
+                    value={quantities.get(service.id) ?? 0}
+                    onChange={(e) => {
+                      const size = Number.parseFloat(e.target.value);
+                      setQuantities((current) => {
+                        const next = new Map(current);
+                        next.set(
+                          service.id,
+                          Number.isFinite(size) && size > 0 ? size : 0,
+                        );
+                        return next;
+                      });
+                    }}
+                  />
+                </div>
+              )}
+          </div>
         ))}
+        {[...prefillLines.values()]
+          .filter((item) => !services.some((svc) => svc.id === item.serviceId))
+          .map((item) => (
+            // The service was deleted/renamed since this sale — the line
+            // still shows and still charges its snapshot price.
+            <div
+              key={item.serviceId}
+              className="rounded-xl border border-neutral-300 p-4 text-sm dark:border-neutral-700"
+            >
+              {item.name} · {formatCents(item.unitCents)} ·{" "}
+              {quantities.get(item.serviceId!) ?? 0} — from the original sale
+            </div>
+          ))}
       </div>
 
       <div className="rounded-xl border border-neutral-300 p-4 dark:border-neutral-700">

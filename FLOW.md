@@ -83,3 +83,22 @@ Decisions made at build time (owner-confirmed, 2026-08-12):
   the client-first ordering exists via the Clients page. A settings tab
   choosing the default is PARKED (IDEAS.md).
 - `EXPECTED_FLAG_DAYS = 14`, `RECURRING_PAUSE_AFTER_MISSES = 3`.
+
+Review-driven decisions (2026-08-13, adversarial pass over the build):
+
+- **Digital requires a client.** A digital sale with no client name can
+  never be matched, so it would double-count as EXPECTED forever. The
+  Digital button disables until a client is named; cash never needs one.
+- **A "miss" is a STORED instance** still open when its successor comes
+  due — instances created during one catch-up walk never count, because
+  a week of not opening the app is not a missed payment. Paying any
+  instance resets the counter (the module contract, now implemented).
+- **Resume fast-forwards** past the paused gap; the gap generates
+  nothing. Money the owner chose not to expect stays unexpected.
+- **First-name clients match** full payer names by token subset
+  ("Rosa" ↔ "Rosa Delgado"); the OCR edit-distance rule applies within
+  tokens. The stale-EXPECTED resolve sheet gained "Find the payment…",
+  which relaxes the name rule because a human is choosing from a list.
+- **Instance identity is enforced by the database** (unique on
+  template + due date, migration 0008) — concurrent app opens race to
+  one row instead of duplicating owed.

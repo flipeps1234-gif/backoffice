@@ -103,3 +103,28 @@ export const updateSale = async (
   const { error } = await supabase.from("sales").update(row).eq("id", id);
   if (error) throw new Error(error.message);
 };
+
+/**
+ * Insert RECURRING INSTANCES with the race closed. Two devices generating
+ * in the same minute both pass the in-memory idempotency check; the
+ * unique index from 0008 makes the second insert a no-op instead of a
+ * duplicate OPEN sale. ignoreDuplicates = ON CONFLICT DO NOTHING.
+ */
+export const insertGeneratedSales = async (
+  sales: Sale[],
+  accountId: string,
+): Promise<void> => {
+  const supabase = getSupabase();
+  if (!supabase || sales.length === 0) return;
+
+  const { error } = await supabase
+    .from("sales")
+    .upsert(
+      sales.map((s) => toRow(s, accountId)),
+      {
+        onConflict: "account_id,recurring_template_id,occurred_on",
+        ignoreDuplicates: true,
+      },
+    );
+  if (error) throw new Error(error.message);
+};
