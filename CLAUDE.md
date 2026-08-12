@@ -17,81 +17,66 @@ fields flagged, tap to fix) → swipe right = business, left =
 personal → running totals climb. Manual quick-add covers cash. The
 law: every flow survives "ten seconds, one hand, in a driveway."
 
-## Status — audited 2026-08-04, no optimism
-Typecheck, lint and `next build` all pass with zero errors. That is
-the only automated signal this project has: there is NO test runner,
-NO test file and NO test script anywhere (package.json has dev,
-build, start, lint). Every "verified" claim below was verified by
-hand, in a browser, once. Nothing is protected against regression.
+## Status — rewritten 2026-08-13 after the v0.5 build, no optimism
+Typecheck, lint and `next build` pass clean. Still ZERO automated
+tests (no runner, no test script) — but the v0.5 pure logic (sale
+math, cadence walk, misses/pause, matching rules) was proven against
+a 39-case node harness run on the tsc-transpiled real modules, and
+the flows below were driven end to end in a browser. Harnesses are
+throwaway; nothing guards regressions.
 
-EXISTS AND WORKS (I have driven each of these myself):
-- Upload → extract → confirmation sheet → swipe → running totals.
-- Instant insights: period total, busiest day, top payer, scoped to
-  the batch just confirmed. The hard requirement is met.
-- Numpad quick-add with service chips, rate mini-calc, save-as-a-
-  service prompt, per-customer remembered price and size.
-- Services catalog with flat/rate pricing and an optional cost.
-- Expenses via direction in/out; receipt/check capture on phones.
-- Supabase auth (6-digit code) + RLS. Policies are correct: all four
-  of select/insert/update/delete gate on auth.uid() = account_id.
-- History grouped by day with "log again"; dashboard with money in/
-  out by month, revenue by service, margin, CSV tax export.
-- Desktop layout: rail, sticky flow column, keyboard numpad.
-- Drag-and-drop upload; one-upload-at-a-time guard.
-- The real OpenAI extraction path, end to end. Confirmed by you, not
-  by me — every run I made used the mock or a stubbed fetch.
-- Sign-in by magic link. The 6-digit code was reverted: the email body
-  comes from Supabase's template, so a code needs {{ .Token }} in the
-  Magic Link and Confirm signup templates, which needs custom SMTP.
+EXISTS AND VERIFIED IN THE BROWSER (v0.5, this session):
+- Sale flow per FLOW.md: product cards (Gain/Loss/Net, the sketch
+  style), qty steppers, custom amount, checkout with self-building
+  clients, recurring toggle, Paid? → cash/digital.
+- OPEN → Owed tab (grouped, aged, per-client subtotals, total big,
+  cash mark), EXPECTED with the 14-day resolve sheet wired.
+- Matching: batch auto-link with working Undo restoring BOTH sides;
+  checkout-digital match against an already-ingested payment; two
+  identical candidates → picker, never a silent guess.
+- Received/owed shown as two figures, never blended. Cash sales mint
+  a mirror transaction linked both ways, so dashboard/CSV/totals keep
+  reading one stream ("one payment, one sale" by construction).
+- Recurring templates: created at checkout, anchor+1 step nextDue,
+  client-page pause/resume, 3-miss self-pause (harness-proven).
+- Products page with margins; clients list/detail/history/edit;
+  homepage per the owner's spec (connected New sale / Log again).
+- Everything from v0.1–v0.4 that was verified before still stands.
 
 EXISTS BUT UNTESTED / UNPROVEN:
-- The real OpenAI extraction path is NOT in this list — you ran it and
-  it works. Moved up. What is still untested is the prompt's ACCURACY:
-  it has never been graded against a corpus, because /eval is not
-  wired (see MISSING). "It read my screenshot" and "it reads real
-  screenshots reliably" are different claims and only the first is
-  established.
-- Venmo social-feed detection. The warning, the message and the UI
-  path all exist and are correct, but detection is ONE SENTENCE OF
-  PROMPT — the model's judgment, not code. Nothing measures its hit
-  rate. See FRAGILE.md.
-- Migrations 0003 (direction) and 0004 (quantity). I have never
-  confirmed these were run against the live Supabase project. If
-  they were not, every insert AND every load fails in production.
-  Run them before trusting anything above.
-- Chunked upload across >4 files / >3.5MB. The path exists and the
-  compression numbers were measured once; multi-chunk failure and
-  partial-batch recovery have never been exercised.
-- Everything on a real phone. All verification was desktop browser.
+- Every v0.5 PERSISTENCE path. Local dev has no Supabase, so sales/
+  clients/templates round-tripping through Postgres, the 0006 data
+  migration, and recurring generation on app open (it is gated on a
+  signed-in account) have never run against a real database.
+- Migrations 0001–0007 have NEVER been run against the live project
+  (the DB was paused, then found empty). The combined one-paste file
+  is regenerated and delivered; production saves NOTHING until it
+  runs. This is still the #1 item in FRAGILE.md and DEPLOY.md.
+- The real OpenAI extraction path post-v0.5 (matching runs on
+  confirmed batches; only exercised with stubbed extraction).
 
-MISSING / BROKEN:
-- /eval is a FAIL, not a partial. The folder exists with one
-  expected.json, but nothing captures corrections: ConfirmationSheet
-  exposes only onChange(id, patch), which overwrites the extraction
-  in place. The original is discarded, the image is never retained,
-  and no corrections table exists. The bake-off this folder was for
-  cannot happen. The only two mentions of /eval in src/ are comments.
-- Extraction CAN fail silently, which the engineering rules forbid.
-  A 200 response with zero transactions and zero warnings sets
-  status="error" while error is still "" — an empty red box.
-- Dedupe does not cover the database-reload path: rows loaded from
-  Supabase go straight into the sheet unscreened.
-- Money parsing is en-US only. "1.234,56" becomes $1.23, silently, on
-  the confirmation sheet's amount field. v0.5 is bilingual EN/ES/PT;
-  this must be fixed as part of it, not after.
-- No delete anywhere. A wrong row cannot be removed, only edited.
+MISSING / KNOWN GAPS (deliberate cuts, not accidents):
+- Recurring template EDIT (line items, future instances only) and
+  explicit END are not wired — only pause/resume shipped. The spec
+  named them; say the word and they land in a follow-up.
+- Client "default services" and STORED remembered prices were cut in
+  favour of deriving "their usual" from sales history (the
+  customer-memory stance). Notes shipped.
+- Anonymous (signed-out) sessions do not generate recurring
+  instances — generation lives in the account-gated load path.
+- Everything in FRAGILE.md that was open remains open: no delete
+  anywhere (now including sales), en-US-only money parsing (v0.6 is
+  the bilingual milestone), /eval still not wired.
 
 PARKED, CONFIRMED UNREACHABLE:
-- invoice-builder prototype (src/lib/invoice.ts, invoice-builder.tsx,
-  invoice-preview.tsx). Verified: nothing outside those three files
-  imports them; page.tsx renders only UploadScreen. Keep, do NOT
-  extend. No PDF. Its float money math is still unmigrated — that is
-  fine while it stays unreachable, and must be fixed before any of it
-  is reused.
+- invoice-builder prototype — unchanged, still unreachable, still
+  carrying unmigrated float math. Fine while parked.
 
-Audited invariants: 5 PASS (integer cents, extraction module, source
-field, zero billing, hard boundaries), 3 PARTIAL (dedupe, Venmo
-detection, lib purity), 1 FAIL (/eval). Details in FRAGILE.md.
+FLOW.md is the spec of record for the sale flow and matched the
+build at commit time (deviations listed above are ABSENCES, not
+contradictions). An adversarial review of the v0.5 diff was running
+when this Status was written; its confirmed findings and fixes land
+as follow-up commits.
 
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →
