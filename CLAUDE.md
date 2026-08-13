@@ -78,6 +78,24 @@ contradictions). An adversarial review of the v0.5 diff was running
 when this Status was written; its confirmed findings and fixes land
 as follow-up commits.
 
+Doc-consolidation pass (2026-08-13, docs only — no feature code). Each
+edit was applied idempotently; all seven were ABSENT beforehand and
+NEWLY APPLIED (nothing was already present to merge or dedupe against,
+except the vague "everything-bundle (~$15/mo)" line, which was
+superseded by the Bundle $12/mo · $99/yr menu):
+- Monetization → v0.5 tier mapping (free vs premium): NEW.
+- Monetization → four-module menu + seats + tax + launch rules: NEW
+  (replaced the older loose module list and bundle price).
+- Roadmap v0.6 → global search + optional photos/notes: NEW.
+- Roadmap v0.6.5 → tax-story gaps (mileage-lite, set-aside nudge,
+  Schedule-C categories, proof-of-income PDF): NEW.
+- Roadmap v0.8 → optional Plaid bank feeds: NEW.
+- FLOW.md CHECKOUT → `photo/notes (opt.)`: NEW, and marked
+  spec-ahead-of-build (it is a v0.6 item, not in the v0.5 code). It is
+  the only flow-touching change in the pass; the rest of FLOW.md was
+  re-verified against the implementation with no drift (see FLOW.md's
+  Implementation sync note).
+
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →
   confirmation sheet → swipe → running totals. In-memory is fine.
@@ -109,20 +127,54 @@ as follow-up commits.
   EXPECTED REVENUE (never scheduling), and the matching engine that
   links ingested transactions to sales. Totals show received and owed
   as two separate figures — owed is never blended into revenue.
-- v0.6 Bilingual EN/ES/PT + polish. This build is the demo.
+- v0.6 Bilingual EN/ES/PT + polish. This build is the demo. Also:
+  global search across sales/clients/transactions; optional photos +
+  notes on sales (proof-of-work).
+- v0.6.5 Tax-story gaps: mileage-lite (one-time distance per client ×
+  logged visit count = computed mileage log; never GPS, never
+  background tracking); quarterly set-aside nudge (informational
+  percentage only — no tax engine); Schedule-C-grade expense
+  categories on receipts; proof-of-income PDF export.
 - v0.7 Native/Expo port. Revisit trigger unchanged: install friction
   on iOS, where there is no install prompt at all (see IDEAS.md).
+- v0.8 Optional bank feeds (Plaid) as the top rung of the reliability
+  ladder; Zelle coverage arrives via feeds. Screenshot-first remains
+  the product's default and identity.
 Never start the next milestone or out-of-scope features unprompted —
 make me say "milestone done" first.
 
 ## Monetization architecture (context only — build NO billing)
 Modular pay-per-feature, prices conceptual. Free forever and
 untouchable: the core loop, manual logging, viewing ALL history at
-any age, exporting their own data, every language. Future paid
-modules: tax-ready year package/filing (per event, January);
-insights & reports (margin insights belong here); team seats (when
-multi-user unparks); payment links (per transaction, 2028); one
-everything-bundle (~$15/mo).
+any age, exporting their own data, every language.
+
+v0.5 tier mapping. FREE forever: the sale flow, clients, the Owed tab,
+manual one-tap matching (correctness is never paid), the expected
+flag/resolve. PREMIUM (future gate): automatic matching & Owed
+auto-clear, recurring templates, WhatsApp owed-alerts — the "runs
+itself" layer. Everything ships enabled for all users now; premium
+features are flagged in code structure only. No billing code until an
+entity + Stripe exist. The founding cohort is grandfathered.
+
+Module menu — à la carte, MAX FOUR EVER (a new premium feature joins an
+existing module, never spawns a fifth):
+- Autopilot $6/mo — auto-matching, Owed auto-clear, recurring.
+- Alerts $5/mo — the WhatsApp layer: owed-alerts, confirmations,
+  weekly digest.
+- Insights $5/mo — reports, margins, year-in-review; benchmarking
+  later at density.
+- Time Machine $4/mo — version history, point-in-time restore,
+  deleted-entry recovery, multi-device sync.
+Bundle $12/mo or $99/yr = all four. Seats: a separate stacking add-on
+when multi-user unparks ($10 first five, $1/seat after — conceptual).
+Tax: per-event ($99 / $149 pro-reviewed), NEVER a module; bundle
+members get $20 off filing. Payment links stay a per-transaction item
+(2028), also not a module.
+Pricing page is bundle-first; upsells are contextual, at the gated
+feature only. Gate-on launch sells Bundle + Autopilot only; the other
+modules unshelve on demand. Launch pricing is deliberately
+under-market; any future repricing applies to NEW users only — an
+existing user's price never rises.
 Insights boundary — the three instant insights (period total,
 busiest day, top payer) are core and free forever. The paid module
 is depth on top: trends over time, per-service margin, comparisons,

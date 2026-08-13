@@ -26,12 +26,13 @@ Two invariants the chart encodes, restated in words:
     │ CHECKOUT            │╌╌╌►│ RECURRING TEMPLATE  │
     │ client (+ save?)    │    │ wkly/2wk/mo/every-N │
     │ date = today        │    │ · when due, creates │
-    └──────────┬──────────┘    │   an OPEN sale in   │
-               ▼               │   OWED (unpaid)     │
-          ◇  PAID?  ◇          │ · pauses + flags    │
-         no │     │ yes        │   after 3 misses    │
-            │     │            └╌╌╌╌╌╌┬╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘
-            ▼     └──► ◇ CASH OR      ╎ when due
+    │ photo/notes (opt.)  │    │   an OPEN sale in   │
+    └──────────┬──────────┘    │   OWED (unpaid)     │
+               ▼               │ · pauses + flags    │
+          ◇  PAID?  ◇          │   after 3 misses    │
+         no │     │ yes        └╌╌╌╌╌╌┬╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘
+            │     │                   ╎ when due
+            ▼     └──► ◇ CASH OR      ╎
    ┌─────────────┐     ◇ DIGITAL? ◇   ╎
    │ OWED TAB    │◄╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘
    │ open sales, │   cash │      │ digital
@@ -102,3 +103,23 @@ Review-driven decisions (2026-08-13, adversarial pass over the build):
 - **Instance identity is enforced by the database** (unique on
   template + due date, migration 0008) — concurrent app opens race to
   one row instead of duplicating owed.
+
+Spec-ahead-of-build (drawn in the chart before the code exists):
+
+- **photo / notes (optional)** at CHECKOUT — a proof-of-work
+  attachment (a picture of the finished lawn, a note) on the sale.
+  This is a **v0.6 roadmap item**, not in the v0.5 build; it sits in
+  the chart so the flow is designed around it now. The CHECKOUT box
+  shows it as `photo/notes (opt.)`. Until v0.6 ships it, this is the
+  one place the chart intentionally leads the implementation.
+
+Implementation sync — checked 2026-08-13, every other box matches the
+code:
+
+- The EXPECTED resolve box lists three options for space; the code has
+  a fourth, **"Find the payment…"** (documented above). The ASCII box
+  abbreviates — the prose is authoritative, not a drift/bug.
+- No other divergence found: NEW SALE / LOG AGAIN, PICK PRODUCTS,
+  CHECKOUT (minus the v0.6 line above), PAID? → cash/digital, the
+  matching engine's rules, LINKED·PAID·undo, candidates/EXPECTED, and
+  the LEDGER-counts-once invariant all match what shipped.
