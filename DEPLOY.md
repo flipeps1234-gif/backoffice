@@ -1,4 +1,4 @@
-# Deploying swipebooks
+# Deploying contado
 
 Read this before pushing. It exists because the same three config items
 have been "I'll do it later" for several sessions, and two of them break
@@ -60,7 +60,7 @@ stop and run the migration.
 
 Supabase → Authentication → URL Configuration → Redirect URLs.
 
-Add the exact production origin (e.g. `https://swipebooks.vercel.app`).
+Add the exact production origin (e.g. `https://contado.vercel.app`).
 Without it the magic link bounces to the Site URL and no session is ever
 created — sign-in appears to work and then silently does nothing.
 

@@ -36,7 +36,7 @@ export default function Home() {
     <main className="mx-auto w-full max-w-lg px-4 py-8 lg:max-w-5xl lg:px-8">
       <h1 className="mb-6 flex items-center gap-2 text-lg font-semibold tracking-tight">
         <Mark />
-        swipebooks
+        contado
       </h1>
       <UploadScreen />
     </main>

@@ -53,13 +53,13 @@ export default function Dashboard({
   const downloadTaxCsv = () =>
     download(
       taxCsv(transactions, services),
-      "swipebooks-for-your-tax-preparer.csv",
+      "contado-for-your-tax-preparer.csv",
     );
 
   const downloadEverythingCsv = () =>
     download(
       everythingCsv(transactions, services),
-      "swipebooks-everything.csv",
+      "contado-everything.csv",
     );
 
   return (

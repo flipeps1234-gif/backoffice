@@ -11,7 +11,11 @@
  */
 export const TERMS_VERSION = "2026-08-06";
 
-const KEY = "swipebooks.terms";
+// Renamed from "swipebooks.terms" with the rebrand. A device that accepted
+// under the old key will not have this one, so it sees the terms once more —
+// harmless (the app has no real users yet) and arguably correct: a new name
+// is worth re-acknowledging. Not worth a migration to read both keys.
+const KEY = "contado.terms";
 
 /**
  * Fallback for private browsing and locked-down webviews, where localStorage

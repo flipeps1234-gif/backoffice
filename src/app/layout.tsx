@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "swipebooks",
+  title: "contado",
   description: "Snap your payment screenshots. We do the bookkeeping.",
 };
 

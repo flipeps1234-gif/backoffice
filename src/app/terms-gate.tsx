@@ -63,7 +63,7 @@ export default function TermsGate({ onAccept }: { onAccept: () => void }) {
         </Term>
 
         <Term title="This is a record, not an accountant">
-          swipebooks keeps track of money in and out. It does not give tax or
+          contado keeps track of money in and out. It does not give tax or
           financial advice and it does not file anything. The export is
           something you or your tax preparer work from, not a return.
         </Term>
