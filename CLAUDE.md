@@ -48,17 +48,22 @@ EXISTS BUT UNTESTED / UNPROVEN:
   clients/templates round-tripping through Postgres, the 0006 data
   migration, and recurring generation on app open (it is gated on a
   signed-in account) have never run against a real database.
-- Migrations 0001–0007 have NEVER been run against the live project
+- Migrations 0001–0009 have NEVER been run against the live project
   (the DB was paused, then found empty). The combined one-paste file
-  is regenerated and delivered; production saves NOTHING until it
-  runs. This is still the #1 item in FRAGILE.md and DEPLOY.md.
+  is regenerated and delivered (now including 0009, ended_on);
+  production saves NOTHING until it runs. Still #1 in FRAGILE.md and
+  DEPLOY.md. If the OLD combined file (0001–0008) was already run,
+  run 0009 alone — template loading selects ended_on and errors
+  without it.
 - The real OpenAI extraction path post-v0.5 (matching runs on
   confirmed batches; only exercised with stubbed extraction).
 
 MISSING / KNOWN GAPS (deliberate cuts, not accidents):
-- Recurring template EDIT (line items, future instances only) and
-  explicit END are not wired — only pause/resume shipped. The spec
-  named them; say the word and they land in a follow-up.
+- ~~Recurring template EDIT and explicit END~~ — SHIPPED in the
+  2026-08-13 follow-up: edit (line items, future instances only, via
+  re-snapshot at generation) and End (one-way, `ended_on`, migration
+  0009) live on the client page. Harness-proven; browser-verified.
+  Cadence stays non-editable by decision (end + recreate is the truth).
 - Client "default services" and STORED remembered prices were cut in
   favour of deriving "their usual" from sales history (the
   customer-memory stance). Notes shipped.

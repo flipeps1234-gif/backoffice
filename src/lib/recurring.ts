@@ -29,6 +29,11 @@ export type RecurringTemplate = {
   /** Instances still OPEN when their successor generated. Resets on any
    *  payment; at RECURRING_PAUSE_AFTER_MISSES the template pauses itself. */
   consecutiveMisses: number;
+  /** YYYY-MM-DD the owner explicitly ended it, or null. End is the one-way
+   *  door pause never was: no resume, no more instances, history untouched.
+   *  Kept separate from `active` so an ended template can never be nagged
+   *  about ("3 missed — still active?") or accidentally resumed. */
+  endedOn: string | null;
 };
 
 export const RECURRING_PAUSE_AFTER_MISSES = 3;
@@ -119,7 +124,10 @@ export const generateDue = (
   today: string,
   makeId: () => string,
 ): GenerationResult => {
-  if (!template.active) {
+  // `endedOn` is checked independently of `active` on purpose: an ended
+  // template must stay dead even if a stale write or hand-edited row left
+  // active=true behind. Belt and braces around a one-way door.
+  if (!template.active || template.endedOn !== null) {
     return { created: [], template, justPaused: false };
   }
 

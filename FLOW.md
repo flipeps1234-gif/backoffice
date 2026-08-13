@@ -104,6 +104,22 @@ Review-driven decisions (2026-08-13, adversarial pass over the build):
   template + due date, migration 0008) — concurrent app opens race to
   one row instead of duplicating owed.
 
+Template management (2026-08-13 follow-up — the two controls the spec
+named and the first build cut; management controls, not flow boxes, so
+the chart is unchanged):
+
+- **Edits apply to future instances only.** The template's line items are
+  re-snapshotted into each instance at generation time, so changing them
+  changes what tomorrow expects — never what yesterday charged. Raising
+  Rosa's clean from $120 to $130 edits the template; last month's sale
+  keeps last month's price. Cadence is not editable — end the old
+  arrangement and make a new one; that's what actually happened.
+- **End is the one-way door pause never was.** Pause freezes (and resume
+  fast-forwards past the gap); End stamps `ended_on`, stops generation
+  forever, offers no resume, and deletes nothing — history still points
+  at the template. `endedOn` is checked independently of `active` in
+  generation, so a stale `active=true` can't reanimate an ended template.
+
 Spec-ahead-of-build (drawn in the chart before the code exists):
 
 - **photo / notes (optional)** at CHECKOUT — a proof-of-work

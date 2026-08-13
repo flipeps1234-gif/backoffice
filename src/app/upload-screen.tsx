@@ -1135,6 +1135,7 @@ function Ledger({
         clients={clients}
         sales={sales}
         templates={templates}
+        services={services}
         onUpdateClient={(id, patch) => {
           setClients((current) =>
             current.map((c) => (c.id === id ? { ...c, ...patch } : c)),

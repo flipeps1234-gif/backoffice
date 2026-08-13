@@ -11,6 +11,7 @@ type Row = {
   next_due: string;
   active: boolean;
   consecutive_misses: number;
+  ended_on: string | null;
 };
 
 /**
@@ -46,6 +47,7 @@ const toTemplate = (row: Row): RecurringTemplate => ({
   nextDue: row.next_due,
   active: row.active,
   consecutiveMisses: row.consecutive_misses,
+  endedOn: row.ended_on,
 });
 
 export const loadTemplates = async (): Promise<RecurringTemplate[]> => {
@@ -56,7 +58,7 @@ export const loadTemplates = async (): Promise<RecurringTemplate[]> => {
     supabase
       .from("recurring_templates")
       .select(
-        "id, client_id, line_items, cadence, next_due, active, consecutive_misses",
+        "id, client_id, line_items, cadence, next_due, active, consecutive_misses, ended_on",
       )
       .order("next_due", { ascending: true })
       .order("id", { ascending: true })
@@ -81,6 +83,7 @@ export const insertTemplate = async (
     next_due: template.nextDue,
     active: template.active,
     consecutive_misses: template.consecutiveMisses,
+    ended_on: template.endedOn,
   });
   if (error) throw new Error(error.message);
 };
@@ -99,6 +102,7 @@ export const updateTemplate = async (
   if (patch.active !== undefined) row.active = patch.active;
   if (patch.consecutiveMisses !== undefined)
     row.consecutive_misses = patch.consecutiveMisses;
+  if (patch.endedOn !== undefined) row.ended_on = patch.endedOn;
   if (Object.keys(row).length === 0) return;
 
   const { error } = await supabase

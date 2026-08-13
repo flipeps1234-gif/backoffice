@@ -198,6 +198,7 @@ export default function NewSale({
             ),
             active: true,
             consecutiveMisses: 0,
+            endedOn: null,
           }
         : null;
 
