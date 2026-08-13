@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { formatCents, type Transaction } from "@/lib/transaction";
+import { useLocale } from "./use-locale";
 
 /**
  * One card at a time. Right = business, left = personal.
@@ -23,6 +24,7 @@ export default function SwipeDeck({
   onUndo: () => void;
   canUndo: boolean;
 }) {
+  const { t } = useLocale();
   const [dragX, setDragX] = useState(0);
   // Rendered, so it's state. The ref only carries the pointer's origin.
   const [dragging, setDragging] = useState(false);
@@ -82,7 +84,13 @@ export default function SwipeDeck({
         <div
           role="group"
           tabIndex={0}
-          aria-label={`${card.direction === "out" ? "Expense, money out: " : ""}${card.payer || "Unknown"}, ${formatCents(card.amountCents)}. Right arrow for business, left arrow for personal.`}
+          aria-label={t(
+            card.direction === "out" ? "sheet.cardAriaOut" : "sheet.cardAria",
+            {
+              payer: card.payer || t("sheet.unknownPayer"),
+              amount: formatCents(card.amountCents),
+            },
+          )}
           className="absolute inset-0 h-52 cursor-grab touch-none select-none rounded-xl border border-neutral-300 bg-white p-5 shadow-sm active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-neutral-900"
           style={{
             transform: `translateX(${dragX}px) rotate(${dragX / 20}deg)`,
@@ -99,7 +107,7 @@ export default function SwipeDeck({
         >
           {card.direction === "out" && (
             <span className="mb-1 inline-block rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700">
-              money out
+              {t("sheet.moneyOut")}
             </span>
           )}
           <p
@@ -111,10 +119,10 @@ export default function SwipeDeck({
             {formatCents(card.amountCents)}
           </p>
           <p className="mt-1 text-lg text-neutral-900">
-            {card.payer || "Unknown"}
+            {card.payer || t("sheet.unknownPayer")}
           </p>
           <p className="mt-1 text-sm text-neutral-500">
-            {card.date || "no date"}
+            {card.date || t("sheet.noDate")}
             {card.memo && ` · ${card.memo}`}
           </p>
 
@@ -124,7 +132,7 @@ export default function SwipeDeck({
                 towardBusiness ? "text-emerald-600" : "text-neutral-400"
               }`}
             >
-              {towardBusiness ? "Business" : "Personal"}
+              {towardBusiness ? t("sheet.business") : t("sheet.personal")}
             </p>
           )}
         </div>
@@ -136,14 +144,14 @@ export default function SwipeDeck({
           className="flex-1 rounded-lg border border-neutral-300 bg-white px-4 py-4 text-base font-medium text-neutral-900 hover:bg-neutral-50"
           onClick={() => decide(false)}
         >
-          Personal
+          {t("sheet.personal")}
         </button>
         <button
           type="button"
           className="flex-1 rounded-lg bg-emerald-600 px-4 py-4 text-base font-medium text-white hover:bg-emerald-700"
           onClick={() => decide(true)}
         >
-          Business
+          {t("sheet.business")}
         </button>
       </div>
 
@@ -153,7 +161,7 @@ export default function SwipeDeck({
         disabled={!canUndo}
         onClick={onUndo}
       >
-        Undo last
+        {t("sheet.undoLast")}
       </button>
     </div>
   );

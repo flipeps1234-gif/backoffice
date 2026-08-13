@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { Client } from "@/lib/client";
 import {
-  cadenceLabel,
   fastForwardPastGap,
   RECURRING_PAUSE_AFTER_MISSES,
   type RecurringTemplate,
@@ -18,6 +17,7 @@ import {
 } from "@/lib/sale";
 import type { Service } from "@/lib/service";
 import { dollarsToCents, formatCents } from "@/lib/transaction";
+import { useLocale } from "./use-locale";
 
 /**
  * Clients: the directory the sale flow builds one save-prompt at a time.
@@ -72,6 +72,7 @@ export default function ClientsPage({
   onLogAgain: (sale: Sale) => void;
   onClose: () => void;
 }) {
+  const { t } = useLocale();
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
@@ -132,14 +133,14 @@ export default function ClientsPage({
               setEditing(false);
             }}
           >
-            ← All clients
+            {t("clients.allClients")}
           </button>
           <button
             type="button"
             className="text-sm text-neutral-500 hover:underline"
             onClick={onClose}
           >
-            Close
+            {t("common.close")}
           </button>
         </div>
 
@@ -147,7 +148,7 @@ export default function ClientsPage({
           <div className="space-y-3">
             <div>
               <label className={labelClass} htmlFor="client-name">
-                Name
+                {t("clients.name")}
               </label>
               <input
                 id="client-name"
@@ -158,13 +159,13 @@ export default function ClientsPage({
             </div>
             <div>
               <label className={labelClass} htmlFor="client-notes">
-                Notes
+                {t("clients.notes")}
               </label>
               <textarea
                 id="client-notes"
                 className={fieldClass}
                 rows={3}
-                placeholder="Gate code, dog's name, prefers Tuesdays…"
+                placeholder={t("clients.notesPlaceholder")}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -182,14 +183,14 @@ export default function ClientsPage({
                   setEditing(false);
                 }}
               >
-                Save
+                {t("common.save")}
               </button>
               <button
                 type="button"
                 className="flex-1 rounded-lg border border-neutral-400 px-4 py-3 text-sm font-medium"
                 onClick={() => setEditing(false)}
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -208,20 +209,23 @@ export default function ClientsPage({
                 setEditing(true);
               }}
             >
-              Edit
+              {t("common.edit")}
             </button>
           </div>
         )}
 
         {owed > 0 && (
           <p className="rounded-lg bg-neutral-100 px-4 py-3 text-sm dark:bg-neutral-900">
-            Owes <strong className="tabular-nums">{formatCents(owed)}</strong>
+            {t("clients.owes")}{" "}
+            <strong className="tabular-nums">{formatCents(owed)}</strong>
           </p>
         )}
 
         {theirTemplates.length > 0 && (
           <section>
-            <h3 className="mb-2 text-sm font-medium">Recurring</h3>
+            <h3 className="mb-2 text-sm font-medium">
+              {t("clients.recurring")}
+            </h3>
             <ul className="space-y-2">
               {theirTemplates.map((tpl) => {
                 const ended = tpl.endedOn !== null;
@@ -236,16 +240,24 @@ export default function ClientsPage({
                       <div className="min-w-0">
                         <p className="truncate text-sm">
                           {tpl.lineItems.map((i) => i.name).join(", ") ||
-                            "Sale"}{" "}
+                            t("clients.sale")}{" "}
                           · {formatCents(saleTotalCents(tpl))}
                         </p>
                         <p className="text-xs text-neutral-500">
-                          {cadenceLabel(tpl.cadence)}
+                          {tpl.cadence.type === "weekly"
+                            ? t("sale.cadenceWeekly")
+                            : tpl.cadence.type === "biweekly"
+                              ? t("sale.cadenceBiweekly")
+                              : tpl.cadence.type === "monthly"
+                                ? t("sale.cadenceMonthly")
+                                : t("clients.everyNDays", {
+                                    days: tpl.cadence.days,
+                                  })}
                           {ended
-                            ? ` · ended ${tpl.endedOn}`
+                            ? ` · ${t("clients.ended", { date: tpl.endedOn ?? "" })}`
                             : tpl.active
-                              ? ` · next ${tpl.nextDue}`
-                              : " · paused"}
+                              ? ` · ${t("clients.next", { date: tpl.nextDue })}`
+                              : ` · ${t("clients.paused")}`}
                         </p>
                       </div>
                       {/* Ended templates are a record, not a control panel. */}
@@ -256,7 +268,7 @@ export default function ClientsPage({
                             className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
                             onClick={() => startTemplateEdit(tpl)}
                           >
-                            Edit
+                            {t("common.edit")}
                           </button>
                           <button
                             type="button"
@@ -284,14 +296,16 @@ export default function ClientsPage({
                               })
                             }
                           >
-                            {tpl.active ? "Pause" : "Resume"}
+                            {tpl.active
+                              ? t("clients.pause")
+                              : t("clients.resume")}
                           </button>
                           <button
                             type="button"
                             className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-neutral-600 dark:text-red-400 dark:hover:bg-neutral-800"
                             onClick={() => setEndConfirmId(tpl.id)}
                           >
-                            End
+                            {t("clients.end")}
                           </button>
                         </div>
                       )}
@@ -301,16 +315,16 @@ export default function ClientsPage({
                       !tpl.active &&
                       tpl.consecutiveMisses >= RECURRING_PAUSE_AFTER_MISSES && (
                         <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
-                          {tpl.consecutiveMisses} missed — still active? Resume
-                          if so, or leave it paused.
+                          {t("clients.missedNag", {
+                            count: tpl.consecutiveMisses,
+                          })}
                         </p>
                       )}
 
                     {endConfirmId === tpl.id && !ended && (
                       <div className="mt-2 rounded-md bg-neutral-100 p-2.5 dark:bg-neutral-900">
                         <p className="text-xs text-neutral-600 dark:text-neutral-400">
-                          End for good? It stops expecting this money — no
-                          resume. Past sales stay in the history.
+                          {t("clients.endConfirm")}
                         </p>
                         <div className="mt-2 flex gap-2">
                           <button
@@ -327,14 +341,14 @@ export default function ClientsPage({
                               setEndConfirmId(null);
                             }}
                           >
-                            End it
+                            {t("clients.endIt")}
                           </button>
                           <button
                             type="button"
                             className="rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium dark:border-neutral-600"
                             onClick={() => setEndConfirmId(null)}
                           >
-                            Keep
+                            {t("clients.keep")}
                           </button>
                         </div>
                       </div>
@@ -349,13 +363,17 @@ export default function ClientsPage({
                               className="flex items-center gap-2 text-sm"
                             >
                               <span className="min-w-0 flex-1 truncate">
-                                {item.name || "Custom"}
+                                {item.name || t("clients.custom")}
                                 <span className="ml-1 text-xs text-neutral-500">
-                                  {formatCents(item.unitCents)} each
+                                  {t("clients.each", {
+                                    amount: formatCents(item.unitCents),
+                                  })}
                                 </span>
                               </span>
                               <input
-                                aria-label={`Quantity of ${item.name || "custom line"}`}
+                                aria-label={t("clients.quantityOf", {
+                                  name: item.name || t("clients.customLine"),
+                                })}
                                 type="number"
                                 inputMode="decimal"
                                 min="0"
@@ -374,7 +392,9 @@ export default function ClientsPage({
                               />
                               <button
                                 type="button"
-                                aria-label={`Remove ${item.name || "custom line"}`}
+                                aria-label={t("clients.removeItem", {
+                                  name: item.name || t("clients.customLine"),
+                                })}
                                 className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs dark:border-neutral-600"
                                 onClick={() =>
                                   setDraft((current) =>
@@ -426,7 +446,7 @@ export default function ClientsPage({
 
                         <div className="flex gap-2">
                           <input
-                            aria-label="Custom amount in dollars"
+                            aria-label={t("clients.customAmountAria")}
                             type="number"
                             inputMode="decimal"
                             min="0"
@@ -437,9 +457,9 @@ export default function ClientsPage({
                             onChange={(e) => setCustomAmount(e.target.value)}
                           />
                           <input
-                            aria-label="What the custom amount is for"
+                            aria-label={t("clients.customForAria")}
                             className={fieldClass}
-                            placeholder="What for?"
+                            placeholder={t("clients.whatFor")}
                             value={customLabel}
                             onChange={(e) => setCustomLabel(e.target.value)}
                           />
@@ -467,14 +487,13 @@ export default function ClientsPage({
                               setCustomLabel("");
                             }}
                           >
-                            Add
+                            {t("common.add")}
                           </button>
                         </div>
 
                         <div className="flex items-baseline justify-between">
                           <span className="text-xs text-neutral-500">
-                            Future instances only — past sales keep what they
-                            were charged.
+                            {t("clients.futureOnly")}
                           </span>
                           <span className="text-sm font-semibold tabular-nums">
                             {built
@@ -500,14 +519,14 @@ export default function ClientsPage({
                               closeTemplateEdit();
                             }}
                           >
-                            Save changes
+                            {t("clients.saveChanges")}
                           </button>
                           <button
                             type="button"
                             className="flex-1 rounded-lg border border-neutral-400 px-4 py-2.5 text-sm font-medium"
                             onClick={closeTemplateEdit}
                           >
-                            Cancel
+                            {t("common.cancel")}
                           </button>
                         </div>
                       </div>
@@ -520,9 +539,9 @@ export default function ClientsPage({
         )}
 
         <section>
-          <h3 className="mb-2 text-sm font-medium">History</h3>
+          <h3 className="mb-2 text-sm font-medium">{t("clients.history")}</h3>
           {theirSales.length === 0 ? (
-            <p className="text-sm text-neutral-500">No sales yet.</p>
+            <p className="text-sm text-neutral-500">{t("clients.noSales")}</p>
           ) : (
             <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
               {theirSales.map((sale) => (
@@ -532,17 +551,18 @@ export default function ClientsPage({
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm">
-                      {sale.lineItems.map((i) => i.name).join(", ") || "Sale"}
+                      {sale.lineItems.map((i) => i.name).join(", ") ||
+                        t("clients.sale")}
                     </p>
                     <p className="text-xs text-neutral-500">
                       {sale.date} ·{" "}
                       {sale.state === "open"
-                        ? "owes you"
+                        ? t("clients.owesYou")
                         : sale.state === "expected"
-                          ? "paid, waiting to match"
+                          ? t("clients.paidWaiting")
                           : sale.method === "cash"
-                            ? "paid cash"
-                            : "paid"}
+                            ? t("clients.paidCash")
+                            : t("clients.paid")}
                     </p>
                   </div>
                   <span className="text-sm font-semibold tabular-nums">
@@ -553,7 +573,7 @@ export default function ClientsPage({
                     className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
                     onClick={() => onLogAgain(sale)}
                   >
-                    Log again
+                    {t("common.logAgain")}
                   </button>
                 </li>
               ))}
@@ -568,21 +588,18 @@ export default function ClientsPage({
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">Clients</h2>
+        <h2 className="text-sm font-semibold">{t("clients.title")}</h2>
         <button
           type="button"
           className="text-sm text-neutral-500 hover:underline"
           onClick={onClose}
         >
-          Close
+          {t("common.close")}
         </button>
       </div>
 
       {clients.length === 0 ? (
-        <p className="text-sm text-neutral-500">
-          No clients yet. They save themselves when you log sales — name a
-          client at checkout and tap “save”.
-        </p>
+        <p className="text-sm text-neutral-500">{t("clients.empty")}</p>
       ) : (
         <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
           {[...clients]
@@ -610,13 +627,13 @@ export default function ClientsPage({
                       {client.name}
                       {paused && (
                         <span className="ml-2 text-xs text-amber-700 dark:text-amber-400">
-                          recurring paused
+                          {t("clients.recurringPaused")}
                         </span>
                       )}
                     </span>
                     {owed > 0 && (
                       <span className="text-sm tabular-nums text-neutral-500">
-                        owes {formatCents(owed)}
+                        {t("clients.owesAmount", { amount: formatCents(owed) })}
                       </span>
                     )}
                   </button>

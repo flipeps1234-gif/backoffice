@@ -11,6 +11,7 @@ import {
   type Sale,
 } from "@/lib/sale";
 import { formatCents } from "@/lib/transaction";
+import { useLocale } from "./use-locale";
 
 /**
  * The Owed tab — FLOW.md's left box. Everything OPEN, grouped by client,
@@ -51,10 +52,11 @@ export default function OwedTab({
   onLogAgain: (sale: Sale) => void;
   onClose?: () => void;
 }) {
+  const { t } = useLocale();
   const [resolving, setResolving] = useState<string | null>(null);
   const today = todayIso();
   const nameOf = (id: string | null) =>
-    clients.find((c) => c.id === id)?.name ?? "No client";
+    clients.find((c) => c.id === id)?.name ?? t("owed.noClient");
 
   const open = sales.filter((s) => s.state === "open");
   const staleExpected = sales.filter(
@@ -79,14 +81,14 @@ export default function OwedTab({
   return (
     <div className="space-y-5">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">Owed</h2>
+        <h2 className="text-sm font-semibold">{t("owed.title")}</h2>
         {onClose && (
           <button
             type="button"
             className="text-sm text-neutral-500 hover:underline"
             onClick={onClose}
           >
-            Close
+            {t("common.close")}
           </button>
         )}
       </div>
@@ -96,9 +98,7 @@ export default function OwedTab({
       </p>
 
       {open.length === 0 && staleExpected.length === 0 && (
-        <p className="text-sm text-neutral-500">
-          Nobody owes you anything. As it should be.
-        </p>
+        <p className="text-sm text-neutral-500">{t("owed.empty")}</p>
       )}
 
       {sorted.map(([clientKey, clientSales]) => (
@@ -106,8 +106,13 @@ export default function OwedTab({
           <h3 className="mb-2 text-sm font-medium">
             {nameOf(clientKey || null)}
             <span className="ml-2 text-neutral-500">
-              {formatCents(owedCents(clientSales))} · {clientSales.length}{" "}
-              sale{clientSales.length === 1 ? "" : "s"}
+              {formatCents(owedCents(clientSales))} ·{" "}
+              {t(
+                clientSales.length === 1
+                  ? "owed.saleCount.one"
+                  : "owed.saleCount.many",
+                { count: clientSales.length },
+              )}
             </span>
           </h3>
           <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
@@ -117,10 +122,11 @@ export default function OwedTab({
                 <li key={sale.id} className="flex items-center gap-3 px-3 py-2.5">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm">
-                      {sale.lineItems.map((i) => i.name).join(", ") || "Sale"}
+                      {sale.lineItems.map((i) => i.name).join(", ") ||
+                        t("owed.sale")}
                       {sale.recurringTemplateId && (
                         <span className="ml-1 text-xs text-neutral-500">
-                          · recurring
+                          · {t("owed.recurring")}
                         </span>
                       )}
                     </p>
@@ -128,7 +134,7 @@ export default function OwedTab({
                       {sale.date}
                       {age >= OWED_FLAG_DAYS && (
                         <span className="ml-1 text-amber-700 dark:text-amber-400">
-                          · {age} days
+                          · {t("owed.daysOld", { days: age })}
                         </span>
                       )}
                     </p>
@@ -141,14 +147,14 @@ export default function OwedTab({
                     className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
                     onClick={() => onMarkCash(sale.id)}
                   >
-                    Got cash
+                    {t("common.gotCash")}
                   </button>
                   <button
                     type="button"
                     className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
                     onClick={() => onLogAgain(sale)}
                   >
-                    Log again
+                    {t("common.logAgain")}
                   </button>
                 </li>
               );
@@ -160,11 +166,10 @@ export default function OwedTab({
       {staleExpected.length > 0 && (
         <section>
           <h3 className="mb-2 text-sm font-medium text-amber-700 dark:text-amber-400">
-            Marked paid, never seen
+            {t("owed.staleTitle")}
           </h3>
           <p className="mb-2 text-xs text-neutral-500">
-            You marked these paid digitally over {EXPECTED_FLAG_DAYS} days ago,
-            and no matching payment has shown up in your screenshots.
+            {t("owed.staleBody", { days: EXPECTED_FLAG_DAYS })}
           </p>
           <ul className="divide-y divide-neutral-200 rounded-lg border border-amber-300 bg-white dark:divide-neutral-800 dark:border-amber-700 dark:bg-neutral-900">
             {staleExpected.map((sale) => (
@@ -172,8 +177,9 @@ export default function OwedTab({
                 <div className="flex items-center justify-between gap-3">
                   <p className="min-w-0 truncate text-sm">
                     {nameOf(sale.clientId)} ·{" "}
-                    {sale.lineItems.map((i) => i.name).join(", ") || "Sale"} ·{" "}
-                    {sale.date}
+                    {sale.lineItems.map((i) => i.name).join(", ") ||
+                      t("owed.sale")}{" "}
+                    · {sale.date}
                   </p>
                   <span className="text-sm font-semibold tabular-nums">
                     {formatCents(saleTotalCents(sale))}
@@ -186,7 +192,7 @@ export default function OwedTab({
                       className="rounded-md border border-neutral-300 px-3 py-2 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
                       onClick={() => setResolving(null)}
                     >
-                      Keep waiting
+                      {t("owed.keepWaiting")}
                     </button>
                     <button
                       type="button"
@@ -196,7 +202,7 @@ export default function OwedTab({
                         setResolving(null);
                       }}
                     >
-                      Actually unpaid → Owed
+                      {t("owed.actuallyUnpaid")}
                     </button>
                     <button
                       type="button"
@@ -206,7 +212,7 @@ export default function OwedTab({
                         setResolving(null);
                       }}
                     >
-                      It was cash → paid
+                      {t("owed.wasCash")}
                     </button>
                     <button
                       type="button"
@@ -216,7 +222,7 @@ export default function OwedTab({
                         setResolving(null);
                       }}
                     >
-                      Find the payment…
+                      {t("owed.findPayment")}
                     </button>
                   </div>
                 ) : (
@@ -225,7 +231,7 @@ export default function OwedTab({
                     className="mt-1 text-xs text-neutral-500 hover:underline"
                     onClick={() => setResolving(sale.id)}
                   >
-                    Resolve…
+                    {t("owed.resolve")}
                   </button>
                 )}
               </li>

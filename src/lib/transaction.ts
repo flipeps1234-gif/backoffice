@@ -51,13 +51,57 @@ export const formatCents = (cents: number): string =>
 export const MAX_CENTS = 99_999_999;
 
 /**
- * "12.34" -> 1234. Anything unparseable is 0 cents. Clamped to 0..MAX_CENTS:
- * amounts in this app are never negative, and never bigger than the column.
+ * "12.34" → 1234, and since v0.6 also "12,34" → 1234 — the person typing
+ * may think in en-US, es or pt-BR, and a Brazilian typing 1.234,56 must
+ * not be charged $1.23. The rules, in order:
+ *
+ * - Both "." and "," present: whichever comes LAST is the decimal
+ *   separator, the other is grouping ("1.234,56" and "1,234.56" both
+ *   → 123456).
+ * - One separator, appearing once, with 1–2 digits after it: decimal
+ *   ("12,5" → 1250, "0.5" → 50).
+ * - Anything else is grouping ("1,234" → 123400, "1.234.567" →
+ *   123456700): three digits after one separator is how every locale
+ *   writes thousands, and money is never written with 3 decimals.
+ *
+ * Anything unparseable is 0 cents. Clamped to 0..MAX_CENTS: amounts in
+ * this app are never negative, and never bigger than the column.
  */
 export const dollarsToCents = (input: string): number => {
-  const amount = Number.parseFloat(input.replace(/[^0-9.-]/g, ""));
-  if (!Number.isFinite(amount)) return 0;
-  return Math.min(MAX_CENTS, Math.max(0, Math.round(amount * 100)));
+  const cleaned = input.replace(/[^0-9.,]/g, "");
+  if (cleaned === "") return 0;
+
+  const lastDot = cleaned.lastIndexOf(".");
+  const lastComma = cleaned.lastIndexOf(",");
+  const sepIndex = Math.max(lastDot, lastComma);
+
+  let wholeDigits = cleaned;
+  let fraction = "";
+  if (lastDot !== -1 && lastComma !== -1) {
+    wholeDigits = cleaned.slice(0, sepIndex);
+    fraction = cleaned.slice(sepIndex + 1);
+  } else if (sepIndex !== -1) {
+    const sepChar = cleaned[sepIndex];
+    const appearsOnce = cleaned.indexOf(sepChar) === sepIndex;
+    const after = cleaned.slice(sepIndex + 1);
+    if (appearsOnce && after.length >= 1 && after.length <= 2) {
+      wholeDigits = cleaned.slice(0, sepIndex);
+      fraction = after;
+    }
+  }
+
+  const whole = Number.parseInt(wholeDigits.replace(/[^0-9]/g, "") || "0", 10);
+  const fracDigits = fraction.replace(/[^0-9]/g, "");
+  // "5" after the separator means 50 cents, not 5.
+  const cents =
+    fracDigits.length === 0
+      ? 0
+      : fracDigits.length === 1
+        ? Number.parseInt(fracDigits, 10) * 10
+        : Number.parseInt(fracDigits.slice(0, 2), 10);
+
+  if (!Number.isFinite(whole)) return MAX_CENTS;
+  return Math.min(MAX_CENTS, Math.max(0, whole * 100 + cents));
 };
 
 export const centsToDollars = (cents: number): string =>

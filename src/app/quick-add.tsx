@@ -5,7 +5,6 @@ import {
   findByName,
   priceFor,
   priceLabel,
-  UNIT_LABELS,
   type RateUnit,
   type Service,
 } from "@/lib/service";
@@ -17,6 +16,7 @@ import {
   type Transaction,
   type TransactionDirection,
 } from "@/lib/transaction";
+import { useLocale } from "./use-locale";
 
 /**
  * Amount first. You get paid $60 cash in a driveway and the very first thing
@@ -64,8 +64,23 @@ const fieldClass =
 
 type PricingChoice = "flat" | RateUnit;
 
-const unitQuestion = (unit: RateUnit): string =>
-  unit === "sqft" ? "How many sq ft?" : `How many ${UNIT_LABELS[unit]}s?`;
+const UNIT_QUESTION = {
+  sqft: "quickadd.howManySqft",
+  hour: "quickadd.howManyHours",
+  room: "quickadd.howManyRooms",
+} as const;
+
+const UNIT_ONE = {
+  sqft: "quickadd.unitSqft.one",
+  hour: "quickadd.unitHour.one",
+  room: "quickadd.unitRoom.one",
+} as const;
+
+const UNIT_MANY = {
+  sqft: "quickadd.unitSqft.many",
+  hour: "quickadd.unitHour.many",
+  room: "quickadd.unitRoom.many",
+} as const;
 
 /** "Log again" hands these in: last time's details, today's date. */
 export type QuickAddPrefill = {
@@ -105,6 +120,7 @@ export default function QuickAdd({
   onLinkService: (txId: string, serviceId: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useLocale();
   const [cents, setCents] = useState(prefill?.amountCents ?? 0);
   const [payer, setPayer] = useState(prefill?.payer ?? "");
   const [date, setDate] = useState(today);
@@ -195,17 +211,22 @@ export default function QuickAdd({
     if (past) {
       setCents(Math.min(MAX_CENTS, past.amountCents));
       setQty(past.quantity != null ? String(past.quantity) : "");
-      const size =
-        past.quantity != null && service.pricing.type === "rate"
-          ? ` (${past.quantity} ${
-              service.pricing.unit === "sqft"
-                ? "sq ft"
-                : UNIT_LABELS[service.pricing.unit] +
-                  (past.quantity === 1 ? "" : "s")
-            })`
-          : "";
       setUsualHint(
-        `${payerName.trim()}'s usual: ${formatCents(past.amountCents)}${size}`,
+        past.quantity != null && service.pricing.type === "rate"
+          ? t("quickadd.usualWithSize", {
+              name: payerName.trim(),
+              amount: formatCents(past.amountCents),
+              qty: past.quantity,
+              unit: t(
+                past.quantity === 1
+                  ? UNIT_ONE[service.pricing.unit]
+                  : UNIT_MANY[service.pricing.unit],
+              ),
+            })
+          : t("quickadd.usual", {
+              name: payerName.trim(),
+              amount: formatCents(past.amountCents),
+            }),
       );
     } else {
       // One tap = one unit. "1" is right for an hour or a room, and for
@@ -284,8 +305,8 @@ export default function QuickAdd({
     }
     setJustSaved(
       spending
-        ? `−${formatCents(savedCents)} logged`
-        : `${formatCents(savedCents)} logged`,
+        ? t("quickadd.amountLoggedOut", { amount: formatCents(savedCents) })
+        : t("quickadd.amountLogged", { amount: formatCents(savedCents) }),
     );
     setCents(0);
     setPayer("");
@@ -363,27 +384,29 @@ export default function QuickAdd({
     return (
       <div className="space-y-4">
         <p aria-live="polite" className="text-sm text-emerald-600">
-          {formatCents(pending.amountCents)} logged
+          {t("quickadd.amountLogged", {
+            amount: formatCents(pending.amountCents),
+          })}
         </p>
         <h2 className="text-sm font-semibold">
-          Save this as a service for one-tap logging?
+          {t("quickadd.savePromptTitle")}
         </h2>
 
         <div>
           <label className={labelClass} htmlFor="svc-name">
-            What do you call this job?
+            {t("quickadd.jobNameLabel")}
           </label>
           <input
             id="svc-name"
             className={fieldClass}
-            placeholder="Lawn mowing"
+            placeholder={t("quickadd.jobNamePlaceholder")}
             value={promptName}
             onChange={(event) => setPromptName(event.target.value)}
           />
         </div>
 
         <fieldset>
-          <legend className={labelClass}>How do you price it?</legend>
+          <legend className={labelClass}>{t("quickadd.pricingLegend")}</legend>
           <div className="grid grid-cols-4 gap-2">
             {(["flat", "hour", "room", "sqft"] as const).map((choice) => (
               <button
@@ -398,8 +421,10 @@ export default function QuickAdd({
                 onClick={() => setPromptPricing(choice)}
               >
                 {choice === "flat"
-                  ? `Flat ${formatCents(pending.amountCents)}`
-                  : `per ${UNIT_LABELS[choice]}`}
+                  ? t("quickadd.pricingFlat", {
+                      amount: formatCents(pending.amountCents),
+                    })
+                  : t("quickadd.perUnit", { unit: t(UNIT_ONE[choice]) })}
               </button>
             ))}
           </div>
@@ -408,7 +433,9 @@ export default function QuickAdd({
         {rateChosen && (
           <div>
             <label className={labelClass} htmlFor="svc-rate">
-              Price per {UNIT_LABELS[promptPricing as RateUnit]}
+              {t("quickadd.ratePriceLabel", {
+                unit: t(UNIT_ONE[promptPricing as RateUnit]),
+              })}
             </label>
             <input
               id="svc-rate"
@@ -426,7 +453,11 @@ export default function QuickAdd({
 
         <div>
           <label className={labelClass} htmlFor="svc-cost">
-            What it costs you{rateChosen ? ` per ${UNIT_LABELS[promptPricing as RateUnit]}` : ""} (optional)
+            {rateChosen
+              ? t("quickadd.costLabelPer", {
+                  unit: t(UNIT_ONE[promptPricing as RateUnit]),
+                })
+              : t("quickadd.costLabel")}
           </label>
           <input
             id="svc-cost"
@@ -435,7 +466,7 @@ export default function QuickAdd({
             min="0"
             step="0.01"
             className={fieldClass}
-            placeholder="gas, supplies…"
+            placeholder={t("quickadd.costPlaceholder")}
             value={promptCost}
             onChange={(event) => setPromptCost(event.target.value)}
           />
@@ -451,14 +482,14 @@ export default function QuickAdd({
             }
             onClick={promptSave}
           >
-            Save service
+            {t("quickadd.saveService")}
           </button>
           <button
             type="button"
             className="flex-1 rounded-lg border border-neutral-400 px-4 py-4 text-base font-medium text-foreground hover:opacity-80"
             onClick={promptSkip}
           >
-            No thanks
+            {t("quickadd.noThanks")}
           </button>
         </div>
       </div>
@@ -470,26 +501,30 @@ export default function QuickAdd({
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
         <h2 className="text-sm font-semibold">
-          {spending ? "Log money you spent" : "Log a cash payment"}
+          {spending ? t("quickadd.titleSpent") : t("quickadd.titlePaid")}
         </h2>
         <button
           type="button"
           className="text-sm text-neutral-500 hover:underline"
           onClick={onClose}
         >
-          Close
+          {t("common.close")}
         </button>
       </div>
 
       {!expense && (
-      <div className="flex gap-2" role="group" aria-label="Money in or out">
+      <div
+        className="flex gap-2"
+        role="group"
+        aria-label={t("quickadd.directionGroup")}
+      >
         <button
           type="button"
           aria-pressed={!spending}
           className={segment(!spending, "bg-emerald-700 text-white")}
           onClick={() => setDirection("in")}
         >
-          Got paid
+          {t("quickadd.gotPaid")}
         </button>
         <button
           type="button"
@@ -511,7 +546,7 @@ export default function QuickAdd({
             setUsualHint("");
           }}
         >
-          Spent
+          {t("quickadd.spent")}
         </button>
       </div>
       )}
@@ -520,7 +555,7 @@ export default function QuickAdd({
         <div
           className="flex max-h-24 flex-wrap gap-2 overflow-y-auto"
           role="group"
-          aria-label="Services"
+          aria-label={t("quickadd.servicesGroup")}
         >
           {services.map((service) => (
             <button
@@ -534,7 +569,19 @@ export default function QuickAdd({
               }`}
               onClick={() => tapChip(service)}
             >
-              {service.name} · {priceLabel(service)}
+              {service.name} ·{" "}
+              {service.pricing.type === "rate"
+                ? // priceLabel's unit suffix is English (lib stays wordless);
+                  // rebuild it with the translated unit — same trick as
+                  // product-card.
+                  `${priceLabel({ ...service, pricing: { type: "flat", cents: service.pricing.cents } })}/${t(
+                    service.pricing.unit === "sqft"
+                      ? "products.unitSqft"
+                      : service.pricing.unit === "hour"
+                        ? "products.unitHour"
+                        : "products.unitRoom",
+                  )}`
+                : priceLabel(service)}
             </button>
           ))}
         </div>
@@ -562,14 +609,14 @@ export default function QuickAdd({
               : "text-emerald-700 dark:text-emerald-400"
           }`}
         >
-          {spending ? "Money out" : "Money in"}
+          {spending ? t("quickadd.moneyOut") : t("quickadd.moneyIn")}
         </p>
       </div>
 
       {!spending && selected?.pricing.type === "rate" && (
         <div className="mx-auto flex w-56 items-center gap-2">
           <label className="text-sm text-neutral-500" htmlFor="qty">
-            {unitQuestion(selected.pricing.unit)}
+            {t(UNIT_QUESTION[selected.pricing.unit])}
           </label>
           <input
             id="qty"
@@ -604,7 +651,7 @@ export default function QuickAdd({
             <button
               key={key}
               type="button"
-              aria-label={key === "⌫" ? "Delete" : key}
+              aria-label={key === "⌫" ? t("quickadd.deleteKey") : key}
               className="rounded-lg border border-neutral-300 bg-white py-4 text-xl font-medium text-neutral-900 hover:bg-neutral-50 active:bg-neutral-100"
               onClick={() => press(key)}
             >
@@ -621,7 +668,7 @@ export default function QuickAdd({
           className={segment(business, "bg-emerald-700 text-white")}
           onClick={() => setBusiness(true)}
         >
-          Business
+          {t("quickadd.business")}
         </button>
         <button
           type="button"
@@ -630,19 +677,23 @@ export default function QuickAdd({
           className={segment(!business, "bg-neutral-500 text-white")}
           onClick={() => setBusiness(false)}
         >
-          Personal
+          {t("quickadd.personal")}
         </button>
       </div>
 
       <div className="flex gap-2">
         <div className="flex-1">
           <label className={labelClass} htmlFor="quick-payer">
-            {spending ? "Where (optional)" : "Who paid (optional)"}
+            {spending ? t("quickadd.whereLabel") : t("quickadd.whoPaidLabel")}
           </label>
           <input
             id="quick-payer"
             className={fieldClass}
-            placeholder={spending ? "Gas station" : "Name"}
+            placeholder={
+              spending
+                ? t("quickadd.wherePlaceholder")
+                : t("quickadd.namePlaceholder")
+            }
             value={payer}
             list={spending ? undefined : "known-payers"}
             onChange={(event) => changePayer(event.target.value)}
@@ -657,7 +708,7 @@ export default function QuickAdd({
         </div>
         <div className="w-40">
           <label className={labelClass} htmlFor="quick-date">
-            Date
+            {t("quickadd.dateLabel")}
           </label>
           <input
             id="quick-date"
@@ -676,7 +727,7 @@ export default function QuickAdd({
           disabled={cents === 0}
           onClick={() => save(false)}
         >
-          Save
+          {t("common.save")}
         </button>
         <button
           type="button"
@@ -684,7 +735,7 @@ export default function QuickAdd({
           disabled={cents === 0}
           onClick={() => save(true)}
         >
-          Save &amp; add another
+          {t("quickadd.saveAndAdd")}
         </button>
       </div>
     </div>

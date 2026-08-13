@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLocale } from "./use-locale";
 
 /**
  * The screenshot drop target.
@@ -22,6 +23,7 @@ export default function DropZone({
   busy: boolean;
   onFiles: (files: FileList | null) => void;
 }) {
+  const { t } = useLocale();
   const [dragging, setDragging] = useState(false);
   /** Nesting depth, not a boolean: dragging onto a child fires dragleave on
    *  the parent, and a flag would flicker off mid-hover. */
@@ -79,17 +81,17 @@ export default function DropZone({
       />
       <span className="block text-base font-medium">
         {busy
-          ? "Reading them now…"
+          ? t("shell.dropReading")
           : dragging
-            ? "Drop them here"
-            : "Add screenshots of your payments"}
+            ? t("shell.dropHere")
+            : t("shell.dropPrompt")}
       </span>
       <span className="mt-1 block text-sm text-neutral-500">
         {busy
-          ? "Hang on — this takes a few seconds."
+          ? t("shell.dropBusyHint")
           : // Tap first: the phone is the primary target, and there is no
             // dragging there.
-            "Venmo, Cash App, or Zelle. Pick as many as you like — or drag them in."}
+            t("shell.dropHint")}
       </span>
     </label>
   );

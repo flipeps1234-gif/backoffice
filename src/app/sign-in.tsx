@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { getSupabase } from "@/lib/supabase/client";
+import type { MessageKey } from "@/lib/i18n";
+import { useLocale } from "./use-locale";
 
 /**
  * Sign in with an emailed magic link. Sessions persist on the device, so this
@@ -36,23 +38,24 @@ const DEMO_WORD = "tester";
  *
  * Exported so the mapping can be checked without a browser.
  */
-export const humanAuthError = (raw: string): string => {
+export const humanAuthError = (
+  raw: string,
+  t: (key: MessageKey) => string,
+): string => {
   const unreachable =
     /failed to fetch|load failed|networkerror|fetch failed|network request failed/i.test(
       raw,
     );
   if (unreachable) {
-    return (
-      "Couldn't reach the server. Check your connection and try again — " +
-      "if it keeps failing, it's us, not you."
-    );
+    return t("signin.unreachable");
   }
   // Supabase's own messages (rate limits, malformed address) are already
   // written for humans, so they pass through untouched.
-  return raw || "Something went wrong. Try again in a moment.";
+  return raw || t("signin.genericError");
 };
 
 export default function SignIn() {
+  const { t } = useLocale();
   const [sent, setSent] = useState(false);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -71,7 +74,7 @@ export default function SignIn() {
       const response = await fetch("/api/demo-session", { method: "POST" });
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error ?? "The test account couldn't sign in right now.");
+        setError(data.error ?? t("signin.demoFailed"));
         return;
       }
       // A real session: onAuthStateChange fires and the app opens signed in.
@@ -83,10 +86,10 @@ export default function SignIn() {
       // so it can fail the same way and used to print the same raw string.
       if (sessionError) {
         console.error("Demo sign-in failed:", sessionError);
-        setError(humanAuthError(sessionError.message));
+        setError(humanAuthError(sessionError.message, t));
       }
     } catch {
-      setError("Couldn't reach the server. Check your connection and try again.");
+      setError(t("signin.demoUnreachable"));
     } finally {
       setBusy(false);
     }
@@ -112,7 +115,7 @@ export default function SignIn() {
     setBusy(false);
     if (sendError) {
       console.error("Sign-in request failed:", sendError);
-      setError(humanAuthError(sendError.message));
+      setError(humanAuthError(sendError.message, t));
       return;
     }
     setSent(true);
@@ -137,19 +140,19 @@ export default function SignIn() {
     return (
       <div className="space-y-4">
         <div>
-          <h2 className="text-sm font-semibold">Check your email</h2>
+          <h2 className="text-sm font-semibold">{t("signin.checkEmail")}</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            We sent a sign-in link to {email.trim()}. Open it{" "}
+            {t("signin.sentTo", { email: email.trim() })}{" "}
             <strong className="font-medium text-foreground">
-              on this device
+              {t("signin.onThisDevice")}
             </strong>{" "}
-            — the link signs in whichever browser opens it.
+            {t("signin.sentTail")}
           </p>
         </div>
 
         {resent && !error && (
           <p aria-live="polite" className="text-sm text-emerald-700 dark:text-emerald-400">
-            New link sent.
+            {t("signin.newLinkSent")}
           </p>
         )}
 
@@ -160,7 +163,7 @@ export default function SignIn() {
         )}
 
         <p className="text-sm text-neutral-500">
-          Nothing yet? Give it a minute, then check spam.
+          {t("signin.nothingYet")}
         </p>
 
         <div className="flex justify-between text-sm text-neutral-500">
@@ -174,7 +177,7 @@ export default function SignIn() {
               setResent(false);
             }}
           >
-            Different email
+            {t("signin.differentEmail")}
           </button>
           <button
             type="button"
@@ -182,7 +185,7 @@ export default function SignIn() {
             disabled={busy}
             onClick={resend}
           >
-            {busy ? "Sending…" : "Resend link"}
+            {busy ? t("signin.sending") : t("signin.resendLink")}
           </button>
         </div>
       </div>
@@ -196,7 +199,7 @@ export default function SignIn() {
           className="mb-1 block text-xs font-medium text-neutral-500"
           htmlFor="email"
         >
-          Your email
+          {t("signin.emailLabel")}
         </label>
         {/* type=text, not email: the browser's own validation would reject
             the demo word before submit ever ran. Supabase still rejects
@@ -208,7 +211,7 @@ export default function SignIn() {
           required
           autoComplete="email"
           className="w-full rounded-md border border-neutral-300 bg-white px-3 py-3 text-base text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none"
-          placeholder="you@example.com"
+          placeholder={t("signin.emailPlaceholder")}
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />
@@ -225,7 +228,7 @@ export default function SignIn() {
         disabled={busy}
         className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90 disabled:opacity-40"
       >
-        {busy ? "Sending…" : "Email me a sign-in link"}
+        {busy ? t("signin.sending") : t("signin.sendButton")}
       </button>
     </form>
   );

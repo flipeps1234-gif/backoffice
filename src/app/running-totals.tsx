@@ -1,8 +1,11 @@
+"use client";
+
 import {
   formatCents,
   totalsByDirection,
   type Transaction,
 } from "@/lib/transaction";
+import { useLocale } from "./use-locale";
 
 /** The number that climbs. Sticky, so it stays in view while sorting. */
 export default function RunningTotals({
@@ -17,6 +20,7 @@ export default function RunningTotals({
   /** OPEN sales. Shown beside received, NEVER blended into it. */
   owedCents?: number;
 }) {
+  const { t } = useLocale();
   const business = totalsByDirection(
     transactions.filter((tx) => tx.business === true),
   );
@@ -35,42 +39,50 @@ export default function RunningTotals({
       <div className="flex items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-wide text-neutral-500">
-            Personal
+            {t("insights.personal")}
           </p>
           <p className="text-lg font-medium tabular-nums text-neutral-500">
             {formatCents(personal.inCents)}
           </p>
           <p className="text-xs text-neutral-500">
             {personal.outCents > 0 ? (
-              <span>−{formatCents(personal.outCents)} spent · </span>
+              <span>
+                {t("insights.spent", { amount: formatCents(personal.outCents) })} ·{" "}
+              </span>
             ) : null}
-            {personalCount} item{personalCount === 1 ? "" : "s"}
+            {personalCount === 1
+              ? t("insights.items.one", { n: personalCount })
+              : t("insights.items.many", { n: personalCount })}
           </p>
         </div>
         <div className="text-right">
           <p className="text-xs uppercase tracking-wide text-neutral-500">
-            Business
+            {t("insights.business")}
           </p>
           <p className="text-2xl font-semibold tabular-nums text-emerald-600">
             {formatCents(business.inCents + expectedCents)}
           </p>
           {owedCents > 0 && (
             <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
-              + {formatCents(owedCents)} owed
+              {t("insights.owed", { amount: formatCents(owedCents) })}
             </p>
           )}
           <p className="text-xs text-neutral-500">
             {business.outCents > 0 ? (
               <span className="text-red-500">
-                −{formatCents(business.outCents)} spent ·{" "}
+                {t("insights.spent", { amount: formatCents(business.outCents) })} ·{" "}
               </span>
             ) : null}
-            {businessCount} item{businessCount === 1 ? "" : "s"}
+            {businessCount === 1
+              ? t("insights.items.one", { n: businessCount })
+              : t("insights.items.many", { n: businessCount })}
           </p>
         </div>
       </div>
       {left > 0 && (
-        <p className="mt-2 text-xs text-neutral-500">{left} left to sort</p>
+        <p className="mt-2 text-xs text-neutral-500">
+          {t("insights.leftToSort", { n: left })}
+        </p>
       )}
     </div>
   );

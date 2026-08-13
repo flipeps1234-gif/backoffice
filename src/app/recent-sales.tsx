@@ -3,6 +3,7 @@
 import type { Client } from "@/lib/client";
 import { saleTotalCents, type Sale } from "@/lib/sale";
 import { formatCents } from "@/lib/transaction";
+import { useLocale } from "./use-locale";
 
 /**
  * "Log again" from the homepage: the last sales, grouped by client, one
@@ -22,8 +23,9 @@ export default function RecentSales({
   onPick: (sale: Sale) => void;
   onClose: () => void;
 }) {
+  const { t } = useLocale();
   const nameOf = (id: string | null) =>
-    clients.find((c) => c.id === id)?.name ?? "No client";
+    clients.find((c) => c.id === id)?.name ?? t("owed.noClient");
 
   // Newest first, one entry per (client, item set) — the same job twice
   // last month is ONE button, not two.
@@ -43,20 +45,18 @@ export default function RecentSales({
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">Log again</h2>
+        <h2 className="text-sm font-semibold">{t("common.logAgain")}</h2>
         <button
           type="button"
           className="text-sm text-neutral-500 hover:underline"
           onClick={onClose}
         >
-          Close
+          {t("common.close")}
         </button>
       </div>
 
       {recent.length === 0 ? (
-        <p className="text-sm text-neutral-500">
-          Nothing to repeat yet — log your first sale and it&apos;ll be here.
-        </p>
+        <p className="text-sm text-neutral-500">{t("owed.noRepeats")}</p>
       ) : (
         <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
           {recent.map((sale) => (
@@ -71,7 +71,8 @@ export default function RecentSales({
                     {nameOf(sale.clientId)}
                   </p>
                   <p className="truncate text-xs text-neutral-500">
-                    {sale.lineItems.map((i) => i.name).join(", ") || "Sale"}
+                    {sale.lineItems.map((i) => i.name).join(", ") ||
+                      t("owed.sale")}
                   </p>
                 </div>
                 <span className="text-sm font-semibold tabular-nums">

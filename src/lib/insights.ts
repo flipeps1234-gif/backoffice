@@ -1,46 +1,57 @@
-import { formatCents, type Transaction } from "./transaction";
+import type { Transaction } from "./transaction";
 
 /**
  * The payoff for uploading. Three facts, computed from what the user just
  * confirmed, that they probably couldn't have told you off the top of their
  * head. This runs the moment a batch is confirmed — before any sorting — so
  * it works over every payment read, business and personal alike.
+ *
+ * Since v0.6 this returns STRUCTURED facts, not English sentences — the
+ * component owns the words (trilingual), the lib owns the arithmetic.
+ * Composing prose here was how English leaked into ES/PT screens.
  */
 
-export type Insight = {
-  key: "period" | "busiest" | "payer";
-  label: string;
-  value: string;
-  detail: string;
-};
-
-/** "2026-07-14" → "Jul 14". Parsed as UTC so the day never shifts by timezone. */
-const shortDate = (iso: string): string =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-
-const plural = (count: number, word: string): string =>
-  `${count} ${word}${count === 1 ? "" : "s"}`;
+export type Insight =
+  | {
+      key: "period";
+      totalCents: number;
+      payments: number;
+      expenses: number;
+      spentCents: number;
+      /** null = no dates were readable. first === last = a single day. */
+      firstDate: string | null;
+      lastDate: string | null;
+    }
+  | {
+      key: "busiest";
+      /** best = every day tied at one payment, so show the top-earning day. */
+      kind: "noIncome" | "noDates" | "best" | "busiest";
+      date: string | null;
+      count: number;
+      cents: number;
+    }
+  | {
+      key: "payer";
+      kind: "noIncome" | "noNames" | "top";
+      name: string | null;
+      count: number;
+      cents: number;
+    };
 
 const periodInsight = (transactions: Transaction[]): Insight => {
   const ins = transactions.filter((tx) => tx.direction !== "out");
   const outs = transactions.filter((tx) => tx.direction === "out");
-  const total = ins.reduce((sum, tx) => sum + tx.amountCents, 0);
-  const spent = outs.reduce((sum, tx) => sum + tx.amountCents, 0);
   const dates = transactions.map((tx) => tx.date).filter(Boolean).sort();
 
-  const spend = spent > 0 ? `, −${formatCents(spent)} in ${plural(outs.length, "expense")}` : "";
-  const detail =
-    dates.length === 0
-      ? `${plural(ins.length, "payment")}${spend}, no dates read`
-      : dates[0] === dates.at(-1)
-        ? `${plural(ins.length, "payment")}${spend} on ${shortDate(dates[0])}`
-        : `${plural(ins.length, "payment")}${spend}, ${shortDate(dates[0])} – ${shortDate(dates.at(-1)!)}`;
-
-  return { key: "period", label: "Total read", value: formatCents(total), detail };
+  return {
+    key: "period",
+    totalCents: ins.reduce((sum, tx) => sum + tx.amountCents, 0),
+    payments: ins.length,
+    expenses: outs.length,
+    spentCents: outs.reduce((sum, tx) => sum + tx.amountCents, 0),
+    firstDate: dates[0] ?? null,
+    lastDate: dates.at(-1) ?? null,
+  };
 };
 
 const busiestInsight = (transactions: Transaction[]): Insight => {
@@ -56,16 +67,15 @@ const busiestInsight = (transactions: Transaction[]): Insight => {
   }
 
   if (byDay.size === 0) {
+    // Don't claim dates were unreadable when the batch was simply all
+    // expenses — those may carry perfectly good dates.
     const hadExpenses = transactions.some((tx) => tx.direction === "out");
     return {
       key: "busiest",
-      label: "Busiest day",
-      value: "—",
-      // Don't claim dates were unreadable when the batch was simply all
-      // expenses — those may carry perfectly good dates.
-      detail: hadExpenses
-        ? "No income in this batch"
-        : "No dates were readable in these screenshots",
+      kind: hadExpenses ? "noIncome" : "noDates",
+      date: null,
+      count: 0,
+      cents: 0,
     };
   }
 
@@ -78,15 +88,12 @@ const busiestInsight = (transactions: Transaction[]): Insight => {
 
   // With one payment per day, "busiest" is noise — every day ties. The
   // tie-break already picked the highest-earning day, so say that instead.
-  const single = day.count === 1;
-
   return {
     key: "busiest",
-    label: single ? "Best day" : "Busiest day",
-    value: shortDate(date),
-    detail: single
-      ? formatCents(day.cents)
-      : `${plural(day.count, "payment")}, ${formatCents(day.cents)}`,
+    kind: day.count === 1 ? "best" : "busiest",
+    date,
+    count: day.count,
+    cents: day.cents,
   };
 };
 
@@ -112,12 +119,10 @@ const topPayerInsight = (transactions: Transaction[]): Insight => {
     const hadIncome = transactions.some((tx) => tx.direction !== "out");
     return {
       key: "payer",
-      label: "Top payer",
-      value: "—",
-      detail:
-        !hadIncome && hadExpenses
-          ? "No income in this batch"
-          : "No names on these payments",
+      kind: !hadIncome && hadExpenses ? "noIncome" : "noNames",
+      name: null,
+      count: 0,
+      cents: 0,
     };
   }
 
@@ -125,12 +130,7 @@ const topPayerInsight = (transactions: Transaction[]): Insight => {
     (a, b) => b.cents - a.cents || b.count - a.count || a.name.localeCompare(b.name),
   )[0];
 
-  return {
-    key: "payer",
-    label: "Top payer",
-    value: top.name,
-    detail: `${formatCents(top.cents)} across ${plural(top.count, "payment")}`,
-  };
+  return { key: "payer", kind: "top", name: top.name, count: top.count, cents: top.cents };
 };
 
 export const buildInsights = (transactions: Transaction[]): Insight[] => {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import ProductCard from "./product-card";
 import { findByName, type RateUnit, type Service } from "@/lib/service";
 import { dollarsToCents } from "@/lib/transaction";
+import { useLocale } from "./use-locale";
 
 /**
  * Products & services: the catalog, in the sketch's card style. Tap a
@@ -19,6 +20,13 @@ const fieldClass =
 
 type PricingChoice = "flat" | RateUnit;
 
+const PRICING_LABEL_KEYS = {
+  flat: "products.flat",
+  hour: "products.perHour",
+  room: "products.perRoom",
+  sqft: "products.perSqft",
+} as const;
+
 function EditForm({
   initial,
   services,
@@ -31,6 +39,7 @@ function EditForm({
   onSave: (service: Service) => void;
   onCancel: () => void;
 }) {
+  const { t } = useLocale();
   const [name, setName] = useState(initial?.name ?? "");
   const [pricing, setPricing] = useState<PricingChoice>(
     initial?.pricing.type === "rate" ? initial.pricing.unit : "flat",
@@ -48,12 +57,12 @@ function EditForm({
     if (!trimmed) return;
     const existing = findByName(services, trimmed);
     if (existing && existing.id !== initial?.id) {
-      setError(`You already have "${existing.name}".`);
+      setError(t("products.duplicate", { name: existing.name }));
       return;
     }
     const priceCents = dollarsToCents(price);
     if (priceCents === 0) {
-      setError("Price can't be zero.");
+      setError(t("products.priceZero"));
       return;
     }
     onSave({
@@ -71,19 +80,19 @@ function EditForm({
     <div className="space-y-4 rounded-xl border border-neutral-300 p-4 dark:border-neutral-700">
       <div>
         <label className={labelClass} htmlFor="prod-name">
-          What do you call it?
+          {t("products.nameLabel")}
         </label>
         <input
           id="prod-name"
           className={fieldClass}
-          placeholder="Lawn mowing"
+          placeholder={t("products.namePlaceholder")}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
       </div>
 
       <fieldset>
-        <legend className={labelClass}>How do you price it?</legend>
+        <legend className={labelClass}>{t("products.pricingLegend")}</legend>
         <div className="grid grid-cols-4 gap-2">
           {(["flat", "hour", "room", "sqft"] as const).map((choice) => (
             <button
@@ -97,7 +106,7 @@ function EditForm({
               }`}
               onClick={() => setPricing(choice)}
             >
-              {choice === "flat" ? "Flat" : `per ${choice === "sqft" ? "sq ft" : choice}`}
+              {t(PRICING_LABEL_KEYS[choice])}
             </button>
           ))}
         </div>
@@ -106,7 +115,9 @@ function EditForm({
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className={labelClass} htmlFor="prod-price">
-            Gain — price{pricing === "flat" ? "" : " per unit"}
+            {pricing === "flat"
+              ? t("products.gainPrice")
+              : t("products.gainPricePerUnit")}
           </label>
           <input
             id="prod-price"
@@ -122,7 +133,7 @@ function EditForm({
         </div>
         <div>
           <label className={labelClass} htmlFor="prod-cost">
-            Loss — your cost (optional)
+            {t("products.lossCost")}
           </label>
           <input
             id="prod-cost"
@@ -131,7 +142,7 @@ function EditForm({
             min="0"
             step="0.01"
             className={fieldClass}
-            placeholder="gas, supplies…"
+            placeholder={t("products.costPlaceholder")}
             value={cost}
             onChange={(e) => setCost(e.target.value)}
           />
@@ -151,14 +162,14 @@ function EditForm({
           className="flex-1 rounded-lg bg-foreground px-4 py-3 text-base font-medium text-background hover:opacity-90 disabled:opacity-40"
           onClick={save}
         >
-          Save
+          {t("common.save")}
         </button>
         <button
           type="button"
           className="flex-1 rounded-lg border border-neutral-400 px-4 py-3 text-base font-medium hover:opacity-80"
           onClick={onCancel}
         >
-          Cancel
+          {t("common.cancel")}
         </button>
       </div>
     </div>
@@ -176,27 +187,25 @@ export default function ProductsPage({
   onUpdate: (service: Service) => void;
   onClose: () => void;
 }) {
+  const { t } = useLocale();
   /** "new" | a service id | null (just browsing). */
   const [editing, setEditing] = useState<string | null>(null);
 
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">Products &amp; services</h2>
+        <h2 className="text-sm font-semibold">{t("products.title")}</h2>
         <button
           type="button"
           className="text-sm text-neutral-500 hover:underline"
           onClick={onClose}
         >
-          Close
+          {t("common.close")}
         </button>
       </div>
 
       {services.length === 0 && editing === null && (
-        <p className="text-sm text-neutral-500">
-          Nothing here yet. Products save themselves when you log sales — or
-          add one now.
-        </p>
+        <p className="text-sm text-neutral-500">{t("products.empty")}</p>
       )}
 
       <div className="space-y-3">
@@ -238,7 +247,7 @@ export default function ProductsPage({
           className="w-full rounded-xl border border-neutral-400 px-4 py-4 text-base font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-900"
           onClick={() => setEditing("new")}
         >
-          New product
+          {t("products.newProduct")}
         </button>
       )}
     </div>

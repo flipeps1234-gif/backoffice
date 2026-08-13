@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import ProductCard from "./product-card";
+import { useLocale } from "./use-locale";
 import { findClientByName, type Client } from "@/lib/client";
 import {
   advance,
-  cadenceLabel,
   type Cadence,
   type RecurringTemplate,
 } from "@/lib/recurring";
@@ -16,7 +16,7 @@ import {
   type PaymentMethod,
   type Sale,
 } from "@/lib/sale";
-import { UNIT_LABELS, type Service } from "@/lib/service";
+import { type Service } from "@/lib/service";
 import { dollarsToCents, formatCents } from "@/lib/transaction";
 
 /**
@@ -74,6 +74,7 @@ export default function NewSale({
   onDone: (result: SaleResult, paid: boolean, method: PaymentMethod | null) => void;
   onClose: () => void;
 }) {
+  const { t } = useLocale();
   const [step, setStep] = useState<Step>(prefill ? "paid" : "pick");
   const [quantities, setQuantities] = useState<Map<string, number>>(() => {
     const map = new Map<string, number>();
@@ -217,7 +218,7 @@ export default function NewSale({
         className="text-sm text-neutral-500 hover:underline"
         onClick={onClose}
       >
-        Close
+        {t("common.close")}
       </button>
     </div>
   );
@@ -226,29 +227,31 @@ export default function NewSale({
   if (step === "paid") {
     return (
       <div className="space-y-6">
-        {header("New sale")}
+        {header(t("sale.title"))}
         <p className="text-center text-4xl font-semibold tabular-nums">
           {formatCents(totalCents)}
         </p>
         <p className="text-center text-sm text-neutral-500">
-          {clientName.trim() || "No client"} ·{" "}
-          {lineItems.map((i) => i.name).join(", ") || "no items"}
+          {clientName.trim() || t("sale.noClient")} ·{" "}
+          {lineItems.map((i) => i.name).join(", ") || t("sale.noItems")}
         </p>
-        <h3 className="text-center text-lg font-semibold">Paid?</h3>
+        <h3 className="text-center text-lg font-semibold">
+          {t("sale.paidQuestion")}
+        </h3>
         <div className="flex gap-3">
           <button
             type="button"
             className="flex-1 rounded-xl bg-emerald-700 px-4 py-6 text-lg font-semibold text-white hover:opacity-90"
             onClick={() => setStep("method")}
           >
-            Yes
+            {t("common.yes")}
           </button>
           <button
             type="button"
             className="flex-1 rounded-xl border border-neutral-400 px-4 py-6 text-lg font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-900"
             onClick={() => finish(false, null)}
           >
-            No — owes me
+            {t("sale.noOwesMe")}
           </button>
         </div>
         <button
@@ -256,7 +259,7 @@ export default function NewSale({
           className="w-full text-sm text-neutral-500 hover:underline"
           onClick={() => setStep("checkout")}
         >
-          Back to details
+          {t("sale.backToDetails")}
         </button>
       </div>
     );
@@ -266,18 +269,20 @@ export default function NewSale({
   if (step === "method") {
     return (
       <div className="space-y-6">
-        {header("New sale")}
+        {header(t("sale.title"))}
         <p className="text-center text-4xl font-semibold tabular-nums">
           {formatCents(totalCents)}
         </p>
-        <h3 className="text-center text-lg font-semibold">Cash or digital?</h3>
+        <h3 className="text-center text-lg font-semibold">
+          {t("sale.cashOrDigital")}
+        </h3>
         <div className="flex gap-3">
           <button
             type="button"
             className="flex-1 rounded-xl bg-emerald-700 px-4 py-6 text-lg font-semibold text-white hover:opacity-90"
             onClick={() => finish(true, "cash")}
           >
-            Cash
+            {t("sale.cash")}
           </button>
           <button
             type="button"
@@ -285,13 +290,12 @@ export default function NewSale({
             className="flex-1 rounded-xl bg-foreground px-4 py-6 text-lg font-semibold text-background hover:opacity-90 disabled:opacity-40"
             onClick={() => finish(true, "digital")}
           >
-            Digital
+            {t("sale.digital")}
           </button>
         </div>
         {!clientName.trim() && (
           <p className="text-center text-sm text-neutral-500">
-            Digital matching needs a client name — go back and add one, or
-            take it as cash.
+            {t("sale.digitalNeedsClient")}
           </p>
         )}
         <button
@@ -299,7 +303,7 @@ export default function NewSale({
           className="w-full text-sm text-neutral-500 hover:underline"
           onClick={() => setStep("paid")}
         >
-          Back
+          {t("common.back")}
         </button>
       </div>
     );
@@ -309,19 +313,19 @@ export default function NewSale({
   if (step === "checkout") {
     return (
       <div className="space-y-4">
-        {header("Checkout")}
+        {header(t("sale.checkout"))}
         <p className="text-center text-4xl font-semibold tabular-nums">
           {formatCents(totalCents)}
         </p>
 
         <div>
           <label className={labelClass} htmlFor="sale-client">
-            Who&apos;s it for?
+            {t("sale.whoFor")}
           </label>
           <input
             id="sale-client"
             className={fieldClass}
-            placeholder="Client name"
+            placeholder={t("sale.clientNamePlaceholder")}
             list="known-clients"
             value={clientName}
             onChange={(e) => setClientName(e.target.value)}
@@ -338,14 +342,14 @@ export default function NewSale({
                 checked={saveClient}
                 onChange={(e) => setSaveClient(e.target.checked)}
               />
-              Save “{clientName.trim()}” as a client
+              {t("sale.saveAsClient", { name: clientName.trim() })}
             </label>
           )}
         </div>
 
         <div>
           <label className={labelClass} htmlFor="sale-date">
-            Date
+            {t("sale.date")}
           </label>
           <input
             id="sale-date"
@@ -364,10 +368,10 @@ export default function NewSale({
               disabled={!clientName.trim()}
               onChange={(e) => setRecurring(e.target.checked)}
             />
-            Make recurring
+            {t("sale.makeRecurring")}
             {!clientName.trim() && (
               <span className="font-normal text-neutral-500">
-                (needs a client)
+                {t("sale.needsClient")}
               </span>
             )}
           </label>
@@ -394,14 +398,18 @@ export default function NewSale({
                     onClick={() => setCadence(option)}
                   >
                     {option.type === "everyN"
-                      ? "Every N days"
-                      : cadenceLabel(option)}
+                      ? t("sale.cadenceEveryN")
+                      : option.type === "weekly"
+                        ? t("sale.cadenceWeekly")
+                        : option.type === "biweekly"
+                          ? t("sale.cadenceBiweekly")
+                          : t("sale.cadenceMonthly")}
                   </button>
                 ))}
               </div>
               {cadence.type === "everyN" && (
                 <div className="flex items-center gap-2 text-sm">
-                  <label htmlFor="sale-everyn">Every</label>
+                  <label htmlFor="sale-everyn">{t("sale.every")}</label>
                   <input
                     id="sale-everyn"
                     type="number"
@@ -412,12 +420,11 @@ export default function NewSale({
                     value={everyN}
                     onChange={(e) => setEveryN(e.target.value)}
                   />
-                  <span>days, starting {date}</span>
+                  <span>{t("sale.daysStarting", { date })}</span>
                 </div>
               )}
               <p className="text-xs text-neutral-500">
-                When due, this adds an unpaid sale to Owed. No reminders, no
-                notifications — it just expects the money.
+                {t("sale.recurringNote")}
               </p>
             </div>
           )}
@@ -428,14 +435,14 @@ export default function NewSale({
           className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"
           onClick={() => setStep("paid")}
         >
-          Continue
+          {t("common.continue")}
         </button>
         <button
           type="button"
           className="w-full text-sm text-neutral-500 hover:underline"
           onClick={() => setStep("pick")}
         >
-          Back to products
+          {t("sale.backToProducts")}
         </button>
       </div>
     );
@@ -444,12 +451,11 @@ export default function NewSale({
   // ---- PICK PRODUCTS ----
   return (
     <div className="space-y-4">
-      {header("New sale")}
+      {header(t("sale.title"))}
 
       {services.length === 0 && (
         <p className="text-sm text-neutral-500">
-          No products yet — use the custom amount below, or add products from
-          the home screen first.
+          {t("sale.noProducts")}
         </p>
       )}
 
@@ -465,7 +471,13 @@ export default function NewSale({
               (quantities.get(service.id) ?? 0) > 0 && (
                 <div className="flex items-center gap-2 px-2 text-sm">
                   <label htmlFor={`size-${service.id}`}>
-                    How many {UNIT_LABELS[service.pricing.unit]}s?
+                    {t(
+                      service.pricing.unit === "sqft"
+                        ? "sale.howManySqft"
+                        : service.pricing.unit === "hour"
+                          ? "sale.howManyHours"
+                          : "sale.howManyRooms",
+                    )}
                   </label>
                   <input
                     id={`size-${service.id}`}
@@ -501,16 +513,17 @@ export default function NewSale({
               className="rounded-xl border border-neutral-300 p-4 text-sm dark:border-neutral-700"
             >
               {item.name} · {formatCents(item.unitCents)} ·{" "}
-              {quantities.get(item.serviceId!) ?? 0} — from the original sale
+              {quantities.get(item.serviceId!) ?? 0} —{" "}
+              {t("sale.fromOriginalSale")}
             </div>
           ))}
       </div>
 
       <div className="rounded-xl border border-neutral-300 p-4 dark:border-neutral-700">
-        <p className="mb-2 text-sm font-semibold">Custom amount</p>
+        <p className="mb-2 text-sm font-semibold">{t("sale.customAmount")}</p>
         <div className="grid grid-cols-2 gap-3">
           <input
-            aria-label="Custom amount in dollars"
+            aria-label={t("sale.customAmountAria")}
             type="number"
             inputMode="decimal"
             min="0"
@@ -521,9 +534,9 @@ export default function NewSale({
             onChange={(e) => setCustomAmount(e.target.value)}
           />
           <input
-            aria-label="What was it for"
+            aria-label={t("sale.customLabelAria")}
             className={fieldClass}
-            placeholder="What for? (optional)"
+            placeholder={t("sale.customLabelPlaceholder")}
             value={customLabel}
             onChange={(e) => setCustomLabel(e.target.value)}
           />
@@ -531,7 +544,7 @@ export default function NewSale({
       </div>
 
       <div className="flex items-center justify-between rounded-lg bg-neutral-100 px-4 py-3 dark:bg-neutral-900">
-        <span className="text-sm text-neutral-500">Total</span>
+        <span className="text-sm text-neutral-500">{t("common.total")}</span>
         <span className="text-2xl font-semibold tabular-nums">
           {formatCents(totalCents)}
         </span>
@@ -543,7 +556,7 @@ export default function NewSale({
         className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90 disabled:opacity-40"
         onClick={() => setStep("checkout")}
       >
-        Checkout
+        {t("sale.checkout")}
       </button>
     </div>
   );

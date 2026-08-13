@@ -9,6 +9,7 @@ import {
   uncertainFields,
   type Transaction,
 } from "@/lib/transaction";
+import { useLocale } from "./use-locale";
 
 /**
  * The pre-filled sheet. Every row is already correct as far as we know — the
@@ -31,6 +32,7 @@ export default function ConfirmationSheet({
   transactions: Transaction[];
   onChange: (id: string, patch: Partial<Transaction>) => void;
 }) {
+  const { t } = useLocale();
   const flaggedCount = transactions.filter(
     (tx) => uncertainFields(tx).length > 0,
   ).length;
@@ -39,8 +41,16 @@ export default function ConfirmationSheet({
   const expenses = transactions.length - payments;
 
   const found = [
-    payments > 0 ? `${payments} payment${payments === 1 ? "" : "s"}` : "",
-    expenses > 0 ? `${expenses} expense${expenses === 1 ? "" : "s"}` : "",
+    payments > 0
+      ? payments === 1
+        ? t("sheet.paymentCount.one")
+        : t("sheet.paymentCount.many", { count: payments })
+      : "",
+    expenses > 0
+      ? expenses === 1
+        ? t("sheet.expenseCount.one")
+        : t("sheet.expenseCount.many", { count: expenses })
+      : "",
   ]
     .filter(Boolean)
     .join(", ");
@@ -48,7 +58,9 @@ export default function ConfirmationSheet({
   return (
     <section className="space-y-4">
       <header className="flex items-baseline justify-between gap-4">
-        <h2 className="text-sm font-semibold">{found} found</h2>
+        <h2 className="text-sm font-semibold">
+          {t("sheet.found", { list: found })}
+        </h2>
         <p className="text-sm tabular-nums font-semibold">
           {formatCents(inCents)}
           {outCents > 0 && (
@@ -60,9 +72,9 @@ export default function ConfirmationSheet({
       {flaggedCount > 0 && (
         <p className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-900">
           {flaggedCount === 1
-            ? "1 row needs a quick look"
-            : `${flaggedCount} rows need a quick look`}{" "}
-          — the highlighted fields are the ones we weren&apos;t sure about.
+            ? t("sheet.needsLook.one")
+            : t("sheet.needsLook.many", { count: flaggedCount })}{" "}
+          {t("sheet.needsLookTail")}
         </p>
       )}
 
@@ -89,18 +101,23 @@ export default function ConfirmationSheet({
                 })
               }
             >
-              {tx.direction === "out" ? "money out" : "money in"} · tap to flip
+              {tx.direction === "out"
+                ? t("sheet.moneyOut")
+                : t("sheet.moneyIn")}{" "}
+              {t("sheet.tapToFlip")}
             </button>
             <div className="flex gap-2">
               <div className="flex-1">
                 <label className={labelClass} htmlFor={`${tx.id}-payer`}>
-                  {tx.direction === "out" ? "Paid to" : "Who paid"}
+                  {tx.direction === "out"
+                    ? t("sheet.paidTo")
+                    : t("sheet.whoPaid")}
                 </label>
                 <input
                   id={`${tx.id}-payer`}
                   className={inputClass(isUncertain(tx, "payer"))}
                   value={tx.payer}
-                  placeholder="Name"
+                  placeholder={t("sheet.namePlaceholder")}
                   onChange={(event) =>
                     onChange(tx.id, { payer: event.target.value })
                   }
@@ -108,7 +125,7 @@ export default function ConfirmationSheet({
               </div>
               <div className="w-28">
                 <label className={labelClass} htmlFor={`${tx.id}-amount`}>
-                  Amount
+                  {t("sheet.amount")}
                 </label>
                 <input
                   id={`${tx.id}-amount`}
@@ -130,7 +147,7 @@ export default function ConfirmationSheet({
             <div className="flex gap-2">
               <div className="w-40">
                 <label className={labelClass} htmlFor={`${tx.id}-date`}>
-                  Date
+                  {t("sheet.date")}
                 </label>
                 <input
                   id={`${tx.id}-date`}
@@ -144,13 +161,13 @@ export default function ConfirmationSheet({
               </div>
               <div className="flex-1">
                 <label className={labelClass} htmlFor={`${tx.id}-memo`}>
-                  Note
+                  {t("sheet.note")}
                 </label>
                 <input
                   id={`${tx.id}-memo`}
                   className={inputClass(false)}
                   value={tx.memo}
-                  placeholder="optional"
+                  placeholder={t("sheet.optionalPlaceholder")}
                   onChange={(event) =>
                     onChange(tx.id, { memo: event.target.value })
                   }

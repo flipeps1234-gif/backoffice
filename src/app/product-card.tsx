@@ -1,7 +1,8 @@
 "use client";
 
-import { priceLabel, UNIT_LABELS, type Service } from "@/lib/service";
+import { priceLabel, type Service } from "@/lib/service";
 import { formatCents } from "@/lib/transaction";
+import { useLocale } from "./use-locale";
 
 /**
  * The product card from the owner's sketch: name on top, Gain / Loss on
@@ -12,6 +13,13 @@ import { formatCents } from "@/lib/transaction";
  * Gain = what it sells for, Loss = what it costs you (the catalog's
  * ESTIMATE), Net = margin per unit. Estimates, never tax data.
  */
+
+const UNIT_KEYS = {
+  sqft: "products.unitSqft",
+  hour: "products.unitHour",
+  room: "products.unitRoom",
+} as const;
+
 export default function ProductCard({
   service,
   quantity,
@@ -25,13 +33,19 @@ export default function ProductCard({
   /** When set (and no steppers), tapping the card fires this — edit mode. */
   onTap?: () => void;
 }) {
+  const { t } = useLocale();
   const price = service.pricing.cents;
   const cost = service.costCents;
   const net = cost === null ? null : price - cost;
   const perUnit =
     service.pricing.type === "rate"
-      ? `/${UNIT_LABELS[service.pricing.unit]}`
+      ? `/${t(UNIT_KEYS[service.pricing.unit])}`
       : "";
+  // priceLabel on a flat-priced copy = the dollar part alone ($65, not $65.00).
+  const gain =
+    service.pricing.type === "rate"
+      ? `${priceLabel({ ...service, pricing: { type: "flat", cents: price } })}${perUnit}`
+      : priceLabel(service);
   const picking = quantity !== undefined;
   const selected = picking && quantity > 0;
 
@@ -43,7 +57,7 @@ export default function ProductCard({
           <div className="flex items-center gap-1">
             <button
               type="button"
-              aria-label={`One less ${service.name}`}
+              aria-label={t("products.oneLess", { name: service.name })}
               disabled={quantity === 0}
               className="h-11 w-11 rounded-lg border border-neutral-300 text-xl font-medium text-neutral-900 disabled:opacity-30 dark:border-neutral-600 dark:text-neutral-100"
               onClick={(event) => {
@@ -58,7 +72,7 @@ export default function ProductCard({
             </span>
             <button
               type="button"
-              aria-label={`One more ${service.name}`}
+              aria-label={t("products.oneMore", { name: service.name })}
               className="h-11 w-11 rounded-lg border border-neutral-300 text-xl font-medium text-neutral-900 dark:border-neutral-600 dark:text-neutral-100"
               onClick={(event) => {
                 event.stopPropagation();
@@ -74,13 +88,13 @@ export default function ProductCard({
       <div className="mt-2 flex items-end justify-between gap-3">
         <dl className="space-y-0.5 text-sm">
           <div className="flex gap-2">
-            <dt className="w-10 text-neutral-500">Gain</dt>
+            <dt className="w-10 text-neutral-500">{t("products.gain")}</dt>
             <dd className="tabular-nums">
-              {priceLabel(service)}
+              {gain}
             </dd>
           </div>
           <div className="flex gap-2">
-            <dt className="w-10 text-neutral-500">Loss</dt>
+            <dt className="w-10 text-neutral-500">{t("products.loss")}</dt>
             <dd className="tabular-nums text-neutral-600 dark:text-neutral-400">
               {cost === null ? "—" : `${formatCents(cost)}${perUnit}`}
             </dd>
@@ -88,7 +102,7 @@ export default function ProductCard({
         </dl>
         <div className="text-right">
           <p className="text-xs uppercase tracking-wide text-neutral-500">
-            Net
+            {t("products.net")}
           </p>
           <p
             className={`text-lg font-semibold tabular-nums ${

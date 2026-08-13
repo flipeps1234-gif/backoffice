@@ -3,6 +3,7 @@
 import { groupByDay } from "@/lib/history";
 import { formatCents, type Transaction } from "@/lib/transaction";
 import type { Service } from "@/lib/service";
+import { useLocale } from "./use-locale";
 
 /**
  * The record: every triaged payment, newest day first. "Log again" reopens
@@ -38,44 +39,61 @@ export default function HistoryList({
   /** Omitted when embedded in the desktop rail — no takeover, no Close. */
   onClose?: () => void;
 }) {
-  const groups = groupByDay(transactions, localToday());
+  const { t, tag } = useLocale();
+  const today = localToday();
+  const groups = groupByDay(transactions, today);
   const serviceName = (id: string | null) =>
     id ? services.find((s) => s.id === id)?.name : undefined;
+
+  const dayLabel = (date: string): string => {
+    if (date === "") return t("insights.noDate");
+    if (date === today) return t("insights.today");
+    const parsed = new Date(`${date}T00:00:00Z`);
+    const daysAgo = Math.round(
+      (new Date(`${today}T00:00:00Z`).getTime() - parsed.getTime()) / 86_400_000,
+    );
+    if (daysAgo === 1) return t("insights.yesterday");
+    return parsed.toLocaleDateString(tag, {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+      year: date.slice(0, 4) === today.slice(0, 4) ? undefined : "numeric",
+      timeZone: "UTC",
+    });
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">History</h2>
+        <h2 className="text-sm font-semibold">{t("insights.history")}</h2>
         {onClose && (
           <button
             type="button"
             className="text-sm text-neutral-500 hover:underline"
             onClick={onClose}
           >
-            Close
+            {t("common.close")}
           </button>
         )}
       </div>
 
       {groups.length === 0 && (
-        <p className="text-sm text-neutral-500">
-          Nothing sorted yet. Payments land here once you&apos;ve swiped them.
-        </p>
+        <p className="text-sm text-neutral-500">{t("insights.emptyHistory")}</p>
       )}
 
       {groups.map((group) => (
         <section key={group.date || "undated"}>
           <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
-            {group.label}
+            {dayLabel(group.date)}
           </h3>
           <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
             {group.transactions.map((tx) => {
               const out = tx.direction === "out";
               const detail = [
                 serviceName(tx.serviceId),
-                out ? "expense" : undefined,
-                tx.source === "manual" ? "Cash" : "Screenshot",
-                tx.business ? undefined : "personal",
+                out ? t("insights.expense") : undefined,
+                tx.source === "manual" ? t("insights.cash") : t("insights.screenshot"),
+                tx.business ? undefined : t("insights.personalTag"),
                 tx.memo || undefined,
               ]
                 .filter(Boolean)
@@ -88,7 +106,7 @@ export default function HistoryList({
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm text-neutral-900">
-                      {tx.payer || "No name"}
+                      {tx.payer || t("insights.noName")}
                     </p>
                     <p className="truncate text-xs text-neutral-500">{detail}</p>
                   </div>
@@ -121,7 +139,7 @@ export default function HistoryList({
                         })
                       }
                     >
-                      Log again
+                      {t("common.logAgain")}
                     </button>
                   </div>
                 </li>

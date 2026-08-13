@@ -23,10 +23,13 @@ import RunningTotals from "./running-totals";
 import SignIn from "./sign-in";
 import SwipeDeck from "./swipe-deck";
 import TermsGate, { useAcceptedTerms } from "./terms-gate";
+import { useLocale } from "./use-locale";
 import { chunkForUpload, compressImage } from "@/lib/compress-image";
 import { isSupportedImage } from "@/lib/extract/image-types";
 import { knownPayers, rememberedFor } from "@/lib/customer-memory";
 import type { Client } from "@/lib/client";
+import { translate } from "@/lib/i18n";
+import { currentLocale } from "@/lib/locale";
 import { matchBatch, txnCandidatesForSale } from "@/lib/matching";
 import { generateDue, type RecurringTemplate } from "@/lib/recurring";
 import {
@@ -36,7 +39,7 @@ import {
   type Sale,
 } from "@/lib/sale";
 import { dedupe, isDuplicate } from "@/lib/extract/dedupe";
-import { warningMessage, type ExtractionWarning } from "@/lib/extract/types";
+import type { ExtractionWarning } from "@/lib/extract/types";
 import { getSupabase } from "@/lib/supabase/client";
 import {
   insertClient,
@@ -119,12 +122,19 @@ type Stage = "upload" | "confirm" | "sort";
 export default function UploadScreen() {
   const accepted = useAcceptedTerms();
   const { user, loading, isConfigured } = useSession();
+  const { locale, t } = useLocale();
+
+  // <html lang> is server-rendered "en"; keep it honest once the device's
+  // real language is known — screen readers pick pronunciation from it.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   // Don't flash the sign-in form at someone who is already signed in, and
   // don't flash the terms at someone who has already accepted them: `accepted`
   // is undefined until localStorage has actually been read.
   if (loading || accepted === undefined) {
-    return <p className="text-sm text-neutral-500">Loading…</p>;
+    return <p className="text-sm text-neutral-500">{t("home.loading")}</p>;
   }
 
   // Before sign-in, deliberately. The disclosure that screenshots leave the
@@ -163,6 +173,7 @@ function Ledger({
   isConfigured: boolean;
   demoAccount: boolean;
 }) {
+  const { t } = useLocale();
   const [status, setStatus] = useState<Status>("idle");
   const [stage, setStage] = useState<Stage>("upload");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -262,9 +273,9 @@ function Ledger({
           await work();
         } catch (cause) {
           console.error("Save failed:", cause);
-          setError(
-            "Saved on screen but not to your account. Check your connection.",
-          );
+          // translate + currentLocale, not `t`: this callback (and the load
+          // effect depending on it) must not re-run on a language switch.
+          setError(translate(currentLocale(), "home.errSaveFailed"));
           setStatus("error");
           // Remembered, not just flashed: the finish copy below promises the
           // batch is on the user's account "next time you open this on any
@@ -295,7 +306,7 @@ function Ledger({
       })
       .catch((cause) => {
         console.error("Load failed:", cause);
-        setError("Couldn't load your saved payments.");
+        setError(translate(currentLocale(), "home.errLoadFailed"));
         setStatus("error");
       });
 
@@ -375,7 +386,7 @@ function Ledger({
         }
         if (pausedNames.length > 0) {
           setSaleNotice(
-            "A recurring sale was paused after 3 misses — check Clients.",
+            translate(currentLocale(), "home.noticeRecurringPaused"),
           );
         }
       })
@@ -433,7 +444,7 @@ function Ledger({
       // since the upload targets go inert while reading, the user is locked
       // out of uploading with no error on screen until they reload.
       console.error("Upload failed:", cause);
-      setError("Something went wrong reading those. Try again.");
+      setError(t("home.errUploadFailed"));
       setStatus("error");
     } finally {
       reading.current = false;
@@ -446,7 +457,7 @@ function Ledger({
     // in are covered, rather than letting a PDF reach the compressor.
     const images = [...files].filter((file) => file.type.startsWith("image/"));
     if (images.length === 0) {
-      setError("Those aren't images. Screenshots or photos of receipts only.");
+      setError(t("home.errNotImages"));
       setStatus("error");
       // Don't leave the last batch's messages sitting under a new error.
       setBatchNotice("");
@@ -465,8 +476,8 @@ function Ledger({
     // twenty photos rather than sitting at zero.
     let readied = 0;
     setProgress({
-      label: "Getting your screenshots ready",
-      detail: `${images.length} to shrink`,
+      label: t("home.progressReady"),
+      detail: t("home.progressToShrink", { count: images.length }),
       fraction: 0,
     });
     const compressed = await Promise.all(
@@ -474,8 +485,8 @@ function Ledger({
         const out = await compressImage(file);
         readied += 1;
         setProgress({
-          label: "Getting your screenshots ready",
-          detail: `${readied} of ${images.length}`,
+          label: t("home.progressReady"),
+          detail: t("home.progressOf", { done: readied, total: images.length }),
           // Compression is the quick part; it owns the first slice of the bar
           // so the long wait that follows still has most of it to travel.
           fraction: READY_SHARE * (readied / images.length),
@@ -491,10 +502,7 @@ function Ledger({
     const usable = compressed.filter(isSupportedImage);
     const unsupported = compressed.length - usable.length;
     if (usable.length === 0) {
-      setError(
-        "Couldn't read that format. A screenshot works best — or set your " +
-          "camera to Most Compatible.",
-      );
+      setError(t("home.errBadFormat"));
       setStatus("error");
       setBatchNotice("");
       setWarnings([]);
@@ -527,11 +535,11 @@ function Ledger({
 
     for (const [index, chunk] of chunks.entries()) {
       setProgress({
-        label: "Reading your screenshots",
+        label: t("home.progressReading"),
         detail:
           chunks.length > 1
-            ? `Batch ${index + 1} of ${chunks.length}`
-            : "This is the slow bit — a few seconds.",
+            ? t("home.progressBatch", { num: index + 1, total: chunks.length })
+            : t("home.progressSlow"),
         // One batch is one model call: we know it started and we will know it
         // finished, and nothing in between. Say so with a moving stripe.
         fraction:
@@ -550,7 +558,7 @@ function Ledger({
         });
         const data = await response.json();
         if (!response.ok) {
-          failMessage = data.error ?? "Something went wrong reading those.";
+          failMessage = data.error ?? t("home.errReadGeneric");
           unsentFiles = remaining(index);
           setError(failMessage);
           failed = true;
@@ -561,8 +569,7 @@ function Ledger({
         // and rows are written to the database before the swipe — so a real
         // account must never accept them, whatever the server decided.
         if (accountId && data.provider === "mock") {
-          failMessage =
-            "Reading screenshots is unavailable right now. Nothing was read.";
+          failMessage = t("home.errMockBlocked");
           unsentFiles = remaining(index);
           setError(failMessage);
           failed = true;
@@ -571,8 +578,7 @@ function Ledger({
         collected.push(...data.transactions);
         collectedWarnings.push(...data.warnings);
       } catch {
-        failMessage =
-          "Couldn't reach the server. Check your connection and try again.";
+        failMessage = t("home.errNetwork");
         unsentFiles = remaining(index);
         setError(failMessage);
         failed = true;
@@ -590,16 +596,19 @@ function Ledger({
       const ignored = nonImages + unsupported + unsentFiles;
       setError(
         failed
-          ? failMessage ||
-              "Something went wrong reading those, and nothing came back."
-          : "We couldn't read any payments from those. Screenshot your " +
-              "Transactions list — a social feed hides the amounts.",
+          ? failMessage || t("home.errNothingBack")
+          : t("home.errNoPayments"),
       );
       // This is also the one exit that skipped the ignored-file count, so a
       // dropped PDF plus an unreadable screenshot said nothing about either.
       setBatchNotice(
         ignored > 0
-          ? `Ignored ${ignored} file${ignored === 1 ? "" : "s"} we couldn't read.`
+          ? t(
+              ignored === 1
+                ? "home.ignoredFiles.one"
+                : "home.ignoredFiles.many",
+              { count: ignored },
+            )
           : "",
       );
       setStatus("error");
@@ -639,17 +648,25 @@ function Ledger({
       const ignored = nonImages + unsupported;
       if (unsentFiles > 0) {
         notices.push(
-          `${unsentFiles} screenshot${unsentFiles === 1 ? " was" : "s were"} never read — upload ${unsentFiles === 1 ? "it" : "them"} again.`,
+          t(unsentFiles === 1 ? "home.unsent.one" : "home.unsent.many", {
+            count: unsentFiles,
+          }),
         );
       }
       if (ignored > 0) {
         notices.push(
-          `Ignored ${ignored} file${ignored === 1 ? "" : "s"} we couldn't read.`,
+          t(
+            ignored === 1 ? "home.ignoredFiles.one" : "home.ignoredFiles.many",
+            { count: ignored },
+          ),
         );
       }
       if (skipped > 0) {
         notices.push(
-          `Skipped ${skipped} payment${skipped === 1 ? "" : "s"} already on your ledger.`,
+          t(
+            skipped === 1 ? "home.skippedDupes.one" : "home.skippedDupes.many",
+            { count: skipped },
+          ),
         );
       }
       setBatchNotice(notices.join(" "));
@@ -718,7 +735,10 @@ function Ledger({
         if (sale && txn) linkSaleToTxn(sale, txn);
       }
       setSaleNotice(
-        `${outcome.links.length} payment${outcome.links.length === 1 ? "" : "s"} matched to sales you'd logged.`,
+        t(
+          outcome.links.length === 1 ? "home.matched.one" : "home.matched.many",
+          { count: outcome.links.length },
+        ),
       );
     }
     if (outcome.suggestions.length > 0) {
@@ -836,7 +856,7 @@ function Ledger({
     // Stale suggestion cards and double-taps both used to slip through
     // here and mint a second $80 of revenue from one job.
     if (sale.state === "paid" || txn.matchedSaleId) {
-      setSaleNotice("Already settled — nothing changed.");
+      setSaleNotice(t("home.alreadySettled"));
       return;
     }
     resetTemplateMisses(sale);
@@ -950,7 +970,9 @@ function Ledger({
       if (accountId) {
         void persist(() => insertTransactions([txn], accountId));
       }
-      setSaleNotice(`${formatCents(saleTotalCents(sale))} — paid, done.`);
+      setSaleNotice(
+        t("home.paidDone", { amount: formatCents(saleTotalCents(sale)) }),
+      );
     } else if (paid && method === "digital") {
       // FLOW.md: exactly one high-confidence hit → LINKED · PAID (undo);
       // several or none → candidates + "expected in next screenshots".
@@ -973,7 +995,10 @@ function Ledger({
           saveTransaction(txn.id, { matchedSaleId: sale.id, business: true }),
         );
         setSaleNotice(
-          `Matched to ${txn.payer || "a payment"} on ${txn.date || "your ledger"}.`,
+          t("home.matchedTo", {
+            payer: txn.payer || t("home.aPayment"),
+            date: txn.date || t("home.yourLedger"),
+          }),
         );
       } else {
         // Zero or several: the sale waits as EXPECTED, rescanned on every
@@ -987,13 +1012,19 @@ function Ledger({
         }
         setSaleNotice(
           candidates.length === 0
-            ? "Marked paid — we'll match it in your next screenshots."
-            : `${candidates.length} payments could be this sale — pick below.`,
+            ? t("home.markedPaid")
+            : t("home.pickBelow", { count: candidates.length }),
         );
       }
     } else {
       setSaleNotice(
-        `Saved — ${result.newClient?.name ?? clientNameOf(sale.clientId) ?? "client"} owes ${formatCents(saleTotalCents(sale))}.`,
+        t("home.savedOwes", {
+          name:
+            result.newClient?.name ??
+            clientNameOf(sale.clientId) ??
+            t("home.fallbackClient"),
+          amount: formatCents(saleTotalCents(sale)),
+        }),
       );
     }
 
@@ -1115,9 +1146,7 @@ function Ledger({
             { relaxName: true },
           );
           if (candidates.length === 0) {
-            setSaleNotice(
-              "No payment on your ledger matches that amount and window.",
-            );
+            setSaleNotice(t("home.noMatchFound"));
             return;
           }
           setSuggestions((current) => [
@@ -1248,15 +1277,14 @@ function Ledger({
             className="hover:underline"
             onClick={() => getSupabase()?.auth.signOut()}
           >
-            Sign out
+            {t("home.signOut")}
           </button>
         </p>
       )}
 
       {demoAccount && (
         <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          Shared test account — everyone who types the demo word sees what you
-          save here. Try everything; don&apos;t put real numbers in.
+          {t("home.demoBanner")}
         </p>
       )}
 
@@ -1292,7 +1320,7 @@ function Ledger({
             className="sr-only"
             onChange={(event) => handleFiles(event.target.files)}
           />
-          Snap a receipt, check, or statement
+          {t("home.snap")}
         </label>
       )}
 
@@ -1310,14 +1338,14 @@ function Ledger({
                 setShowNewSale(true);
               }}
             >
-              New sale
+              {t("home.newSale")}
             </button>
             <button
               type="button"
               className="block w-full border-t border-neutral-400 px-4 py-3 text-base font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-900"
               onClick={() => setShowRecentSales(true)}
             >
-              Log again
+              {t("common.logAgain")}
             </button>
           </div>
 
@@ -1327,14 +1355,14 @@ function Ledger({
               className="rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-900"
               onClick={() => setShowProducts(true)}
             >
-              Products &amp; services
+              {t("home.products")}
             </button>
             <button
               type="button"
               className="rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-900"
               onClick={() => setShowClients(true)}
             >
-              Clients
+              {t("home.clients")}
             </button>
           </div>
 
@@ -1344,14 +1372,14 @@ function Ledger({
               className="flex-1 rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-900"
               onClick={() => setQuickAdd(true)}
             >
-              Log an expense
+              {t("home.logExpense")}
             </button>
             <button
               type="button"
               className="flex-1 rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-900"
               onClick={() => setShowOwed(true)}
             >
-              Owed
+              {t("home.owed")}
               {owedCents(sales) > 0 && (
                 <span className="ml-1 tabular-nums text-amber-700 dark:text-amber-400">
                   {formatCents(owedCents(sales))}
@@ -1365,14 +1393,14 @@ function Ledger({
                   className="rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 lg:hidden"
                   onClick={() => setShowHistory(true)}
                 >
-                  History
+                  {t("home.history")}
                 </button>
                 <button
                   type="button"
                   className="rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 lg:hidden"
                   onClick={() => setShowDashboard(true)}
                 >
-                  Dashboard
+                  {t("home.dashboard")}
                 </button>
               </>
             )}
@@ -1407,12 +1435,12 @@ function Ledger({
                 className="font-medium underline"
                 onClick={undoMatches}
               >
-                Undo
+                {t("common.undo")}
               </button>
             )}
             <button
               type="button"
-              aria-label="Dismiss"
+              aria-label={t("common.dismiss")}
               className="font-medium"
               onClick={() => {
                 // Dismissing accepts the matches: the undo window closes
@@ -1457,8 +1485,13 @@ function Ledger({
           >
             <p>
               {isPayment
-                ? `A ${formatCents((anchor as Transaction).amountCents)} payment from ${(anchor as Transaction).payer || "someone"} could be one of these sales:`
-                : `This ${formatCents(saleTotalCents(anchor as Sale))} sale could match one of these payments:`}
+                ? t("home.sugPayment", {
+                    amount: formatCents((anchor as Transaction).amountCents),
+                    payer: (anchor as Transaction).payer || t("home.someone"),
+                  })
+                : t("home.sugSale", {
+                    amount: formatCents(saleTotalCents(anchor as Sale)),
+                  })}
             </p>
             <div className="flex flex-wrap gap-2">
               {(isPayment ? sug.saleIds : sug.txnIds)
@@ -1482,13 +1515,13 @@ function Ledger({
                       // same "Matched." message.
                       setMatchUndo([]);
                       linkSaleToTxn(sale, txn);
-                      setSaleNotice("Matched.");
+                      setSaleNotice(t("home.matchedShort"));
                       dismiss();
                     }}
                   >
                     {isPayment
-                      ? `${clientNameOf(sale.clientId) || "Sale"} · ${sale.date}`
-                      : `${txn.payer || "Payment"} · ${txn.date || "no date"}`}
+                      ? `${clientNameOf(sale.clientId) || t("home.fallbackSale")} · ${sale.date}`
+                      : `${txn.payer || t("home.fallbackPayment")} · ${txn.date || t("home.noDate")}`}
                   </button>
                 );
               })}
@@ -1497,7 +1530,7 @@ function Ledger({
                 className="rounded-md px-2 py-1.5 text-xs font-medium underline"
                 onClick={dismiss}
               >
-                None of these
+                {t("home.noneOfThese")}
               </button>
             </div>
           </div>
@@ -1512,7 +1545,13 @@ function Ledger({
           {warning.filename && (
             <span className="font-medium">{warning.filename}: </span>
           )}
-          {warningMessage(warning)}
+          {t(
+            warning.code === "no_amounts_visible"
+              ? "home.warnNoAmounts"
+              : warning.code === "not_a_payment_feed"
+                ? "home.warnNotAFeed"
+                : "home.warnUnreadable",
+          )}
         </p>
       ))}
 
@@ -1526,7 +1565,7 @@ function Ledger({
             className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"
             onClick={confirmBatch}
           >
-            Looks right — start sorting
+            {t("home.looksRight")}
           </button>
         </>
       )}
@@ -1548,8 +1587,8 @@ function Ledger({
             <div className="space-y-4">
               <p className="text-sm font-medium">
                 {sorted.some((tx) => tx.direction === "out")
-                  ? "All sorted. That's your money, in and out."
-                  : "All sorted. That's your money in."}
+                  ? t("home.allSortedInOut")
+                  : t("home.allSortedIn")}
               </p>
               <button
                 type="button"
@@ -1557,19 +1596,18 @@ function Ledger({
                 onClick={undo}
                 disabled={decided.length === 0}
               >
-                Undo last
+                {t("home.undoLast")}
               </button>
               <button
                 type="button"
                 className="block w-full rounded-lg bg-foreground px-4 py-3 text-sm font-medium text-background hover:opacity-90"
                 onClick={moreScreenshots}
               >
-                Add more screenshots
+                {t("home.addMore")}
               </button>
               {accountId && !saveFailed ? (
                 <p className="text-xs text-neutral-500">
-                  Saved to your account. It&apos;ll be here next time you open
-                  this on any device.
+                  {t("home.savedToAccount")}
                 </p>
               ) : accountId ? (
                 // The reassurance above was printed unconditionally, including
@@ -1577,9 +1615,7 @@ function Ledger({
                 // needed to know their batch was only on screen was the one
                 // moment the app told them it was safe.
                 <p className="text-xs text-red-700 dark:text-red-400">
-                  Some of this is on screen only — a save didn&apos;t reach your
-                  account. Stay on this page and check your connection; closing
-                  the tab now would lose it.
+                  {t("home.saveFailedNote")}
                 </p>
               ) : (
                 <>
@@ -1588,11 +1624,10 @@ function Ledger({
                     className="block w-full rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50"
                     onClick={startOver}
                   >
-                    Clear and start over
+                    {t("home.clearStartOver")}
                   </button>
                   <p className="text-xs text-neutral-500">
-                    Not signed in, so nothing is saved. Clearing loses these
-                    totals.
+                    {t("home.notSignedIn")}
                   </p>
                 </>
               )}
@@ -1636,9 +1671,7 @@ function Ledger({
                 { relaxName: true },
               );
               if (candidates.length === 0) {
-                setSaleNotice(
-                  "No payment on your ledger matches that amount and window.",
-                );
+                setSaleNotice(t("home.noMatchFound"));
                 return;
               }
               setSuggestions((current) => [

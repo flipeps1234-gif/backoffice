@@ -1,3 +1,4 @@
+import LocalePicker from "./locale-picker";
 import UploadScreen from "./upload-screen";
 
 /** The two-cards mark, drawn in the page's own text color so it works in
@@ -34,10 +35,16 @@ function Mark() {
 export default function Home() {
   return (
     <main className="mx-auto w-full max-w-lg px-4 py-8 lg:max-w-5xl lg:px-8">
-      <h1 className="mb-6 flex items-center gap-2 text-lg font-semibold tracking-tight">
-        <Mark />
-        contado
-      </h1>
+      {/* The picker lives in the permanent header — every screen, every
+          state, including signed-out. A language switcher you have to hunt
+          for might as well not exist. */}
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+          <Mark />
+          contado
+        </h1>
+        <LocalePicker compact />
+      </div>
       <UploadScreen />
     </main>
   );

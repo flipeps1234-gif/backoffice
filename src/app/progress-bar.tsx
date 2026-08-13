@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale } from "./use-locale";
+
 /**
  * The upload's progress, at a size you can read at arm's length while the
  * phone is in one hand — the old indicator was a line of grey 14px text.
@@ -21,6 +23,7 @@ export default function ProgressBar({
   /** 0–1, or null when there is nothing measurable to report. */
   fraction: number | null;
 }) {
+  const { t } = useLocale();
   const pct = fraction === null ? null : Math.round(Math.min(1, Math.max(0, fraction)) * 100);
 
   return (
@@ -32,7 +35,7 @@ export default function ProgressBar({
       aria-valuenow={pct ?? undefined}
       aria-valuemin={pct === null ? undefined : 0}
       aria-valuemax={pct === null ? undefined : 100}
-      aria-valuetext={pct === null ? "Working…" : `${pct}%`}
+      aria-valuetext={pct === null ? t("shell.working") : `${pct}%`}
       className="space-y-2"
     >
       <div className="flex items-baseline justify-between gap-3">
