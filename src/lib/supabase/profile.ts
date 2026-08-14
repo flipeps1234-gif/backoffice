@@ -15,7 +15,12 @@ export const loadProfile = async (): Promise<BusinessProfile> => {
     .from("business_profiles")
     .select("business_name, owner_name, us_state")
     .maybeSingle<Row>();
-  if (error || !data) return EMPTY_PROFILE;
+  // A FAILED check must not impersonate "no profile yet": the caller
+  // seeds the Settings form from this, and saving blank seeds over a
+  // real profile would wipe it (review catch). Throw; the caller keeps
+  // the form gated until a load actually succeeds.
+  if (error) throw new Error(error.message);
+  if (!data) return EMPTY_PROFILE;
   return {
     businessName: typeof data.business_name === "string" ? data.business_name : "",
     ownerName: typeof data.owner_name === "string" ? data.owner_name : "",

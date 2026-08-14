@@ -18,14 +18,33 @@ drop policy if exists "own deletion: select" on public.deletion_requests;
 create policy "own deletion: select" on public.deletion_requests
   for select using (auth.uid() = account_id);
 
-drop policy if exists "own deletion: insert" on public.deletion_requests;
-create policy "own deletion: insert" on public.deletion_requests
-  for insert with check (auth.uid() = account_id);
+-- (insert policy defined below, with the demo-account guard)
 
 -- Cancelling = deleting your own request inside the window.
 drop policy if exists "own deletion: delete" on public.deletion_requests;
 create policy "own deletion: delete" on public.deletion_requests
   for delete using (auth.uid() = account_id);
+
+-- Re-requesting goes through PostgREST upsert = INSERT ... ON CONFLICT
+-- DO UPDATE, and the conflict arm needs UPDATE rights or RLS rejects
+-- the exact idempotent path upsert exists for (review catch).
+drop policy if exists "own deletion: update" on public.deletion_requests;
+create policy "own deletion: update" on public.deletion_requests
+  for update using (auth.uid() = account_id)
+  with check (auth.uid() = account_id);
+
+-- The SHARED DEMO ACCOUNT is not deletable, and JSX is not a guard
+-- (review catch: anyone holds a real tester session via the public
+-- demo word, and a console insert passed RLS — the nightly purge
+-- would have destroyed the shared dataset). The convention: the demo
+-- account's email local part is 'tester'. Enforced here, where it
+-- cannot be bypassed.
+drop policy if exists "own deletion: insert" on public.deletion_requests;
+create policy "own deletion: insert" on public.deletion_requests
+  for insert with check (
+    auth.uid() = account_id
+    and split_part(coalesce(auth.jwt() ->> 'email', ''), '@', 1) <> 'tester'
+  );
 
 -- The purge. SECURITY DEFINER because deleting from auth.users needs
 -- rights the client never has; the WHERE clause is the entire policy.
@@ -39,7 +58,10 @@ begin
   delete from auth.users u
   using public.deletion_requests r
   where u.id = r.account_id
-    and r.requested_at < now() - interval '7 days';
+    and r.requested_at < now() - interval '7 days'
+    -- Belt to the policy's suspenders: even a request row that somehow
+    -- exists for the demo account never executes.
+    and split_part(coalesce(u.email, ''), '@', 1) <> 'tester';
 end;
 $$;
 

@@ -117,10 +117,9 @@ export default function Dashboard({
           <h2 className="text-lg font-semibold">
             {profile.businessName || "contado"} — {t("dash.proofTitle")}
           </h2>
-          {profile.ownerName && (
+          {(profile.ownerName || profile.usState) && (
             <p className="text-sm text-neutral-700">
-              {profile.ownerName}
-              {profile.usState && ` · ${profile.usState}`}
+              {[profile.ownerName, profile.usState].filter(Boolean).join(" · ")}
             </p>
           )}
           <p className="text-sm text-neutral-500">

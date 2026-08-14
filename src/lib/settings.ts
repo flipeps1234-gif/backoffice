@@ -102,7 +102,9 @@ export const subscribeToSettings = (onChange: () => void): (() => void) => {
       event.key === THEME_KEY ||
       event.key === FLOW_KEY ||
       event.key === NOTIFY_RECAP_KEY ||
-      event.key === NOTIFY_TAX_KEY
+      event.key === NOTIFY_TAX_KEY ||
+      event.key === RECAP_SHOWN_KEY ||
+      event.key === TAX_DISMISSED_KEY
     )
       onChange();
   };

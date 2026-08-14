@@ -96,6 +96,21 @@ export const messages = {
     es: "Guardado.",
     pt: "Salvo.",
   },
+  "settings.businessHintAnon": {
+    en: "Goes on top of the tax CSV and the proof of income. You're not signed in, so this won't outlive this screen.",
+    es: "Va al inicio del CSV de impuestos y del comprobante de ingresos. No has iniciado sesión, así que esto no durará más allá de esta pantalla.",
+    pt: "Vai no topo do CSV de impostos e do comprovante de renda. Você não está conectado, então isto não dura além desta tela.",
+  },
+  "settings.profileLoading": {
+    en: "Still loading what's saved on your account — one moment.",
+    es: "Todavía cargando lo guardado en tu cuenta — un momento.",
+    pt: "Ainda carregando o que está salvo na sua conta — um momento.",
+  },
+  "settings.backupIssue": {
+    en: "Something didn't save — check your connection. The home screen shows what failed.",
+    es: "Algo no se guardó — revisa tu conexión. La pantalla de inicio muestra qué falló.",
+    pt: "Algo não foi salvo — verifique sua conexão. A tela inicial mostra o que falhou.",
+  },
   // ---- Services & clients ----
   "settings.catalog": {
     en: "Services & clients",

@@ -83,11 +83,104 @@ function Toggle({
   );
 }
 
+function BusinessForm({
+  profile,
+  signedIn,
+  profileReady,
+  onSaveProfile,
+}: {
+  profile: BusinessProfile;
+  signedIn: boolean;
+  profileReady: boolean;
+  onSaveProfile: (profile: BusinessProfile) => void;
+}) {
+  const { t } = useLocale();
+  const [businessName, setBusinessName] = useState(profile.businessName);
+  const [ownerName, setOwnerName] = useState(profile.ownerName);
+  const [usState, setUsState] = useState(profile.usState);
+  const [savedFlash, setSavedFlash] = useState(false);
+
+  const dirty =
+    businessName.trim() !== profile.businessName ||
+    ownerName.trim() !== profile.ownerName ||
+    usState.trim().toUpperCase() !== profile.usState;
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className={labelClass} htmlFor="biz-name">
+          {t("settings.businessName")}
+        </label>
+        <input
+          id="biz-name"
+          className={fieldClass}
+          value={businessName}
+          onChange={(e) => setBusinessName(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className={labelClass} htmlFor="biz-owner">
+          {t("settings.ownerName")}
+        </label>
+        <input
+          id="biz-owner"
+          className={fieldClass}
+          value={ownerName}
+          onChange={(e) => setOwnerName(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className={labelClass} htmlFor="biz-state">
+          {t("settings.state")}
+        </label>
+        <input
+          id="biz-state"
+          className={`${fieldClass} w-24 text-center uppercase`}
+          placeholder="FL"
+          maxLength={2}
+          value={usState}
+          onChange={(e) => setUsState(e.target.value)}
+        />
+      </div>
+      <p className="text-xs text-neutral-500">
+        {t(signedIn ? "settings.businessHint" : "settings.businessHintAnon")}
+      </p>
+      {signedIn && !profileReady && (
+        <p className="text-xs text-neutral-500">{t("settings.profileLoading")}</p>
+      )}
+      <button
+        type="button"
+        disabled={!dirty || (signedIn && !profileReady)}
+        className="rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-40"
+        onClick={() => {
+          onSaveProfile({
+            businessName: businessName.trim(),
+            ownerName: ownerName.trim(),
+            usState: usState.trim().toUpperCase(),
+          });
+          setUsState(usState.trim().toUpperCase());
+          setSavedFlash(true);
+          setTimeout(() => setSavedFlash(false), 2000);
+        }}
+      >
+        {t("common.save")}
+      </button>
+      {savedFlash && (
+        <span className="ml-3 text-sm text-emerald-600" aria-live="polite">
+          {t("settings.businessSaved")}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPage({
   signedIn,
   email,
   demoAccount,
   profile,
+  profileReady,
+  hasSaveError,
   onSaveProfile,
   deletionRequestedAt,
   onRequestDeletion,
@@ -101,6 +194,11 @@ export default function SettingsPage({
   email: string | null;
   demoAccount: boolean;
   profile: BusinessProfile;
+  /** False until the stored profile actually LOADED — saving blank
+   *  fields over an unloaded profile would wipe it (review catch). */
+  profileReady: boolean;
+  /** The persist queue reported a failure — the backup line says so. */
+  hasSaveError: boolean;
   onSaveProfile: (profile: BusinessProfile) => void;
   /** ISO timestamp of the pending request, or null. */
   deletionRequestedAt: string | null;
@@ -112,15 +210,10 @@ export default function SettingsPage({
   onOpenClients: () => void;
   onClose: () => void;
 }) {
-  const { t } = useLocale();
+  const { t, tag } = useLocale();
   const theme = useTheme();
   const saleFlow = useSaleFlow();
   const { recap, taxNote } = useNotifyPrefs();
-
-  const [businessName, setBusinessName] = useState(profile.businessName);
-  const [ownerName, setOwnerName] = useState(profile.ownerName);
-  const [usState, setUsState] = useState(profile.usState);
-  const [savedFlash, setSavedFlash] = useState(false);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTyped, setDeleteTyped] = useState("");
@@ -132,19 +225,16 @@ export default function SettingsPage({
     return <TermsGate readOnly onClose={() => setShowTerms(false)} />;
   }
 
-  const dirty =
-    businessName.trim() !== profile.businessName ||
-    ownerName.trim() !== profile.ownerName ||
-    usState.trim().toUpperCase() !== profile.usState;
-
   const emailMatches =
     email !== null &&
     deleteTyped.trim().toLowerCase() === email.trim().toLowerCase();
 
+  // LOCAL date of the eligibility instant — the purge runs at or after
+  // it, so the shown date is never later than the truth (review catch:
+  // the UTC slice promised a date the purge could beat by a day).
   const purgeDate = deletionRequestedAt
     ? new Date(Date.parse(deletionRequestedAt) + 7 * 86_400_000)
-        .toISOString()
-        .slice(0, 10)
+        .toLocaleDateString(tag)
     : null;
 
   const themeOption = (value: Theme, label: string) => (
@@ -207,66 +297,16 @@ export default function SettingsPage({
       </div>
 
       <Section title={t("settings.business")}>
-        <div className="space-y-3">
-          <div>
-            <label className={labelClass} htmlFor="biz-name">
-              {t("settings.businessName")}
-            </label>
-            <input
-              id="biz-name"
-              className={fieldClass}
-              value={businessName}
-              onChange={(e) => setBusinessName(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={labelClass} htmlFor="biz-owner">
-              {t("settings.ownerName")}
-            </label>
-            <input
-              id="biz-owner"
-              className={fieldClass}
-              value={ownerName}
-              onChange={(e) => setOwnerName(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={labelClass} htmlFor="biz-state">
-              {t("settings.state")}
-            </label>
-            <input
-              id="biz-state"
-              className={`${fieldClass} w-24 text-center uppercase`}
-              placeholder="FL"
-              maxLength={2}
-              value={usState}
-              onChange={(e) => setUsState(e.target.value)}
-            />
-          </div>
-          <p className="text-xs text-neutral-500">{t("settings.businessHint")}</p>
-          <button
-            type="button"
-            disabled={!dirty}
-            className="rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-40"
-            onClick={() => {
-              onSaveProfile({
-                businessName: businessName.trim(),
-                ownerName: ownerName.trim(),
-                usState: usState.trim().toUpperCase(),
-              });
-              setUsState(usState.trim().toUpperCase());
-              setSavedFlash(true);
-              setTimeout(() => setSavedFlash(false), 2000);
-            }}
-          >
-            {t("common.save")}
-          </button>
-          {savedFlash && (
-            <span className="ml-3 text-sm text-emerald-600" aria-live="polite">
-              {t("settings.businessSaved")}
-            </span>
-          )}
-        </div>
+        <BusinessForm
+          // Remounts ONLY this form when the stored profile lands, so
+          // its fields reseed without wiping any other settings state
+          // (the page-level remount ate a typed delete-confirm).
+          key={String(profileReady)}
+          profile={profile}
+          signedIn={signedIn}
+          profileReady={profileReady}
+          onSaveProfile={onSaveProfile}
+        />
       </Section>
 
       <Section title={t("settings.language")}>
@@ -360,7 +400,14 @@ export default function SettingsPage({
                       setDeleteError(false);
                       void onCancelDeletion().then((ok) => {
                         setDeleteBusy(false);
-                        if (!ok) setDeleteError(true);
+                        if (!ok) {
+                          setDeleteError(true);
+                          return;
+                        }
+                        // Back to the un-armed state — cancelling must
+                        // not drop into a still-armed confirm form.
+                        setDeleteOpen(false);
+                        setDeleteTyped("");
                       });
                     }}
                   >
@@ -371,7 +418,10 @@ export default function SettingsPage({
                 <button
                   type="button"
                   className="text-sm font-medium text-red-700 hover:underline dark:text-red-400"
-                  onClick={() => setDeleteOpen(true)}
+                  onClick={() => {
+                    setDeleteError(false);
+                    setDeleteOpen(true);
+                  }}
                 >
                   {t("settings.deleteAccount")}
                 </button>
@@ -412,6 +462,7 @@ export default function SettingsPage({
                       onClick={() => {
                         setDeleteOpen(false);
                         setDeleteTyped("");
+                        setDeleteError(false);
                       }}
                     >
                       {t("common.cancel")}
@@ -432,10 +483,18 @@ export default function SettingsPage({
       <Section title={t("settings.backup")}>
         <p
           className={`text-sm ${
-            signedIn ? "text-emerald-700 dark:text-emerald-400" : "text-neutral-500"
+            !signedIn
+              ? "text-neutral-500"
+              : hasSaveError
+                ? "text-amber-700 dark:text-amber-400"
+                : "text-emerald-700 dark:text-emerald-400"
           }`}
         >
-          {signedIn ? t("settings.backupOk") : t("settings.backupNone")}
+          {!signedIn
+            ? t("settings.backupNone")
+            : hasSaveError
+              ? t("settings.backupIssue")
+              : t("settings.backupOk")}
         </p>
       </Section>
 
@@ -465,7 +524,6 @@ export default function SettingsPage({
         </div>
       </Section>
 
-      <p className="text-xs text-neutral-500">{t("settings.savedNote")}</p>
     </div>
   );
 }

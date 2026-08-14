@@ -1349,13 +1349,14 @@ function Ledger({
   } else if (showSettings) {
     takeover = (
       <SettingsPage
-        // Remount when the async profile load lands so the Business
-        // fields seed from real values, not the pre-load empties.
-        key={`settings-${profileLoaded}`}
         signedIn={accountId !== null}
         email={email}
         demoAccount={demoAccount}
         profile={profile}
+        // Anonymous has nothing stored to protect; signed-in gates the
+        // business Save until the stored profile actually loaded.
+        profileReady={accountId === null || profileLoaded}
+        hasSaveError={error !== ""}
         onSaveProfile={(next) => {
           setProfile(next);
           if (accountId) void persist(() => saveProfile(next, accountId));
@@ -1640,11 +1641,29 @@ function Ledger({
             </div>
           )}
 
-          {/* Settings is rare — a quiet line, not a big target. */}
+          {/* Settings is rare — a quiet line, not a big target. Opening
+              it re-checks the two async facts it renders (a deletion
+              pending elsewhere; a profile that failed to load) so a
+              transient failure doesn't show the safe state forever. */}
           <button
             type="button"
             className="mt-4 w-full text-center text-sm text-neutral-500 hover:underline"
-            onClick={() => setShowSettings(true)}
+            onClick={() => {
+              setShowSettings(true);
+              if (accountId) {
+                loadDeletionRequest()
+                  .then(setDeletionAt)
+                  .catch(() => {});
+                if (!profileLoaded) {
+                  loadProfile()
+                    .then((row) => {
+                      setProfile(row);
+                      setProfileLoaded(true);
+                    })
+                    .catch(() => {});
+                }
+              }
+            }}
           >
             {t("settings.title")}
           </button>

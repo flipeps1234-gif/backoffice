@@ -115,6 +115,22 @@ version). Recap/tax-CSV/profile logic harness-proven (13 cases);
 banners, terms re-prompt, business save and dismissal markers
 browser-verified. UNTESTED like all persistence: profile/deletion
 round-trips and the pg_cron purge have never run against a real DB.
+A 48-agent adversarial pass over the diff confirmed and FIXED: the
+demo account was deletable SERVER-SIDE (the guard was JSX-only —
+now blocked in the RLS insert policy and the purge function, by the
+tester-email convention); the purge date shown was a UTC slice that
+the cron could beat by a local day (now a local date); the
+deletion-request upsert needed the UPDATE policy 0013 didn't grant;
+a failed profile load seeded blank fields whose Save would wipe the
+stored profile (loads now throw, Save gates on a successful load,
+and opening Settings re-checks both async facts); cancel left an
+armed confirm form; the backup line couldn't see save failures; the
+anonymous business form claimed "saved to your account". Known
+accepted gaps: a REAL user whose email local part is "tester" is
+treated as the demo account (the convention's cost); dismissal
+markers are per-device, not per-account; the tax CSV's business
+header rows are a preamble some rigid parsers dislike (preparers
+are the audience).
 
 PARKED, CONFIRMED UNREACHABLE:
 - invoice-builder prototype — untouched by the i18n pass (parked,
