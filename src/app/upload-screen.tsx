@@ -21,10 +21,12 @@ import ProgressBar from "./progress-bar";
 import QuickAdd from "./quick-add";
 import RunningTotals from "./running-totals";
 import SearchPanel from "./search-panel";
+import SettingsPage from "./settings-page";
 import SignIn from "./sign-in";
 import SwipeDeck from "./swipe-deck";
 import TermsGate, { useAcceptedTerms } from "./terms-gate";
 import { useLocale } from "./use-locale";
+import { useApplyTheme, useSaleFlow } from "./use-settings";
 import { chunkForUpload, compressImage } from "@/lib/compress-image";
 import { isSupportedImage } from "@/lib/extract/image-types";
 import { knownPayers, rememberedFor } from "@/lib/customer-memory";
@@ -124,6 +126,10 @@ export default function UploadScreen() {
   const accepted = useAcceptedTerms();
   const { user, loading, isConfigured } = useSession();
   const { locale, t } = useLocale();
+
+  // The one owner of the .dark class after first paint (the layout's
+  // inline script owns the paint before hydration).
+  useApplyTheme();
 
   // <html lang> is server-rendered "en"; keep it honest once the device's
   // real language is known — screen readers pick pronunciation from it.
@@ -233,6 +239,8 @@ function Ledger({
   const [salePrefill, setSalePrefill] = useState<SalePrefill | null>(null);
   const [saleSeq, setSaleSeq] = useState(0);
   const [showRecentSales, setShowRecentSales] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const saleFlow = useSaleFlow();
   const [showOwed, setShowOwed] = useState(false);
   const [showClients, setShowClients] = useState(false);
   /** Search landed on a client — ClientsPage opens on their detail. */
@@ -1135,6 +1143,8 @@ function Ledger({
         key={`sale-${saleSeq}`}
         services={services}
         clients={clients}
+        sales={sales}
+        flowOrder={saleFlow}
         prefill={salePrefill ?? undefined}
         onDone={handleSaleDone}
         onClose={() => {
@@ -1293,6 +1303,8 @@ function Ledger({
         onClose={() => setShowHistory(false)}
       />
     );
+  } else if (showSettings) {
+    takeover = <SettingsPage onClose={() => setShowSettings(false)} />;
   }
 
   // The main loop: totals, the upload targets, the sheet, the swipe deck.
@@ -1464,6 +1476,15 @@ function Ledger({
               />
             </div>
           )}
+
+          {/* Settings is rare — a quiet line, not a big target. */}
+          <button
+            type="button"
+            className="mt-4 w-full text-center text-sm text-neutral-500 hover:underline"
+            onClick={() => setShowSettings(true)}
+          >
+            {t("settings.title")}
+          </button>
         </div>
       )}
 

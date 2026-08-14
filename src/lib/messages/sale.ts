@@ -218,4 +218,30 @@ export const messages = {
     es: "No pudimos leer esa foto. Igual puedes registrar la venta sin ella.",
     pt: "Não conseguimos ler essa foto. Você ainda pode registrar a venda sem ela.",
   },
+  // Sale-flow order (settings, v0.6.6): client step + recommendations.
+  "sale.recentClients": {
+    en: "Recent clients",
+    es: "Clientes recientes",
+    pt: "Clientes recentes",
+  },
+  "sale.skipForNow": {
+    en: "Skip for now",
+    es: "Omitir por ahora",
+    pt: "Pular por enquanto",
+  },
+  "sale.theirUsual": {
+    en: "{name}'s usual",
+    es: "Lo de siempre de {name}",
+    pt: "O de sempre de {name}",
+  },
+  "sale.everythingElse": {
+    en: "Everything else",
+    es: "Todo lo demás",
+    pt: "Todo o resto",
+  },
+  "sale.backToClient": {
+    en: "Back to client",
+    es: "Volver al cliente",
+    pt: "Voltar ao cliente",
+  },
 } as const;

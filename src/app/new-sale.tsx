@@ -6,6 +6,12 @@ import ProductCard from "./product-card";
 import { useLocale } from "./use-locale";
 import { findClientByName, type Client } from "@/lib/client";
 import {
+  rankClientsForProducts,
+  rankServicesForClient,
+  usualServiceIds,
+} from "@/lib/recommend";
+import type { SaleFlowOrder } from "@/lib/settings";
+import {
   advance,
   type Cadence,
   type RecurringTemplate,
@@ -59,24 +65,32 @@ export type SaleResult = {
   template: Omit<RecurringTemplate, "id"> | null;
 };
 
-type Step = "pick" | "checkout" | "paid" | "method";
+type Step = "client" | "pick" | "checkout" | "paid" | "method";
 
 export default function NewSale({
   services,
   clients,
+  sales,
+  flowOrder,
   prefill,
   onDone,
   onClose,
 }: {
   services: Service[];
   clients: Client[];
+  /** History — recommendations are DERIVED from it, never stored. */
+  sales: Sale[];
+  /** The settings-page choice: products→client or client→products. */
+  flowOrder: SaleFlowOrder;
   /** "Log again": items + client pre-filled, jump straight to PAID?. */
   prefill?: SalePrefill;
   onDone: (result: SaleResult, paid: boolean, method: PaymentMethod | null) => void;
   onClose: () => void;
 }) {
   const { t } = useLocale();
-  const [step, setStep] = useState<Step>(prefill ? "paid" : "pick");
+  const [step, setStep] = useState<Step>(
+    prefill ? "paid" : flowOrder === "client-first" ? "client" : "pick",
+  );
   const [quantities, setQuantities] = useState<Map<string, number>>(() => {
     const map = new Map<string, number>();
     for (const item of prefill?.lineItems ?? []) {
@@ -346,6 +360,39 @@ export default function NewSale({
           <label className={labelClass} htmlFor="sale-client">
             {t("sale.whoFor")}
           </label>
+          {/* Products-first order: who usually buys THESE? Chips ranked
+              from history — a suggestion, never a guess written down. */}
+          {flowOrder === "products-first" &&
+            (() => {
+              const picked = lineItems
+                .map((i) => i.serviceId)
+                .filter((id): id is string => id !== null);
+              const suggested = rankClientsForProducts(clients, sales, picked);
+              if (suggested.length === 0) return null;
+              return (
+                <div
+                  className="mb-2 flex flex-wrap gap-2"
+                  role="group"
+                  aria-label={t("sale.recentClients")}
+                >
+                  {suggested.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      aria-pressed={knownClient?.id === c.id}
+                      className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                        knownClient?.id === c.id
+                          ? "bg-foreground text-background"
+                          : "border border-neutral-300 bg-white text-neutral-900"
+                      }`}
+                      onClick={() => setClientName(c.name)}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           <input
             id="sale-client"
             className={fieldClass}
@@ -544,6 +591,77 @@ export default function NewSale({
     );
   }
 
+  // ---- WHO'S IT FOR? — first ONLY in the client-first order ----
+  if (step === "client") {
+    const recent = rankClientsForProducts(clients, sales, []);
+    return (
+      <div className="space-y-4">
+        {header(t("sale.title"))}
+
+        <div>
+          <label className={labelClass} htmlFor="sale-client-first">
+            {t("sale.whoFor")}
+          </label>
+          <input
+            id="sale-client-first"
+            className={fieldClass}
+            placeholder={t("sale.clientNamePlaceholder")}
+            list="known-clients"
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+          />
+          <datalist id="known-clients">
+            {clients.map((c) => (
+              <option key={c.id} value={c.name} />
+            ))}
+          </datalist>
+        </div>
+
+        {recent.length > 0 && (
+          <div
+            className="flex flex-wrap gap-2"
+            role="group"
+            aria-label={t("sale.recentClients")}
+          >
+            {recent.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                aria-pressed={knownClient?.id === c.id}
+                className={`rounded-full px-3 py-2 text-sm font-medium ${
+                  knownClient?.id === c.id
+                    ? "bg-foreground text-background"
+                    : "border border-neutral-300 bg-white text-neutral-900"
+                }`}
+                onClick={() => setClientName(c.name)}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="button"
+          className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"
+          onClick={() => setStep("pick")}
+        >
+          {t("common.continue")}
+        </button>
+        {/* A nameless sale is still a sale — the driveway wins. */}
+        {!clientName.trim() && (
+          <button
+            type="button"
+            className="w-full text-sm text-neutral-500 hover:underline"
+            onClick={() => setStep("pick")}
+          >
+            {t("sale.skipForNow")}
+          </button>
+        )}
+      </div>
+    );
+  }
+
   // ---- PICK PRODUCTS ----
   return (
     <div className="space-y-4">
@@ -556,49 +674,88 @@ export default function NewSale({
       )}
 
       <div className="space-y-3">
-        {services.map((service) => (
-          <div key={service.id} className="space-y-2">
-            <ProductCard
-              service={service}
-              quantity={quantities.get(service.id) ?? 0}
-              onStep={(delta) => step_(service.id, delta)}
-            />
-            {service.pricing.type === "rate" &&
-              (quantities.get(service.id) ?? 0) > 0 && (
-                <div className="flex items-center gap-2 px-2 text-sm">
-                  <label htmlFor={`size-${service.id}`}>
-                    {t(
-                      service.pricing.unit === "sqft"
-                        ? "sale.howManySqft"
-                        : service.pricing.unit === "hour"
-                          ? "sale.howManyHours"
-                          : "sale.howManyRooms",
-                    )}
-                  </label>
-                  <input
-                    id={`size-${service.id}`}
-                    type="number"
-                    inputMode="decimal"
-                    min="0"
-                    step="any"
-                    className={`${fieldClass} w-24 text-center`}
-                    value={quantities.get(service.id) ?? 0}
-                    onChange={(e) => {
-                      const size = Number.parseFloat(e.target.value);
-                      setQuantities((current) => {
-                        const next = new Map(current);
-                        next.set(
-                          service.id,
-                          Number.isFinite(size) && size > 0 ? size : 0,
+        {(() => {
+          const renderService = (service: Service) => (
+            <div key={service.id} className="space-y-2">
+              <ProductCard
+                service={service}
+                quantity={quantities.get(service.id) ?? 0}
+                onStep={(delta) => step_(service.id, delta)}
+              />
+              {service.pricing.type === "rate" &&
+                (quantities.get(service.id) ?? 0) > 0 && (
+                  <div className="flex items-center gap-2 px-2 text-sm">
+                    <label htmlFor={`size-${service.id}`}>
+                      {t(
+                        service.pricing.unit === "sqft"
+                          ? "sale.howManySqft"
+                          : service.pricing.unit === "hour"
+                            ? "sale.howManyHours"
+                            : "sale.howManyRooms",
+                      )}
+                    </label>
+                    <input
+                      id={`size-${service.id}`}
+                      type="text"
+                      inputMode="decimal"
+                      className={`${fieldClass} w-24 text-center`}
+                      value={quantities.get(service.id) ?? 0}
+                      onChange={(e) => {
+                        const size = Number.parseFloat(
+                          e.target.value.replace(",", "."),
                         );
-                        return next;
-                      });
-                    }}
-                  />
-                </div>
-              )}
-          </div>
-        ))}
+                        setQuantities((current) => {
+                          const next = new Map(current);
+                          next.set(
+                            service.id,
+                            Number.isFinite(size) && size > 0 ? size : 0,
+                          );
+                          return next;
+                        });
+                      }}
+                    />
+                  </div>
+                )}
+            </div>
+          );
+
+          // Client-first: THEIR services float up under a heading —
+          // derived from history at this moment, never stored, and a
+          // ranking, not a filter (everything stays one scroll away).
+          const clientFirst = flowOrder === "client-first" && knownClient;
+          const ordered = clientFirst
+            ? rankServicesForClient(services, sales, knownClient.id)
+            : services;
+          const usualIds = clientFirst
+            ? usualServiceIds(sales, knownClient.id)
+            : null;
+          const usual = usualIds
+            ? ordered.filter((s) => usualIds.has(s.id))
+            : [];
+          const rest = usualIds
+            ? ordered.filter((s) => !usualIds.has(s.id))
+            : ordered;
+
+          const heading = (text: string) => (
+            <p
+              key={text}
+              className="pt-1 text-xs font-medium uppercase tracking-wide text-neutral-500"
+            >
+              {text}
+            </p>
+          );
+
+          return (
+            <>
+              {usual.length > 0 &&
+                heading(t("sale.theirUsual", { name: knownClient!.name }))}
+              {usual.map(renderService)}
+              {usual.length > 0 && rest.length > 0 &&
+                heading(t("sale.everythingElse"))}
+              {rest.map(renderService)}
+            </>
+          );
+        })()}
         {[...prefillLines.values()]
           .filter((item) => !services.some((svc) => svc.id === item.serviceId))
           .map((item) => (
@@ -652,6 +809,15 @@ export default function NewSale({
       >
         {t("sale.checkout")}
       </button>
+      {flowOrder === "client-first" && !prefill && (
+        <button
+          type="button"
+          className="w-full text-sm text-neutral-500 hover:underline"
+          onClick={() => setStep("client")}
+        >
+          {t("sale.backToClient")}
+        </button>
+      )}
     </div>
   );
 }

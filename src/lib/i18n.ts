@@ -9,6 +9,7 @@ import { messages as products } from "./messages/products";
 import { messages as quickadd } from "./messages/quickadd";
 import { messages as sale } from "./messages/sale";
 import { messages as search } from "./messages/search";
+import { messages as settings } from "./messages/settings";
 import { messages as sheet } from "./messages/sheet";
 import { messages as shell } from "./messages/shell";
 import { messages as signin } from "./messages/signin";
@@ -59,6 +60,7 @@ const ALL = {
   ...products,
   ...sale,
   ...search,
+  ...settings,
   ...owed,
   ...clients,
   ...cats,

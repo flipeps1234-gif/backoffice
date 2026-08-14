@@ -85,6 +85,19 @@ MISSING / KNOWN GAPS (deliberate, or pre-existing and documented):
 - No delete anywhere; /eval still not wired; anonymous sessions still
   don't generate recurring instances.
 
+Settings page (v0.6.6, 2026-08-14, same-day follow-up): language,
+appearance (system/light/dark — dark mode is now CLASS-based with a
+pre-paint inline script per the Next flash-prevention guide, so the
+override wins over the OS with no flash), and the sale-flow order the
+v0.5 session parked ("settings tab we add later on") — products-first
+with recommended-client chips at checkout, or client-first with a
+WHO'S IT FOR? step and the client's usual services floated on top.
+Recommendations are DERIVED from sales history (lib/recommend.ts,
+harness-proven), never stored, never filters. All three settings are
+per-device (localStorage, no migration — boring wins). Browser-
+verified both orders, the light override on a dark device, and
+persistence through reload. FLOW.md updated in the same commit.
+
 PARKED, CONFIRMED UNREACHABLE:
 - invoice-builder prototype — untouched by the i18n pass (parked,
   unreachable, float math). Fine while parked.

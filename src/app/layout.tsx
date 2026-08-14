@@ -23,11 +23,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // suppressHydrationWarning: the inline script below adds/removes the
+    // .dark class BEFORE first paint (per the Next flash-prevention
+    // guide), so the server-rendered class attribute intentionally
+    // differs from what React hydrates against.
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <script
+          // Runs synchronously during parsing — the theme decision lands
+          // before anything paints, so no light-flash on dark devices.
+          // Mirrors src/lib/settings.ts (key + resolution); keep in sync.
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem("contado.theme");var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d)}catch(e){}`,
+          }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* v0.6.6: dark mode keys on the .dark CLASS, not the media query, so
+   the settings page can override the device. "Match device" is still
+   the default — resolved to the class by an inline script in
+   layout.tsx before first paint (no flash) and kept in sync by
+   useTheme afterwards. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -12,11 +19,9 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 body {

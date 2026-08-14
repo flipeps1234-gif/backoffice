@@ -81,8 +81,9 @@ Decisions made at build time (owner-confirmed, 2026-08-12):
 - One card style everywhere: the new-sale picker and the products page
   share the sketch's card (name · price · cost · net margin).
 - "Log again" from the homepage opens recent sales grouped by client;
-  the client-first ordering exists via the Clients page. A settings tab
-  choosing the default is PARKED (IDEAS.md).
+  the client-first ordering exists via the Clients page. ~~A settings
+  tab choosing the default is PARKED~~ — UNPARKED and shipped
+  2026-08-14; see "Settings-driven order" below.
 - `EXPECTED_FLAG_DAYS = 14`, `RECURRING_PAUSE_AFTER_MISSES = 3`.
 
 Review-driven decisions (2026-08-13, adversarial pass over the build):
@@ -128,6 +129,22 @@ stored in the sale row (migration 0010), shown on the client's history.
 Because this is the first place the app RETAINS an image, the terms
 gained a block saying exactly that, and TERMS_VERSION was bumped so
 every device is asked again. The chart and the code agree everywhere.
+
+Settings-driven order (2026-08-14 — the parked settings tab, shipped):
+
+- The chart draws the DEFAULT, products-first: PICK PRODUCTS →
+  CHECKOUT. The settings page adds a per-device **client-first**
+  order, which inserts a WHO'S IT FOR? step before PICK PRODUCTS and
+  floats that client's usual services to the top of the picker under
+  a "{name}'s usual" heading (derived from sales history at that
+  moment — the customer-memory stance, nothing stored).
+- Products-first gained the mirror courtesy: recommended-client chips
+  at checkout, ranked by who recently bought the picked products.
+- Both are RANKINGS, never filters — every client and every product
+  stays reachable; suggestions only go first. Clients with no sales
+  history are never suggested (a suggestion the data can't back is
+  noise). "Log again" ignores the order setting entirely: it still
+  jumps straight to PAID?.
 
 Implementation sync — checked 2026-08-13, every other box matches the
 code:
