@@ -39,6 +39,14 @@ import {
 } from "@/lib/settings";
 import { loadProfile, saveProfile } from "@/lib/supabase/profile";
 import {
+  EMPTY_NOTIFICATION_PREFS,
+  type NotificationPrefs,
+} from "@/lib/notify/types";
+import {
+  loadNotificationPrefs,
+  saveNotificationPrefs,
+} from "@/lib/supabase/notify-prefs";
+import {
   cancelDeletion,
   loadDeletionRequest,
   requestDeletion,
@@ -264,6 +272,11 @@ function Ledger({
    *  its fields reseed, WITHOUT remounting on every save (a save-time
    *  remount ate the "Saved." flash). */
   const [profileLoaded, setProfileLoaded] = useState(false);
+  /** WhatsApp alert prefs (SPIKE, dark) — same load-gate discipline. */
+  const [notifyPrefs, setNotifyPrefs] = useState<NotificationPrefs>(
+    EMPTY_NOTIFICATION_PREFS,
+  );
+  const [notifyLoaded, setNotifyLoaded] = useState(false);
   /** ISO timestamp of a pending account deletion, or null. */
   const [deletionAt, setDeletionAt] = useState<string | null>(null);
   /** Session-local dismissals for the two in-app notices. */
@@ -393,6 +406,14 @@ function Ledger({
         if (!cancelled) setDeletionAt(requestedAt);
       })
       .catch((cause) => console.error("Deletion check failed:", cause));
+
+    loadNotificationPrefs()
+      .then((prefs) => {
+        if (cancelled) return;
+        setNotifyPrefs(prefs);
+        setNotifyLoaded(true);
+      })
+      .catch((cause) => console.error("Notify prefs load failed:", cause));
 
     // Sales and templates load together because generation needs BOTH:
     // whether an instance already exists (idempotency) and whether its
@@ -1361,6 +1382,14 @@ function Ledger({
           setProfile(next);
           if (accountId) void persist(() => saveProfile(next, accountId));
         }}
+        notifyPrefs={notifyPrefs}
+        notifyReady={accountId === null || notifyLoaded}
+        onSaveNotifyPrefs={(next) => {
+          setNotifyPrefs(next);
+          if (accountId) {
+            void persist(() => saveNotificationPrefs(next, accountId));
+          }
+        }}
         deletionRequestedAt={deletionAt}
         // Direct awaits, not the persist queue: the page needs the
         // outcome to show pending/failed truthfully.
@@ -1659,6 +1688,14 @@ function Ledger({
                     .then((row) => {
                       setProfile(row);
                       setProfileLoaded(true);
+                    })
+                    .catch(() => {});
+                }
+                if (!notifyLoaded) {
+                  loadNotificationPrefs()
+                    .then((prefs) => {
+                      setNotifyPrefs(prefs);
+                      setNotifyLoaded(true);
                     })
                     .catch(() => {});
                 }

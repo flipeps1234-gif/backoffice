@@ -3,6 +3,11 @@
 import { useState } from "react";
 import type { BusinessProfile } from "@/lib/profile";
 import {
+  hasWhatsAppConsent,
+  looksLikeE164,
+  type NotificationPrefs,
+} from "@/lib/notify/types";
+import {
   setRecapEnabled,
   setSaleFlow,
   setTaxNoteEnabled,
@@ -80,6 +85,116 @@ function Toggle({
         <span className="mt-0.5 block text-xs text-neutral-500">{desc}</span>
       </span>
     </label>
+  );
+}
+
+function WhatsAppAlerts({
+  prefs,
+  prefsReady,
+  onSave,
+}: {
+  prefs: NotificationPrefs;
+  prefsReady: boolean;
+  onSave: (prefs: NotificationPrefs) => void;
+}) {
+  const { t, tag } = useLocale();
+  const [phone, setPhone] = useState(prefs.phone);
+  const [consent, setConsent] = useState(hasWhatsAppConsent(prefs));
+  const [savedFlash, setSavedFlash] = useState(false);
+
+  const dirty =
+    phone.trim() !== prefs.phone || consent !== hasWhatsAppConsent(prefs);
+  const phoneOk = !consent || looksLikeE164(phone.trim());
+  const optedOut =
+    prefs.optedOutAt !== null &&
+    (prefs.whatsappConsentAt === null ||
+      prefs.whatsappConsentAt < prefs.optedOutAt);
+
+  return (
+    <div className="rounded-lg border border-neutral-300 p-3 dark:border-neutral-700">
+      <p className="text-sm font-medium">{t("settings.whatsappTitle")}</p>
+      <p className="mt-0.5 text-xs text-neutral-500">
+        {t("settings.whatsappDesc")}
+      </p>
+
+      <div className="mt-3 space-y-2">
+        <div>
+          <label className={labelClass} htmlFor="notify-phone">
+            {t("settings.phoneLabel")}
+          </label>
+          <input
+            id="notify-phone"
+            type="tel"
+            inputMode="tel"
+            className={fieldClass}
+            placeholder="+15551234567"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+          {!phoneOk && (
+            <p className="mt-1 text-xs text-red-600">
+              {t("settings.phoneInvalid")}
+            </p>
+          )}
+        </div>
+
+        {/* Consent is the product here: default OFF, explicit, and the
+            tick time is stored — the proof WhatsApp policy expects. */}
+        <label className="flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-0.5"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+          />
+          <span>{t("settings.whatsappConsent")}</span>
+        </label>
+
+        {prefs.whatsappConsentAt && !optedOut && (
+          <p className="text-xs text-neutral-500">
+            {t("settings.consentSince", {
+              date: new Date(prefs.whatsappConsentAt).toLocaleDateString(tag),
+            })}
+          </p>
+        )}
+        {optedOut && (
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            {t("settings.optedOut")}
+          </p>
+        )}
+
+        <button
+          type="button"
+          disabled={!dirty || !phoneOk || !prefsReady}
+          className="rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-40"
+          onClick={() => {
+            const alreadyConsented = hasWhatsAppConsent(prefs);
+            onSave({
+              phone: phone.trim(),
+              // A fresh tick stamps NOW; an unchanged standing consent
+              // keeps its original timestamp (the proof is the first
+              // tick, not the last save); untick clears it.
+              whatsappConsentAt: consent
+                ? alreadyConsented
+                  ? prefs.whatsappConsentAt
+                  : new Date().toISOString()
+                : null,
+              // Re-ticking after a STOP is an explicit re-opt-in.
+              optedOutAt: consent ? null : prefs.optedOutAt,
+            });
+            setSavedFlash(true);
+            setTimeout(() => setSavedFlash(false), 2000);
+          }}
+        >
+          {t("common.save")}
+        </button>
+        {savedFlash && (
+          <span className="ml-3 text-sm text-emerald-600" aria-live="polite">
+            {t("settings.businessSaved")}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -182,6 +297,9 @@ export default function SettingsPage({
   profileReady,
   hasSaveError,
   onSaveProfile,
+  notifyPrefs,
+  notifyReady,
+  onSaveNotifyPrefs,
   deletionRequestedAt,
   onRequestDeletion,
   onCancelDeletion,
@@ -200,6 +318,10 @@ export default function SettingsPage({
   /** The persist queue reported a failure — the backup line says so. */
   hasSaveError: boolean;
   onSaveProfile: (profile: BusinessProfile) => void;
+  notifyPrefs: NotificationPrefs;
+  /** Same gate as profileReady — never seed consent from a failed load. */
+  notifyReady: boolean;
+  onSaveNotifyPrefs: (prefs: NotificationPrefs) => void;
   /** ISO timestamp of the pending request, or null. */
   deletionRequestedAt: string | null;
   /** Resolve false on failure — the page shows one friendly line. */
@@ -360,9 +482,18 @@ export default function SettingsPage({
             label={t("settings.taxToggle")}
             desc={t("settings.taxDesc")}
           />
-          <div className="rounded-lg border border-dashed border-neutral-300 p-3 text-sm text-neutral-400 dark:border-neutral-700">
-            {t("settings.whatsappSoon")}
-          </div>
+          {signedIn ? (
+            <WhatsAppAlerts
+              key={String(notifyReady)}
+              prefs={notifyPrefs}
+              prefsReady={notifyReady}
+              onSave={onSaveNotifyPrefs}
+            />
+          ) : (
+            <div className="rounded-lg border border-dashed border-neutral-300 p-3 text-sm text-neutral-400 dark:border-neutral-700">
+              {t("settings.notifySignIn")}
+            </div>
+          )}
         </div>
       </Section>
 

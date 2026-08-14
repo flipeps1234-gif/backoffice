@@ -153,10 +153,45 @@ export const messages = {
     es: "Un aviso en la app de enero a mediados de abril con tus exportaciones a mano.",
     pt: "Um aviso no app de janeiro a meados de abril com suas exportações à mão.",
   },
-  "settings.whatsappSoon": {
-    en: "WhatsApp alerts — coming soon",
-    es: "Alertas por WhatsApp — muy pronto",
-    pt: "Alertas por WhatsApp — em breve",
+  "settings.whatsappTitle": {
+    en: "WhatsApp alerts",
+    es: "Alertas por WhatsApp",
+    pt: "Alertas por WhatsApp",
+  },
+  "settings.whatsappDesc": {
+    en: "Owed reminders, match confirmations and a monthly recap, on your WhatsApp. Not live yet — signing up now just records your number and permission.",
+    es: "Recordatorios de cobros, confirmaciones y un resumen mensual, en tu WhatsApp. Aún no está activo — registrarte ahora solo guarda tu número y tu permiso.",
+    pt: "Lembretes de cobrança, confirmações e um resumo mensal, no seu WhatsApp. Ainda não está ativo — inscrever-se agora só guarda seu número e sua permissão.",
+  },
+  "settings.phoneLabel": {
+    en: "WhatsApp number (with country code)",
+    es: "Número de WhatsApp (con código de país)",
+    pt: "Número de WhatsApp (com código do país)",
+  },
+  "settings.phoneInvalid": {
+    en: "Use the international format: +, country code, number.",
+    es: "Usa el formato internacional: +, código de país, número.",
+    pt: "Use o formato internacional: +, código do país, número.",
+  },
+  "settings.whatsappConsent": {
+    en: "Yes — message this number about my business (owed reminders, confirmations, recaps). Reply STOP any time.",
+    es: "Sí — envíen mensajes a este número sobre mi negocio (recordatorios de cobros, confirmaciones, resúmenes). Responde STOP cuando quieras.",
+    pt: "Sim — enviem mensagens para este número sobre meu negócio (lembretes de cobrança, confirmações, resumos). Responda STOP quando quiser.",
+  },
+  "settings.consentSince": {
+    en: "Opted in {date}.",
+    es: "Autorizado el {date}.",
+    pt: "Autorizado em {date}.",
+  },
+  "settings.optedOut": {
+    en: "This number replied STOP — ticking the box again re-opts it in.",
+    es: "Este número respondió STOP — marcar la casilla otra vez lo vuelve a autorizar.",
+    pt: "Este número respondeu STOP — marcar a caixa de novo autoriza outra vez.",
+  },
+  "settings.notifySignIn": {
+    en: "Sign in to set up alerts — permission lives with your account.",
+    es: "Inicia sesión para configurar avisos — el permiso vive con tu cuenta.",
+    pt: "Entre para configurar avisos — a permissão fica com a sua conta.",
   },
   // ---- Data & privacy ----
   "settings.dataPrivacy": {

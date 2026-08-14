@@ -1,0 +1,12 @@
+{
+  "name": "owed_alert",
+  "category": "UTILITY",
+  "language": "pt_BR",
+  "components": [
+    {
+      "type": "BODY",
+      "text": "Olá {{1}}, um lembrete amigável de {{2}}: {{3}} ainda está em aberto pelo serviço de {{4}}. Responda STOP para não receber mais mensagens."
+    }
+  ],
+  "_note": "Draft for Meta Business Manager submission. Not submitted. Variables are positional; keep data minimal (names + amounts only)."
+}

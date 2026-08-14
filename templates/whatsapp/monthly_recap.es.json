@@ -1,0 +1,12 @@
+{
+  "name": "monthly_recap",
+  "category": "UTILITY",
+  "language": "es",
+  "components": [
+    {
+      "type": "BODY",
+      "text": "{{1}} — tu resumen de {{2}}: entró {{3}}, salió {{4}}, quedó {{5}}. El panorama completo está en la app."
+    }
+  ],
+  "_note": "Draft for Meta Business Manager submission. Not submitted. Variables are positional; keep data minimal (names + amounts only)."
+}

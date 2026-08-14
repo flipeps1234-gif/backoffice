@@ -1,0 +1,12 @@
+{
+  "name": "owed_alert",
+  "category": "UTILITY",
+  "language": "en",
+  "components": [
+    {
+      "type": "BODY",
+      "text": "Hi {{1}}, a friendly reminder from {{2}}: {{3}} is still open for the job on {{4}}. Reply STOP to opt out."
+    }
+  ],
+  "_note": "Draft for Meta Business Manager submission. Not submitted. Variables are positional; keep data minimal (names + amounts only)."
+}

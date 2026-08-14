@@ -1,0 +1,12 @@
+{
+  "name": "match_confirm",
+  "category": "UTILITY",
+  "language": "pt_BR",
+  "components": [
+    {
+      "type": "BODY",
+      "text": "{{1}}: o pagamento de {{2}} de {{3}} foi vinculado ao serviço. Nada a fazer — suas contas se atualizaram sozinhas."
+    }
+  ],
+  "_note": "Draft for Meta Business Manager submission. Not submitted. Variables are positional; keep data minimal (names + amounts only)."
+}
