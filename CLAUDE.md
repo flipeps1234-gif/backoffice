@@ -17,89 +17,81 @@ fields flagged, tap to fix) → swipe right = business, left =
 personal → running totals climb. Manual quick-add covers cash. The
 law: every flow survives "ten seconds, one hand, in a driveway."
 
-## Status — rewritten 2026-08-13 after the v0.5 build, no optimism
+## Status — rewritten 2026-08-14 after the v0.6 + v0.6.5 build, no optimism
 Typecheck, lint and `next build` pass clean. Still ZERO automated
-tests (no runner, no test script) — but the v0.5 pure logic (sale
-math, cadence walk, misses/pause, matching rules) was proven against
-a 39-case node harness run on the tsc-transpiled real modules, and
-the flows below were driven end to end in a browser. Harnesses are
-throwaway; nothing guards regressions.
+tests (no runner, no test script) — the pure logic old and new is
+proven against a throwaway 52-case node harness on the tsc-transpiled
+real modules; nothing guards regressions between sessions. A 47-agent
+adversarial review ran over the entire v0.6+v0.6.5 diff (5 lenses,
+2 refuters per finding); its 11 confirmed defects are FIXED
+(commit 095e34e) — two of them were real money corruption
+("0.125"/sqft parsing as $125.00; type="number" silently defeating
+comma-decimal entry 100×).
 
-EXISTS AND VERIFIED IN THE BROWSER (v0.5, this session):
-- Sale flow per FLOW.md: product cards (Gain/Loss/Net, the sketch
-  style), qty steppers, custom amount, checkout with self-building
-  clients, recurring toggle, Paid? → cash/digital.
-- OPEN → Owed tab (grouped, aged, per-client subtotals, total big,
-  cash mark), EXPECTED with the 14-day resolve sheet wired.
-- Matching: batch auto-link with working Undo restoring BOTH sides;
-  checkout-digital match against an already-ingested payment; two
-  identical candidates → picker, never a silent guess.
-- Received/owed shown as two figures, never blended. Cash sales mint
-  a mirror transaction linked both ways, so dashboard/CSV/totals keep
-  reading one stream ("one payment, one sale" by construction).
-- Recurring templates: created at checkout, anchor+1 step nextDue,
-  client-page pause/resume, 3-miss self-pause (harness-proven).
-- Products page with margins; clients list/detail/history/edit;
-  homepage per the owner's spec (connected New sale / Log again).
-- Everything from v0.1–v0.4 that was verified before still stands.
+EXISTS AND VERIFIED IN THE BROWSER (v0.6 + v0.6.5, this session):
+- Trilingual EN/ES/PT: 380+ typed keys across 15 per-screen
+  fragments; header switcher on every screen incl. the terms gate;
+  locale detected then per-device; ES is LatAm tú, PT is Brazilian
+  você. Verified live: home, sale flow, owed rail, terms, in all
+  three languages. Money deliberately stays $ en-US; CSVs stay
+  English (documented in i18n.ts, with everything else that is
+  deliberately not localized).
+- Comma-decimal money entry end to end: "1.234,56" typed into the
+  custom-amount field totals $1,234.56 (fields are text +
+  inputMode="decimal" — type="number" was eating the comma before
+  the parser ever saw it).
+- Global search (rail + phone home): accent-blind ("rósa" finds
+  Rosa), AND-tokens, amounts in typed AND displayed formats; client
+  results open the client's page directly; guarded so a search tap
+  never destroys a half-typed entry.
+- Photos/notes on sales: collapsed checkout row → note shown on the
+  client's history (photo pipeline: compressed ~≤300KB JPEG data URL
+  in the sale row). Terms gained the "photos are kept" block in all
+  three languages; TERMS_VERSION bumped and the re-prompt verified.
+- Tax story: set-aside nudge ($200 quarter → $50, info-only wording),
+  mileage estimate (2 visits × 12.5 mi → 25.0, never GPS, open
+  recurring instances excluded as phantom trips), Schedule-C category
+  chips/select feeding a new tax-CSV column, proof-of-income print
+  view with disclaimer (window.print IS the PDF export).
+- Everything verified in v0.1–v0.5 still stands.
 
 EXISTS BUT UNTESTED / UNPROVEN:
-- Every v0.5 PERSISTENCE path. Local dev has no Supabase, so sales/
-  clients/templates round-tripping through Postgres, the 0006 data
-  migration, and recurring generation on app open (it is gated on a
-  signed-in account) have never run against a real database.
-- Migrations 0001–0009 have NEVER been run against the live project
-  (the DB was paused, then found empty). The combined one-paste file
-  is regenerated and delivered (now including 0009, ended_on);
-  production saves NOTHING until it runs. Still #1 in FRAGILE.md and
-  DEPLOY.md. If the OLD combined file (0001–0008) was already run,
-  run 0009 alone — template loading selects ended_on and errors
-  without it.
-- The real OpenAI extraction path post-v0.5 (matching runs on
-  confirmed batches; only exercised with stubbed extraction).
+- Every persistence path for the NEW columns (notes, photo, category,
+  distance_tenths) — local dev has no Supabase. IMPORTANT: the code
+  now SELECTS these columns, so a production DB stops loading sales/
+  transactions/clients until migrations 0010–0011 run. The combined
+  one-paste file (0001–0011, idempotent) is regenerated and
+  delivered; migrations have STILL never been run against the live
+  project.
+- Photo attach through a real OS file dialog (the compression code
+  path is reviewed but was not driven in the browser; a failed photo
+  can never block the sale by design).
+- The printed output of proof-of-income (the view is verified; the
+  actual print dialog was not driven).
+- ES/PT translations are agent-written and QA-swept for register/
+  consistency, but NOT native-speaker-reviewed. The owner reads PT —
+  a pass over messages/*.ts would be worth an evening.
 
-MISSING / KNOWN GAPS (deliberate cuts, not accidents):
-- ~~Recurring template EDIT and explicit END~~ — SHIPPED in the
-  2026-08-13 follow-up: edit (line items, future instances only, via
-  re-snapshot at generation) and End (one-way, `ended_on`, migration
-  0009) live on the client page. Harness-proven; browser-verified.
-  Cadence stays non-editable by decision (end + recreate is the truth).
-- Client "default services" and STORED remembered prices were cut in
-  favour of deriving "their usual" from sales history (the
-  customer-memory stance). Notes shipped.
-- Anonymous (signed-out) sessions do not generate recurring
-  instances — generation lives in the account-gated load path.
-- Everything in FRAGILE.md that was open remains open: no delete
-  anywhere (now including sales), en-US-only money parsing (v0.6 is
-  the bilingual milestone), /eval still not wired.
+MISSING / KNOWN GAPS (deliberate, or pre-existing and documented):
+- API route error bodies surface in English (server doesn't know the
+  device language; needs error codes in the contract — noted in
+  i18n.ts, deferred).
+- Extraction never guesses a category — receipts are categorized by
+  hand on the sheet. Deliberate: a guessed tax label is worse than a
+  blank one.
+- "Log again" on a sale still collapses extra custom lines to one at
+  qty 1 — PRE-EXISTING (v0.5), surfaced by the review, out of the
+  v0.6 diff, still open.
+- No delete anywhere; /eval still not wired; anonymous sessions still
+  don't generate recurring instances.
 
 PARKED, CONFIRMED UNREACHABLE:
-- invoice-builder prototype — unchanged, still unreachable, still
-  carrying unmigrated float math. Fine while parked.
+- invoice-builder prototype — untouched by the i18n pass (parked,
+  unreachable, float math). Fine while parked.
 
-FLOW.md is the spec of record for the sale flow and matched the
-build at commit time (deviations listed above are ABSENCES, not
-contradictions). An adversarial review of the v0.5 diff was running
-when this Status was written; its confirmed findings and fixes land
-as follow-up commits.
-
-Doc-consolidation pass (2026-08-13, docs only — no feature code). Each
-edit was applied idempotently; all seven were ABSENT beforehand and
-NEWLY APPLIED (nothing was already present to merge or dedupe against,
-except the vague "everything-bundle (~$15/mo)" line, which was
-superseded by the Bundle $12/mo · $99/yr menu):
-- Monetization → v0.5 tier mapping (free vs premium): NEW.
-- Monetization → four-module menu + seats + tax + launch rules: NEW
-  (replaced the older loose module list and bundle price).
-- Roadmap v0.6 → global search + optional photos/notes: NEW.
-- Roadmap v0.6.5 → tax-story gaps (mileage-lite, set-aside nudge,
-  Schedule-C categories, proof-of-income PDF): NEW.
-- Roadmap v0.8 → optional Plaid bank feeds: NEW.
-- FLOW.md CHECKOUT → `photo/notes (opt.)`: NEW, and marked
-  spec-ahead-of-build (it is a v0.6 item, not in the v0.5 code). It is
-  the only flow-touching change in the pass; the rest of FLOW.md was
-  re-verified against the implementation with no drift (see FLOW.md's
-  Implementation sync note).
+FLOW.md is the spec of record and matches the build: the
+`photo/notes (opt.)` line shipped the same day it was drawn, so the
+chart has NO spec-ahead-of-build entries left.
 
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →
@@ -132,14 +124,14 @@ superseded by the Bundle $12/mo · $99/yr menu):
   EXPECTED REVENUE (never scheduling), and the matching engine that
   links ingested transactions to sales. Totals show received and owed
   as two separate figures — owed is never blended into revenue.
-- v0.6 Bilingual EN/ES/PT + polish. This build is the demo. Also:
-  global search across sales/clients/transactions; optional photos +
-  notes on sales (proof-of-work).
-- v0.6.5 Tax-story gaps: mileage-lite (one-time distance per client ×
-  logged visit count = computed mileage log; never GPS, never
-  background tracking); quarterly set-aside nudge (informational
-  percentage only — no tax engine); Schedule-C-grade expense
-  categories on receipts; proof-of-income PDF export.
+- v0.6 Bilingual EN/ES/PT + polish — SHIPPED 2026-08-14. This build
+  is the demo. Also shipped: global search across sales/clients/
+  transactions; optional photos + notes on sales (proof-of-work).
+- v0.6.5 Tax-story gaps — SHIPPED 2026-08-14: mileage-lite (one-time
+  distance per client × logged visit count = computed mileage log;
+  never GPS, never background tracking); quarterly set-aside nudge
+  (informational percentage only — no tax engine); Schedule-C-grade
+  expense categories on receipts; proof-of-income via print-to-PDF.
 - v0.7 Native/Expo port. Revisit trigger unchanged: install friction
   on iOS, where there is no install prompt at all (see IDEAS.md).
 - v0.8 Optional bank feeds (Plaid) as the top rung of the reliability
