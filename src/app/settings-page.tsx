@@ -3,9 +3,11 @@
 import { useState } from "react";
 import type { BusinessProfile } from "@/lib/profile";
 import {
-  hasWhatsAppConsent,
+  activeConsentAt,
+  hasActiveConsent,
   looksLikeE164,
   type NotificationPrefs,
+  type NotifyChannel,
 } from "@/lib/notify/types";
 import {
   setRecapEnabled,
@@ -88,7 +90,7 @@ function Toggle({
   );
 }
 
-function WhatsAppAlerts({
+function ChannelAlerts({
   prefs,
   prefsReady,
   onSave,
@@ -98,17 +100,44 @@ function WhatsAppAlerts({
   onSave: (prefs: NotificationPrefs) => void;
 }) {
   const { t, tag } = useLocale();
+  const [channel, setChannel] = useState<NotifyChannel>(prefs.channel);
   const [phone, setPhone] = useState(prefs.phone);
-  const [consent, setConsent] = useState(hasWhatsAppConsent(prefs));
+  const [consent, setConsent] = useState(hasActiveConsent(prefs));
   const [savedFlash, setSavedFlash] = useState(false);
 
   const dirty =
-    phone.trim() !== prefs.phone || consent !== hasWhatsAppConsent(prefs);
-  const phoneOk = !consent || looksLikeE164(phone.trim());
+    channel !== prefs.channel ||
+    phone.trim() !== prefs.phone ||
+    consent !== hasActiveConsent(prefs);
+  const needsDetails = channel !== "off";
+  const phoneOk = !needsDetails || !consent || looksLikeE164(phone.trim());
+  const consentAt = activeConsentAt(prefs);
   const optedOut =
     prefs.optedOutAt !== null &&
-    (prefs.whatsappConsentAt === null ||
-      prefs.whatsappConsentAt < prefs.optedOutAt);
+    (consentAt === null || consentAt < prefs.optedOutAt);
+
+  const channelOption = (value: NotifyChannel, label: string) => (
+    <button
+      key={value}
+      type="button"
+      aria-pressed={channel === value}
+      className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium ${
+        channel === value
+          ? "bg-foreground text-background"
+          : "border border-neutral-300 bg-white text-neutral-900"
+      }`}
+      onClick={() => {
+        setChannel(value);
+        // Consent is PER CHANNEL — switching channels re-asks; it never
+        // carries over (agreeing to WhatsApp is not agreeing to SMS).
+        setConsent(
+          value === prefs.channel ? hasActiveConsent(prefs) : false,
+        );
+      }}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="rounded-lg border border-neutral-300 p-3 dark:border-neutral-700">
@@ -118,49 +147,66 @@ function WhatsAppAlerts({
       </p>
 
       <div className="mt-3 space-y-2">
-        <div>
-          <label className={labelClass} htmlFor="notify-phone">
-            {t("settings.phoneLabel")}
-          </label>
-          <input
-            id="notify-phone"
-            type="tel"
-            inputMode="tel"
-            className={fieldClass}
-            placeholder="+15551234567"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-          {!phoneOk && (
-            <p className="mt-1 text-xs text-red-600">
-              {t("settings.phoneInvalid")}
-            </p>
-          )}
+        <div className="flex gap-2" role="radiogroup" aria-label={t("settings.channelLabel")}>
+          {channelOption("off", t("settings.channelOff"))}
+          {channelOption("whatsapp", t("settings.channelWhatsapp"))}
+          {channelOption("sms", t("settings.channelSms"))}
         </div>
 
-        {/* Consent is the product here: default OFF, explicit, and the
-            tick time is stored — the proof WhatsApp policy expects. */}
-        <label className="flex items-start gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="mt-0.5"
-            checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
-          />
-          <span>{t("settings.whatsappConsent")}</span>
-        </label>
+        {needsDetails && (
+          <>
+            <div>
+              <label className={labelClass} htmlFor="notify-phone">
+                {t("settings.phoneLabel")}
+              </label>
+              <input
+                id="notify-phone"
+                type="tel"
+                inputMode="tel"
+                className={fieldClass}
+                placeholder="+15551234567"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+              {!phoneOk && (
+                <p className="mt-1 text-xs text-red-600">
+                  {t("settings.phoneInvalid")}
+                </p>
+              )}
+            </div>
 
-        {prefs.whatsappConsentAt && !optedOut && (
-          <p className="text-xs text-neutral-500">
-            {t("settings.consentSince", {
-              date: new Date(prefs.whatsappConsentAt).toLocaleDateString(tag),
-            })}
-          </p>
-        )}
-        {optedOut && (
-          <p className="text-xs text-amber-700 dark:text-amber-400">
-            {t("settings.optedOut")}
-          </p>
+            {/* Consent is the product here: default OFF, explicit, per
+                channel, and the tick time is stored — the proof both
+                WhatsApp policy and US A2P expect. */}
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+              />
+              <span>
+                {t(
+                  channel === "sms"
+                    ? "settings.smsConsent"
+                    : "settings.whatsappConsent",
+                )}
+              </span>
+            </label>
+
+            {consentAt && !optedOut && (
+              <p className="text-xs text-neutral-500">
+                {t("settings.consentSince", {
+                  date: new Date(consentAt).toLocaleDateString(tag),
+                })}
+              </p>
+            )}
+            {optedOut && (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                {t("settings.optedOut")}
+              </p>
+            )}
+          </>
         )}
 
         <button
@@ -168,18 +214,23 @@ function WhatsAppAlerts({
           disabled={!dirty || !phoneOk || !prefsReady}
           className="rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-40"
           onClick={() => {
-            const alreadyConsented = hasWhatsAppConsent(prefs);
+            const now = new Date().toISOString();
+            const kept = (channelConsentAt: string | null) =>
+              consent ? (channelConsentAt ?? now) : null;
             onSave({
+              channel: consent || channel === "off" ? channel : "off",
               phone: phone.trim(),
-              // A fresh tick stamps NOW; an unchanged standing consent
-              // keeps its original timestamp (the proof is the first
-              // tick, not the last save); untick clears it.
-              whatsappConsentAt: consent
-                ? alreadyConsented
-                  ? prefs.whatsappConsentAt
-                  : new Date().toISOString()
-                : null,
-              // Re-ticking after a STOP is an explicit re-opt-in.
+              // Only the SELECTED channel's consent moves; the other
+              // channel keeps its history untouched.
+              whatsappConsentAt:
+                channel === "whatsapp"
+                  ? kept(prefs.channel === "whatsapp" ? prefs.whatsappConsentAt : null)
+                  : prefs.whatsappConsentAt,
+              smsConsentAt:
+                channel === "sms"
+                  ? kept(prefs.channel === "sms" ? prefs.smsConsentAt : null)
+                  : prefs.smsConsentAt,
+              // A fresh tick on either channel is an explicit re-opt-in.
               optedOutAt: consent ? null : prefs.optedOutAt,
             });
             setSavedFlash(true);
@@ -483,7 +534,7 @@ export default function SettingsPage({
             desc={t("settings.taxDesc")}
           />
           {signedIn ? (
-            <WhatsAppAlerts
+            <ChannelAlerts
               key={String(notifyReady)}
               prefs={notifyPrefs}
               prefsReady={notifyReady}

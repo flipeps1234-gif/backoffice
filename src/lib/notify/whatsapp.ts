@@ -14,17 +14,14 @@
  *   WHATSAPP_APP_SECRET       Optional; enables webhook signature checks.
  */
 
+import type { SendResult } from "./types";
+
 const GRAPH = "https://graph.facebook.com/v20.0";
 
 export const whatsappEnabled = (): boolean =>
   process.env.WHATSAPP_ENABLED === "true" &&
   Boolean(process.env.WHATSAPP_TOKEN) &&
   Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID);
-
-export type SendResult =
-  | { ok: true; providerMessageId: string }
-  | { ok: false; skipped: true }
-  | { ok: false; skipped?: false; error: string };
 
 /**
  * One template send. `variables` fill {{1}}..{{n}} in order; `lang` is

@@ -132,6 +132,30 @@ markers are per-device, not per-account; the tax CSV's business
 header rows are a preamble some rigid parsers dislike (preparers
 are the audience).
 
+Notifications SPIKE (dark, 2026-08-15 — NOT a milestone): the Alerts
+module's plumbing, built against Meta's free test number and Twilio,
+with ZERO production sends — WHATSAPP_ENABLED and SMS_ENABLED are
+false/absent in prod and every sender no-ops to {skipped}. One
+pipeline, no forked logic: three event types (owed_aging,
+payment_matched, monthly_recap) → queue (0014) → the user's ONE
+active channel picked at send time (0015: whatsapp | sms | off,
+default off). Consent is per channel, timestamped, default OFF;
+inbound STOP (both webhooks, shared vocabulary incl. PARAR/ALTO)
+sets opted_out and wins until an explicit re-tick. HARD RULES kept:
+official APIs only (plain fetch, no SDKs, no new deps); max 1
+owed_alert per client per week (lib/notify/cap.ts); minimal data in
+messages (first names + amounts, never memos). Template drafts for
+Meta submission live in templates/whatsapp/ (3 events × EN/ES/PT,
+UTILITY category, unsubmitted). Webhook writes need
+SUPABASE_SERVICE_ROLE_KEY server-side; without it they verify,
+parse and log only. Nothing TRIGGERS sends yet — no server clock
+exists; wiring events to the queue is the module's un-darkening
+work, not the spike's.
+
+A2P 10DLC: registration is REQUIRED before production SMS — start
+when the entity/EIN exists; sole-prop registration is acceptable at
+founding-cohort scale. Until then SMS stays dark regardless of env.
+
 PARKED, CONFIRMED UNREACHABLE:
 - invoice-builder prototype — untouched by the i18n pass (parked,
   unreachable, float math). Fine while parked.

@@ -159,14 +159,39 @@ export const messages = {
     pt: "Alertas por WhatsApp",
   },
   "settings.whatsappDesc": {
-    en: "Owed reminders, match confirmations and a monthly recap, on your WhatsApp. Not live yet — signing up now just records your number and permission.",
-    es: "Recordatorios de cobros, confirmaciones y un resumen mensual, en tu WhatsApp. Aún no está activo — registrarte ahora solo guarda tu número y tu permiso.",
-    pt: "Lembretes de cobrança, confirmações e um resumo mensal, no seu WhatsApp. Ainda não está ativo — inscrever-se agora só guarda seu número e sua permissão.",
+    en: "Owed reminders, match confirmations and a monthly recap, on WhatsApp or by text. Not live yet — signing up now just records your number and permission.",
+    es: "Recordatorios de cobros, confirmaciones y un resumen mensual, por WhatsApp o mensaje de texto. Aún no está activo — registrarte ahora solo guarda tu número y tu permiso.",
+    pt: "Lembretes de cobrança, confirmações e um resumo mensal, por WhatsApp ou mensagem de texto. Ainda não está ativo — inscrever-se agora só guarda seu número e sua permissão.",
+  },
+  "settings.channelLabel": {
+    en: "How should alerts reach you?",
+    es: "¿Cómo quieres recibir los avisos?",
+    pt: "Como você quer receber os avisos?",
+  },
+  "settings.channelOff": {
+    en: "Off",
+    es: "Apagado",
+    pt: "Desligado",
+  },
+  "settings.channelWhatsapp": {
+    en: "WhatsApp",
+    es: "WhatsApp",
+    pt: "WhatsApp",
+  },
+  "settings.channelSms": {
+    en: "Text (SMS)",
+    es: "Texto (SMS)",
+    pt: "Texto (SMS)",
+  },
+  "settings.smsConsent": {
+    en: "Yes — text this number about my business (owed reminders, confirmations, recaps). Message and data rates may apply. Reply STOP any time.",
+    es: "Sí — envíen mensajes de texto a este número sobre mi negocio (recordatorios de cobros, confirmaciones, resúmenes). Pueden aplicar tarifas de mensajes y datos. Responde STOP cuando quieras.",
+    pt: "Sim — enviem mensagens de texto para este número sobre meu negócio (lembretes de cobrança, confirmações, resumos). Podem ser cobradas tarifas de mensagens e dados. Responda STOP quando quiser.",
   },
   "settings.phoneLabel": {
-    en: "WhatsApp number (with country code)",
-    es: "Número de WhatsApp (con código de país)",
-    pt: "Número de WhatsApp (com código do país)",
+    en: "Phone number (with country code)",
+    es: "Número de teléfono (con código de país)",
+    pt: "Número de telefone (com código do país)",
   },
   "settings.phoneInvalid": {
     en: "Use the international format: +, country code, number.",

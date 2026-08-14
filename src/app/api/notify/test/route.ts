@@ -1,4 +1,7 @@
+import { sendSms, smsEnabled } from "@/lib/notify/sms";
+import { renderSms } from "@/lib/notify/sms-templates";
 import { sendWhatsAppTemplate, whatsappEnabled } from "@/lib/notify/whatsapp";
+import type { NotificationEvent } from "@/lib/notify/types";
 import { verifyAccessToken } from "@/lib/supabase/server";
 
 /**
@@ -21,12 +24,6 @@ export async function POST(request: Request) {
   if (process.env.NODE_ENV === "production") {
     return Response.json({ error: "not available in production" }, { status: 404 });
   }
-  if (!whatsappEnabled()) {
-    return Response.json(
-      { error: "WHATSAPP_ENABLED is not true (the spike is dark)" },
-      { status: 503 },
-    );
-  }
 
   const token =
     request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
@@ -36,15 +33,45 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => null)) as {
+    channel?: string;
     to?: string;
     template?: string;
+    event?: string;
     lang?: string;
     variables?: string[];
   } | null;
-  if (!body?.to || !body.template) {
-    return Response.json({ error: "need to + template" }, { status: 400 });
+  if (!body?.to) {
+    return Response.json({ error: "need to" }, { status: 400 });
   }
 
+  // SMS branch: {"channel":"sms","to":"+1…","event":"owed_aging",
+  //             "lang":"es","variables":[…]}
+  if (body.channel === "sms") {
+    if (!smsEnabled()) {
+      return Response.json(
+        { error: "SMS_ENABLED is not true (the spike is dark)" },
+        { status: 503 },
+      );
+    }
+    const event = (body.event ?? "owed_aging") as NotificationEvent;
+    const lang = (body.lang ?? "en") as "en" | "es" | "pt";
+    const result = await sendSms(
+      body.to,
+      renderSms(event, lang, body.variables ?? []),
+    );
+    return Response.json(result, { status: result.ok ? 200 : 502 });
+  }
+
+  // WhatsApp branch (default).
+  if (!whatsappEnabled()) {
+    return Response.json(
+      { error: "WHATSAPP_ENABLED is not true (the spike is dark)" },
+      { status: 503 },
+    );
+  }
+  if (!body.template) {
+    return Response.json({ error: "need template" }, { status: 400 });
+  }
   const result = await sendWhatsAppTemplate(
     body.to,
     body.template,
