@@ -338,6 +338,21 @@ export const messages = {
     es: "La imagen estaba muy borrosa o muy pequeña para leerla. Intenta de nuevo, más de cerca.",
     pt: "A imagem estava borrada ou pequena demais para ler. Tente de novo, mais de perto.",
   },
+  "home.recapTitle": {
+    en: "Last month — {month}",
+    es: "El mes pasado — {month}",
+    pt: "Mês passado — {month}",
+  },
+  "home.recapBody": {
+    en: "In {inAmount} · out {outAmount} · kept {kept}",
+    es: "Entró {inAmount} · salió {outAmount} · quedó {kept}",
+    pt: "Entrou {inAmount} · saiu {outAmount} · sobrou {kept}",
+  },
+  "home.taxSeason": {
+    en: "Tax season — the CSV for your preparer and your proof of income are ready in the Dashboard.",
+    es: "Temporada de impuestos — el CSV para tu preparador y tu comprobante de ingresos están listos en el Panel.",
+    pt: "Época de impostos — o CSV para o seu contador e o comprovante de renda estão prontos no Painel.",
+  },
   "home.finishEntryFirst": {
     en: "Finish or close what you're logging first — then search can take you there.",
     es: "Primero termina o cierra lo que estás registrando — luego la búsqueda te lleva ahí.",

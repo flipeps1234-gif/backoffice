@@ -26,7 +26,23 @@ import SignIn from "./sign-in";
 import SwipeDeck from "./swipe-deck";
 import TermsGate, { useAcceptedTerms } from "./terms-gate";
 import { useLocale } from "./use-locale";
-import { useApplyTheme, useSaleFlow } from "./use-settings";
+import { useApplyTheme, useNotifyPrefs, useSaleFlow } from "./use-settings";
+import { downloadCsv } from "./download";
+import { everythingCsv } from "@/lib/csv";
+import { EMPTY_PROFILE, type BusinessProfile } from "@/lib/profile";
+import { dueRecap, inTaxSeason } from "@/lib/recap";
+import {
+  dismissTaxNote,
+  markRecapShown,
+  recapShownFor,
+  taxNoteDismissedFor,
+} from "@/lib/settings";
+import { loadProfile, saveProfile } from "@/lib/supabase/profile";
+import {
+  cancelDeletion,
+  loadDeletionRequest,
+  requestDeletion,
+} from "@/lib/supabase/deletion";
 import { chunkForUpload, compressImage } from "@/lib/compress-image";
 import { isSupportedImage } from "@/lib/extract/image-types";
 import { knownPayers, rememberedFor } from "@/lib/customer-memory";
@@ -180,7 +196,7 @@ function Ledger({
   isConfigured: boolean;
   demoAccount: boolean;
 }) {
-  const { t } = useLocale();
+  const { t, tag } = useLocale();
   const [status, setStatus] = useState<Status>("idle");
   const [stage, setStage] = useState<Stage>("upload");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -241,6 +257,18 @@ function Ledger({
   const [showRecentSales, setShowRecentSales] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const saleFlow = useSaleFlow();
+  const notify = useNotifyPrefs();
+  /** Account-level business identity (settings). EMPTY until loaded. */
+  const [profile, setProfile] = useState<BusinessProfile>(EMPTY_PROFILE);
+  /** Flips once when the stored profile arrives — remounts Settings so
+   *  its fields reseed, WITHOUT remounting on every save (a save-time
+   *  remount ate the "Saved." flash). */
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  /** ISO timestamp of a pending account deletion, or null. */
+  const [deletionAt, setDeletionAt] = useState<string | null>(null);
+  /** Session-local dismissals for the two in-app notices. */
+  const [recapClosed, setRecapClosed] = useState(false);
+  const [taxNoteClosed, setTaxNoteClosed] = useState(false);
   const [showOwed, setShowOwed] = useState(false);
   const [showClients, setShowClients] = useState(false);
   /** Search landed on a client — ClientsPage opens on their detail. */
@@ -351,6 +379,20 @@ function Ledger({
         if (!cancelled) setClients(rows);
       })
       .catch((cause) => console.error("Clients load failed:", cause));
+
+    loadProfile()
+      .then((row) => {
+        if (cancelled) return;
+        setProfile(row);
+        setProfileLoaded(true);
+      })
+      .catch((cause) => console.error("Profile load failed:", cause));
+
+    loadDeletionRequest()
+      .then((requestedAt) => {
+        if (!cancelled) setDeletionAt(requestedAt);
+      })
+      .catch((cause) => console.error("Deletion check failed:", cause));
 
     // Sales and templates load together because generation needs BOTH:
     // whether an instance already exists (idempotency) and whether its
@@ -1288,6 +1330,7 @@ function Ledger({
         services={services}
         sales={sales}
         clients={clients}
+        profile={profile}
         onClose={() => setShowDashboard(false)}
       />
     );
@@ -1304,7 +1347,60 @@ function Ledger({
       />
     );
   } else if (showSettings) {
-    takeover = <SettingsPage onClose={() => setShowSettings(false)} />;
+    takeover = (
+      <SettingsPage
+        // Remount when the async profile load lands so the Business
+        // fields seed from real values, not the pre-load empties.
+        key={`settings-${profileLoaded}`}
+        signedIn={accountId !== null}
+        email={email}
+        demoAccount={demoAccount}
+        profile={profile}
+        onSaveProfile={(next) => {
+          setProfile(next);
+          if (accountId) void persist(() => saveProfile(next, accountId));
+        }}
+        deletionRequestedAt={deletionAt}
+        // Direct awaits, not the persist queue: the page needs the
+        // outcome to show pending/failed truthfully.
+        onRequestDeletion={async () => {
+          if (!accountId) return false;
+          try {
+            await requestDeletion(accountId);
+            setDeletionAt(new Date().toISOString());
+            return true;
+          } catch {
+            return false;
+          }
+        }}
+        onCancelDeletion={async () => {
+          if (!accountId) return false;
+          try {
+            await cancelDeletion(accountId);
+            setDeletionAt(null);
+            return true;
+          } catch {
+            return false;
+          }
+        }}
+        onExportEverything={() =>
+          downloadCsv(
+            everythingCsv(transactions, services),
+            "contado-everything.csv",
+          )
+        }
+        onOpenProducts={() => {
+          setShowSettings(false);
+          setShowProducts(true);
+        }}
+        onOpenClients={() => {
+          setShowSettings(false);
+          setClientsFocus(null);
+          setShowClients(true);
+        }}
+        onClose={() => setShowSettings(false)}
+      />
+    );
   }
 
   // The main loop: totals, the upload targets, the sheet, the swipe deck.
@@ -1319,6 +1415,73 @@ function Ledger({
           owedCents={owedCents(sales)}
         />
       )}
+
+      {/* The two in-app notices (settings-gated). Recap: last month's
+          numbers, once per month. Tax season: Jan–mid-April pointer.
+          Both dismiss for good with one tap — a nag is worse than no
+          notice. */}
+      {(() => {
+        const today = localToday();
+        const recapDue =
+          notify.recap && !recapClosed
+            ? dueRecap(transactions, today, recapShownFor())
+            : null;
+        if (!recapDue) return null;
+        const kept = recapDue.inCents - recapDue.outCents;
+        const monthName = new Date(
+          `${recapDue.month}-01T00:00:00Z`,
+        ).toLocaleDateString(tag, {
+          month: "long",
+          year: "numeric",
+          timeZone: "UTC",
+        });
+        return (
+          <div className="flex items-start justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900">
+            <div>
+              <p className="font-medium">
+                {t("home.recapTitle", { month: monthName })}
+              </p>
+              <p className="text-neutral-500">
+                {t("home.recapBody", {
+                  inAmount: formatCents(recapDue.inCents),
+                  outAmount: formatCents(recapDue.outCents),
+                  kept: `${kept < 0 ? "−" : ""}${formatCents(Math.abs(kept))}`,
+                })}
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label={t("common.dismiss")}
+              className="shrink-0 text-neutral-400 hover:text-neutral-600"
+              onClick={() => {
+                markRecapShown(recapDue.month);
+                setRecapClosed(true);
+              }}
+            >
+              ×
+            </button>
+          </div>
+        );
+      })()}
+      {notify.taxNote &&
+        !taxNoteClosed &&
+        inTaxSeason(localToday()) &&
+        taxNoteDismissedFor() !== localToday().slice(0, 4) && (
+          <div className="flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p>{t("home.taxSeason")}</p>
+            <button
+              type="button"
+              aria-label={t("common.dismiss")}
+              className="shrink-0 text-amber-700 hover:text-amber-900"
+              onClick={() => {
+                dismissTaxNote(localToday().slice(0, 4));
+                setTaxNoteClosed(true);
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )}
 
       {accountId && (
         <p className="flex items-center justify-between text-xs text-neutral-500">
@@ -1772,6 +1935,7 @@ function Ledger({
             services={services}
             sales={sales}
             clients={clients}
+            profile={profile}
           />
           <HistoryList
             transactions={transactions}

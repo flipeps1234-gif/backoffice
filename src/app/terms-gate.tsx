@@ -40,17 +40,37 @@ function Term({
   );
 }
 
-export default function TermsGate({ onAccept }: { onAccept: () => void }) {
+export default function TermsGate({
+  onAccept,
+  readOnly,
+  onClose,
+}: {
+  onAccept?: () => void;
+  /** Settings → Terms: same words, no gate — just reading them again. */
+  readOnly?: boolean;
+  onClose?: () => void;
+}) {
   const { t } = useLocale();
   return (
     <div className="space-y-6">
       {/* The language switcher lives in the page header just above — the
           first screen must not double it up. */}
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">
-          {t("terms.title")}
-        </h2>
-        <p className="mt-1 text-sm text-neutral-500">{t("terms.subtitle")}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">
+            {t("terms.title")}
+          </h2>
+          <p className="mt-1 text-sm text-neutral-500">{t("terms.subtitle")}</p>
+        </div>
+        {readOnly && onClose && (
+          <button
+            type="button"
+            className="text-sm text-neutral-500 hover:underline"
+            onClick={onClose}
+          >
+            {t("common.close")}
+          </button>
+        )}
       </div>
 
       <div className="space-y-5">
@@ -65,13 +85,15 @@ export default function TermsGate({ onAccept }: { onAccept: () => void }) {
         <Term title={t("terms.earlyTitle")}>{t("terms.earlyBody")}</Term>
       </div>
 
-      <button
-        type="button"
-        className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"
-        onClick={onAccept}
-      >
-        {t("terms.accept")}
-      </button>
+      {!readOnly && (
+        <button
+          type="button"
+          className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"
+          onClick={onAccept}
+        >
+          {t("terms.accept")}
+        </button>
+      )}
 
       <p className="text-xs text-neutral-500">
         {t("terms.savedNote", { version: TERMS_VERSION })}

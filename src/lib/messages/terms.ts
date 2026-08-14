@@ -31,9 +31,9 @@ export const messages = {
     pt: "As fotos que você anexa a uma venda são guardadas",
   },
   "terms.photoBody": {
-    en: "The screenshots above are read and discarded. A photo you attach to a sale is different: it's stored with that sale, and there's no delete yet — so attach only what you're fine keeping.",
-    es: "Las capturas de arriba se leen y se descartan. Una foto que adjuntas a una venta es distinta: se guarda con esa venta, y todavía no hay forma de borrarla — así que adjunta solo lo que no te importe conservar.",
-    pt: "As capturas acima são lidas e descartadas. Uma foto anexada a uma venda é diferente: ela fica guardada com a venda, e ainda não dá para apagar — então anexe só o que você não se importa de manter.",
+    en: "The screenshots above are read and discarded. A photo you attach to a sale is different: it's stored with that sale until you delete your account — single photos can't be removed yet, so attach only what you're fine keeping.",
+    es: "Las capturas de arriba se leen y se descartan. Una foto que adjuntas a una venta es distinta: se guarda con esa venta hasta que borres tu cuenta — fotos sueltas todavía no se pueden quitar, así que adjunta solo lo que no te importe conservar.",
+    pt: "As capturas acima são lidas e descartadas. Uma foto anexada a uma venda é diferente: ela fica guardada com a venda até você apagar sua conta — fotos avulsas ainda não podem ser removidas, então anexe só o que você não se importa de manter.",
   },
   "terms.checkTitle": {
     en: "Check every row before you keep it",
@@ -66,14 +66,14 @@ export const messages = {
     pt: "Essas capturas são, na maioria, nomes e pagamentos de outras pessoas. Envie só o que você tem direito de ter.",
   },
   "terms.deleteTitle": {
-    en: "Nothing can be deleted yet",
-    es: "Todavía nada se puede borrar",
-    pt: "Nada pode ser apagado ainda",
+    en: "Deleting: your whole account yes, single entries not yet",
+    es: "Borrar: tu cuenta completa sí, entradas sueltas todavía no",
+    pt: "Apagar: sua conta inteira sim, registros avulsos ainda não",
   },
   "terms.deleteBody": {
-    en: "The app has no delete button today. A payment you log stays in your ledger — you can correct it, but not remove it. Worth knowing before you log something you'd rather not keep.",
-    es: "La app hoy no tiene botón de borrar. Un pago que registras se queda en tu libro — puedes corregirlo, pero no quitarlo. Vale saberlo antes de registrar algo que preferirías no guardar.",
-    pt: "O app hoje não tem botão de apagar. Um pagamento registrado fica no seu livro — dá para corrigir, mas não remover. Bom saber antes de registrar algo que você preferiria não guardar.",
+    en: "A payment you log stays in your ledger — you can correct it, but not remove it one by one. You CAN delete your whole account in Settings: everything is erased for good 7 days after you ask, and you can change your mind inside those 7 days.",
+    es: "Un pago que registras se queda en tu libro — puedes corregirlo, pero no quitarlo uno por uno. Lo que SÍ puedes es borrar tu cuenta completa en Ajustes: todo se elimina para siempre 7 días después de pedirlo, y puedes arrepentirte dentro de esos 7 días.",
+    pt: "Um pagamento registrado fica no seu livro — dá para corrigir, mas não remover um por um. O que dá SIM é apagar sua conta inteira em Configurações: tudo é eliminado de vez 7 dias depois do pedido, e você pode mudar de ideia dentro desses 7 dias.",
   },
   "terms.demoTitle": {
     en: "The test account is shared and public",

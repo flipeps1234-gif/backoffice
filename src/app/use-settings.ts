@@ -4,7 +4,9 @@ import { useEffect, useSyncExternalStore } from "react";
 import {
   currentSaleFlow,
   currentTheme,
+  recapEnabled,
   subscribeToSettings,
+  taxNoteEnabled,
   type SaleFlowOrder,
   type Theme,
 } from "@/lib/settings";
@@ -44,3 +46,18 @@ export const useSaleFlow = (): SaleFlowOrder =>
     currentSaleFlow,
     () => "products-first",
   );
+
+/** The two in-app notice toggles, defaulting on. */
+export const useNotifyPrefs = (): { recap: boolean; taxNote: boolean } => {
+  const recap = useSyncExternalStore(
+    subscribeToSettings,
+    recapEnabled,
+    () => true,
+  );
+  const taxNote = useSyncExternalStore(
+    subscribeToSettings,
+    taxNoteEnabled,
+    () => true,
+  );
+  return { recap, taxNote };
+};

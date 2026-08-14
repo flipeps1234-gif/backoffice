@@ -12,7 +12,10 @@
 // 2026-08-13: v0.6 added photos attached to sales, which ARE kept —
 // the first retained images in the app. That changes the "we keep the
 // rows, not the images" story materially, so everyone is asked again.
-export const TERMS_VERSION = "2026-08-13";
+// 2026-08-15: v0.6.7 added ACCOUNT DELETION (7-day purge) — the
+// "nothing can be deleted" promise flipped, which is exactly the kind
+// of change the version exists for.
+export const TERMS_VERSION = "2026-08-15";
 
 // Renamed from "swipebooks.terms" with the rebrand. A device that accepted
 // under the old key will not have this one, so it sees the terms once more —

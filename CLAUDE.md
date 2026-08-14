@@ -98,6 +98,24 @@ per-device (localStorage, no migration — boring wins). Browser-
 verified both orders, the light override on a dark device, and
 persistence through reload. FLOW.md updated in the same commit.
 
+Settings, full build-out (v0.6.7, 2026-08-15): Business (the FIRST
+account-level settings — name/owner/state, migration 0012; tops the
+tax CSV and titles the proof of income), Services & clients links,
+Notices (two HONEST toggles gating in-app banners — monthly recap and
+a Jan–mid-Apr tax pointer; no push infra exists and none was faked;
+WhatsApp row grayed "coming soon"), Data & privacy (export-everything,
+plain-language promise, and ACCOUNT DELETION: type-your-email confirm,
+7-day cancellable window, server-side purge via pg_cron + SECURITY
+DEFINER in migration 0013 — the terms' "nothing can be deleted"
+promise flipped, so the terms changed and TERMS_VERSION bumped again),
+Backup (a truthful status line: instant when signed in, "nothing is
+saved" when not), Help & about (WhatsApp support link gated on
+NEXT_PUBLIC_SUPPORT_WHATSAPP — see DEPLOY.md — read-only terms viewer,
+version). Recap/tax-CSV/profile logic harness-proven (13 cases);
+banners, terms re-prompt, business save and dismissal markers
+browser-verified. UNTESTED like all persistence: profile/deletion
+round-trips and the pg_cron purge have never run against a real DB.
+
 PARKED, CONFIRMED UNREACHABLE:
 - invoice-builder prototype — untouched by the i18n pass (parked,
   unreachable, float math). Fine while parked.

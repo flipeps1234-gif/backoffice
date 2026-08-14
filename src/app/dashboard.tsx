@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { byMonth, marginByService, revenueByService } from "@/lib/dashboard";
 import type { Client } from "@/lib/client";
 import { everythingCsv, mileageCsv, taxCsv } from "@/lib/csv";
+import { downloadCsv } from "./download";
+import type { BusinessProfile } from "@/lib/profile";
 import { formatMiles, mileageLog, totalTenths } from "@/lib/mileage";
 import type { Sale } from "@/lib/sale";
 import { quarterIncomeCents, quarterOf, setAsideCents } from "@/lib/setaside";
@@ -44,12 +46,15 @@ export default function Dashboard({
   services,
   sales,
   clients,
+  profile,
   onClose,
 }: {
   transactions: Transaction[];
   services: Service[];
   sales: Sale[];
   clients: Client[];
+  /** Business name/owner/state — tops the tax CSV and the proof title. */
+  profile: BusinessProfile;
   /** Omitted when embedded in the desktop rail — no takeover, no Close. */
   onClose?: () => void;
 }) {
@@ -110,8 +115,14 @@ export default function Dashboard({
 
         <div>
           <h2 className="text-lg font-semibold">
-            contado — {t("dash.proofTitle")}
+            {profile.businessName || "contado"} — {t("dash.proofTitle")}
           </h2>
+          {profile.ownerName && (
+            <p className="text-sm text-neutral-700">
+              {profile.ownerName}
+              {profile.usState && ` · ${profile.usState}`}
+            </p>
+          )}
           <p className="text-sm text-neutral-500">
             {t("dash.proofGenerated", { date: today })}
           </p>
@@ -166,24 +177,14 @@ export default function Dashboard({
   );
   const maxRevenue = Math.max(1, ...revenue.map((r) => r.revenueCents));
 
-  function download(csv: string, filename: string) {
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
   const downloadTaxCsv = () =>
-    download(
-      taxCsv(transactions, services),
+    downloadCsv(
+      taxCsv(transactions, services, profile),
       "contado-for-your-tax-preparer.csv",
     );
 
   const downloadEverythingCsv = () =>
-    download(
+    downloadCsv(
       everythingCsv(transactions, services),
       "contado-everything.csv",
     );
@@ -375,7 +376,7 @@ export default function Dashboard({
             type="button"
             className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
             onClick={() =>
-              download(mileageCsv(mileage, clients), "contado-mileage.csv")
+              downloadCsv(mileageCsv(mileage, clients), "contado-mileage.csv")
             }
           >
             {t("dash.mileageCsv")}

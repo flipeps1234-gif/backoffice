@@ -1,6 +1,7 @@
 import { scheduleCLabel } from "./category";
 import type { Client } from "./client";
 import { formatMiles, type MileageEntry } from "./mileage";
+import { hasProfile, type BusinessProfile } from "./profile";
 import type { Service } from "./service";
 import type { Transaction } from "./transaction";
 
@@ -53,13 +54,27 @@ const document_ = (lines: string[]): string =>
 export const taxCsv = (
   transactions: Transaction[],
   services: Service[],
+  profile?: BusinessProfile,
 ): string => {
+  const lines: string[] = [];
+
+  // Business header (v0.6.7) — who this ledger belongs to, on top,
+  // where the preparer looks first. Only the fields the owner filled;
+  // a blank profile emits nothing and the file is byte-identical to
+  // the pre-profile format.
+  if (profile && hasProfile(profile)) {
+    if (profile.businessName) lines.push(`business,${field(profile.businessName)}`);
+    if (profile.ownerName) lines.push(`owner,${field(profile.ownerName)}`);
+    if (profile.usState) lines.push(`state,${field(profile.usState)}`);
+    lines.push("");
+  }
+
   // `category` (v0.6.5) is the Schedule C line the owner tagged the
   // expense with — pre-sorted for the preparer, blank when untagged or
   // for income. A label, never tax logic.
-  const lines = [
+  lines.push(
     ["date", "type", "who", "service", "note", "category", "amount"].join(","),
-  ];
+  );
 
   for (const tx of chronological(transactions.filter((tx) => tx.business === true))) {
     lines.push(

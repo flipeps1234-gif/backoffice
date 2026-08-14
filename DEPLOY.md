@@ -101,6 +101,7 @@ built against a Supabase host that no longer exists in DNS.
 | `OPENAI_API_KEY` | Vercel | Uploads return 503 — deliberately, rather than inventing rows |
 | `DEMO_EMAIL` / `DEMO_PASSWORD` | Vercel, server-only | The demo word stops working |
 | `DEMO_EXTRACTION=mock` | Vercel | Tester spends your OpenAI budget |
+| `NEXT_PUBLIC_SUPPORT_WHATSAPP` | Vercel, optional | Settings shows "Support line — coming soon" instead of the WhatsApp link. Digits only, country code first (e.g. `15551234567`); build-time inlined, so set it and redeploy |
 
 ---
 

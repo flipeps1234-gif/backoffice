@@ -18,6 +18,15 @@ export type SaleFlowOrder = "products-first" | "client-first";
 // script in layout.tsx — change one, change both.
 const THEME_KEY = "contado.theme";
 const FLOW_KEY = "contado.saleflow";
+// In-app notices (v0.6.7). These are NOT push notifications — no
+// scheduling infra exists and the boundary stands. They gate two
+// banners the app shows on open: last month's recap, and a
+// January–mid-April tax-season pointer. On by default.
+const NOTIFY_RECAP_KEY = "contado.notify.recap";
+const NOTIFY_TAX_KEY = "contado.notify.tax";
+// Markers so a banner shows once, not forever.
+const RECAP_SHOWN_KEY = "contado.recap.shown";
+const TAX_DISMISSED_KEY = "contado.taxnote.dismissed";
 
 const isTheme = (v: unknown): v is Theme =>
   v === "system" || v === "light" || v === "dark";
@@ -65,10 +74,37 @@ export const currentSaleFlow = (): SaleFlowOrder => {
 export const setSaleFlow = (order: SaleFlowOrder): void =>
   write(FLOW_KEY, order);
 
+// ---- in-app notices ----
+
+export const recapEnabled = (): boolean => read(NOTIFY_RECAP_KEY) !== "off";
+export const setRecapEnabled = (on: boolean): void =>
+  write(NOTIFY_RECAP_KEY, on ? "on" : "off");
+
+export const taxNoteEnabled = (): boolean => read(NOTIFY_TAX_KEY) !== "off";
+export const setTaxNoteEnabled = (on: boolean): void =>
+  write(NOTIFY_TAX_KEY, on ? "on" : "off");
+
+/** "2026-07" — the last month whose recap was already shown. */
+export const recapShownFor = (): string | null => read(RECAP_SHOWN_KEY);
+export const markRecapShown = (month: string): void =>
+  write(RECAP_SHOWN_KEY, month);
+
+/** "2026" — the year whose tax-season note was dismissed. */
+export const taxNoteDismissedFor = (): string | null =>
+  read(TAX_DISMISSED_KEY);
+export const dismissTaxNote = (year: string): void =>
+  write(TAX_DISMISSED_KEY, year);
+
 export const subscribeToSettings = (onChange: () => void): (() => void) => {
   listeners.add(onChange);
   const onStorage = (event: StorageEvent) => {
-    if (event.key === THEME_KEY || event.key === FLOW_KEY) onChange();
+    if (
+      event.key === THEME_KEY ||
+      event.key === FLOW_KEY ||
+      event.key === NOTIFY_RECAP_KEY ||
+      event.key === NOTIFY_TAX_KEY
+    )
+      onChange();
   };
   window.addEventListener("storage", onStorage);
   return () => {
