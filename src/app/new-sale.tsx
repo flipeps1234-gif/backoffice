@@ -524,7 +524,11 @@ export default function NewSale({
 
         <button
           type="button"
-          className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"
+          // While a photo is still compressing, leaving checkout would let
+          // the sale finish with photo=null and silently drop it — hold
+          // here for the half-second; the label above says why.
+          disabled={photoBusy}
+          className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90 disabled:opacity-40"
           onClick={() => setStep("paid")}
         >
           {t("common.continue")}
@@ -616,10 +620,8 @@ export default function NewSale({
         <div className="grid grid-cols-2 gap-3">
           <input
             aria-label={t("sale.customAmountAria")}
-            type="number"
+            type="text"
             inputMode="decimal"
-            min="0"
-            step="0.01"
             className={fieldClass}
             placeholder="0.00"
             value={customAmount}

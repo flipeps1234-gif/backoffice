@@ -18,6 +18,8 @@ export type LogAgainPrefill = {
   quantity: number | null;
   business: boolean;
   direction: "in" | "out";
+  /** The original expense's Schedule-C label — re-logging keeps it. */
+  category: string | null;
 };
 
 const localToday = () => {
@@ -136,6 +138,7 @@ export default function HistoryList({
                           quantity: tx.quantity,
                           business: tx.business === true,
                           direction: tx.direction,
+                          category: tx.category,
                         })
                       }
                     >

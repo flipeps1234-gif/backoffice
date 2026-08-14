@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { byMonth, marginByService, revenueByService } from "@/lib/dashboard";
 import type { Client } from "@/lib/client";
 import { everythingCsv, mileageCsv, taxCsv } from "@/lib/csv";
@@ -55,6 +55,13 @@ export default function Dashboard({
 }) {
   const { t, tag } = useLocale();
   const [proofOpen, setProofOpen] = useState(false);
+
+  // The print CSS keys on this class (not :has() — see globals.css).
+  useEffect(() => {
+    if (!proofOpen) return;
+    document.body.classList.add("printing-proof");
+    return () => document.body.classList.remove("printing-proof");
+  }, [proofOpen]);
   const months = byMonth(transactions);
   const revenue = revenueByService(transactions, services);
   const margins = marginByService(transactions, services);

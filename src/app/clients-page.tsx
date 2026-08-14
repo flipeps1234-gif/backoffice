@@ -50,7 +50,7 @@ const narrowFieldClass =
 type DraftLine = { item: LineItem; qtyText: string };
 
 const parseQty = (text: string): number | null => {
-  const qty = Number.parseFloat(text);
+  const qty = Number.parseFloat(text.replace(",", "."));
   return Number.isFinite(qty) && qty > 0 ? qty : null;
 };
 
@@ -189,10 +189,8 @@ export default function ClientsPage({
               </label>
               <input
                 id="client-distance"
-                type="number"
+                type="text"
                 inputMode="decimal"
-                min="0"
-                step="any"
                 className={fieldClass}
                 placeholder="12.5"
                 value={distance}
@@ -412,10 +410,8 @@ export default function ClientsPage({
                                 aria-label={t("clients.quantityOf", {
                                   name: item.name || t("clients.customLine"),
                                 })}
-                                type="number"
+                                type="text"
                                 inputMode="decimal"
-                                min="0"
-                                step="any"
                                 className={`${narrowFieldClass} w-20 text-center`}
                                 value={qtyText}
                                 onChange={(e) =>
@@ -485,10 +481,8 @@ export default function ClientsPage({
                         <div className="flex gap-2">
                           <input
                             aria-label={t("clients.customAmountAria")}
-                            type="number"
+                            type="text"
                             inputMode="decimal"
-                            min="0"
-                            step="0.01"
                             className={`${narrowFieldClass} w-24`}
                             placeholder="0.00"
                             value={customAmount}

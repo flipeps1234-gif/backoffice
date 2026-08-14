@@ -8,7 +8,7 @@ import {
   type RateUnit,
   type Service,
 } from "@/lib/service";
-import { CATEGORIES, type CategoryId } from "@/lib/category";
+import { CATEGORIES, isCategoryId, type CategoryId } from "@/lib/category";
 import type { Remembered } from "@/lib/customer-memory";
 import {
   dollarsToCents,
@@ -92,6 +92,8 @@ export type QuickAddPrefill = {
   quantity: number | null;
   business: boolean;
   direction: TransactionDirection;
+  /** The original expense's Schedule-C label, if any. */
+  category: string | null;
 };
 
 export default function QuickAdd({
@@ -131,8 +133,11 @@ export default function QuickAdd({
   );
   const [justSaved, setJustSaved] = useState("");
   /** Schedule-C-grade label on expenses, v0.6.5. Optional — a skipped
-   *  category is a blank CSV cell, never a guessed tax line. */
-  const [category, setCategory] = useState<CategoryId | null>(null);
+   *  category is a blank CSV cell, never a guessed tax line. "Log again"
+   *  carries the original row's label in, like every other field. */
+  const [category, setCategory] = useState<CategoryId | null>(() =>
+    isCategoryId(prefill?.category) ? prefill.category : null,
+  );
   const spending = direction === "out";
 
   // Chip + mini-calc state. fromChip marks an amount the user didn't type,
@@ -267,7 +272,7 @@ export default function QuickAdd({
 
   function changeQty(value: string) {
     setQty(value);
-    const quantity = Number.parseFloat(value);
+    const quantity = Number.parseFloat(value.replace(",", "."));
     // Clamped: a stray "1e9" sqft must not overflow the amount column.
     setCents(selected ? Math.min(MAX_CENTS, priceFor(selected, quantity)) : 0);
     setFromChip(true);
@@ -299,7 +304,7 @@ export default function QuickAdd({
   /** Units are only meaningful on a rate-chip income log with a valid qty. */
   function quantityForSave(): number | null {
     if (spending || selected?.pricing.type !== "rate") return null;
-    const parsed = Number.parseFloat(qty);
+    const parsed = Number.parseFloat(qty.replace(",", "."));
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
 
@@ -321,6 +326,9 @@ export default function QuickAdd({
     setFromChip(false);
     setAutoFilled(false);
     setUsualHint("");
+    // A category describes ONE expense — "Save & add another" must not
+    // quietly tag the next one with the last one's label (review catch).
+    setCategory(null);
   }
 
   function save(stay: boolean) {
@@ -445,10 +453,8 @@ export default function QuickAdd({
             </label>
             <input
               id="svc-rate"
-              type="number"
+              type="text"
               inputMode="decimal"
-              min="0"
-              step="0.01"
               className={fieldClass}
               placeholder="0.00"
               value={promptRate}
@@ -467,10 +473,8 @@ export default function QuickAdd({
           </label>
           <input
             id="svc-cost"
-            type="number"
+            type="text"
             inputMode="decimal"
-            min="0"
-            step="0.01"
             className={fieldClass}
             placeholder={t("quickadd.costPlaceholder")}
             value={promptCost}
@@ -653,10 +657,8 @@ export default function QuickAdd({
           </label>
           <input
             id="qty"
-            type="number"
+            type="text"
             inputMode="decimal"
-            min="0"
-            step="any"
             className={`${fieldClass} w-20 text-center`}
             value={qty}
             onChange={(event) => changeQty(event.target.value)}

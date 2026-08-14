@@ -21,14 +21,27 @@ export type MileageEntry = {
  * distanceByClient: clientId → round-trip tenths. Sales with no client or
  * whose client has no distance recorded contribute nothing — a missing
  * number is missing, never guessed.
+ *
+ * An OPEN sale that a RECURRING TEMPLATE created is not a visit: the
+ * machine minted it as expected revenue, and "if they logged the job,
+ * they drove there" only holds for things the owner logged. Three weeks
+ * of vacation must not back-fill three phantom trips into a document a
+ * tax preparer reads. The owner marking the instance paid is the
+ * evidence the visit happened — then it counts.
  */
 export const mileageLog = (
   distanceByClient: Map<string, number>,
-  sales: { clientId: string | null; date: string }[],
+  sales: {
+    clientId: string | null;
+    date: string;
+    state: string;
+    recurringTemplateId: string | null;
+  }[],
 ): MileageEntry[] => {
   const entries: MileageEntry[] = [];
   for (const sale of sales) {
     if (!sale.clientId) continue;
+    if (sale.recurringTemplateId !== null && sale.state === "open") continue;
     const tenths = distanceByClient.get(sale.clientId);
     if (tenths === undefined || tenths <= 0) continue;
     entries.push({ date: sale.date, clientId: sale.clientId, tenths });

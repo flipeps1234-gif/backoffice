@@ -88,7 +88,13 @@ export const dollarsToCents = (input: string): number => {
     const sepChar = cleaned[sepIndex];
     const appearsOnce = cleaned.indexOf(sepChar) === sepIndex;
     const after = cleaned.slice(sepIndex + 1);
-    if (appearsOnce && after.length >= 1 && after.length <= 2) {
+    const before = cleaned.slice(0, sepIndex).replace(/[^0-9]/g, "");
+    // A zero (or empty) integer part can never be thousands grouping —
+    // nobody writes "0,125" to mean 125. It IS how per-unit rates are
+    // written ("0.125" per sq ft), which the review caught parsing as
+    // $125.00 — a 1000× price corruption written to the catalog.
+    const zeroWhole = before === "" || /^0+$/.test(before);
+    if (appearsOnce && after.length >= 1 && (zeroWhole || after.length <= 2)) {
       wholeDigits = cleaned.slice(0, sepIndex);
       fraction = after;
     }
@@ -96,13 +102,16 @@ export const dollarsToCents = (input: string): number => {
 
   const whole = Number.parseInt(wholeDigits.replace(/[^0-9]/g, "") || "0", 10);
   const fracDigits = fraction.replace(/[^0-9]/g, "");
-  // "5" after the separator means 50 cents, not 5.
+  // "5" after the separator means 50 cents, not 5; three or more
+  // fraction digits round to whole cents ("0.125" → 13, "0.999" → 100).
   const cents =
     fracDigits.length === 0
       ? 0
       : fracDigits.length === 1
         ? Number.parseInt(fracDigits, 10) * 10
-        : Number.parseInt(fracDigits.slice(0, 2), 10);
+        : fracDigits.length === 2
+          ? Number.parseInt(fracDigits, 10)
+          : Math.round(Number.parseInt(fracDigits.slice(0, 3), 10) / 10);
 
   if (!Number.isFinite(whole)) return MAX_CENTS;
   return Math.min(MAX_CENTS, Math.max(0, whole * 100 + cents));

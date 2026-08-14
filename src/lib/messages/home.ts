@@ -338,4 +338,9 @@ export const messages = {
     es: "La imagen estaba muy borrosa o muy pequeña para leerla. Intenta de nuevo, más de cerca.",
     pt: "A imagem estava borrada ou pequena demais para ler. Tente de novo, mais de perto.",
   },
+  "home.finishEntryFirst": {
+    en: "Finish or close what you're logging first — then search can take you there.",
+    es: "Primero termina o cierra lo que estás registrando — luego la búsqueda te lleva ahí.",
+    pt: "Primeiro termine ou feche o que você está registrando — depois a busca leva você até lá.",
+  },
 } as const;

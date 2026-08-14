@@ -121,10 +121,8 @@ function EditForm({
           </label>
           <input
             id="prod-price"
-            type="number"
+            type="text"
             inputMode="decimal"
-            min="0"
-            step="0.01"
             className={fieldClass}
             placeholder="0.00"
             value={price}
@@ -137,10 +135,8 @@ function EditForm({
           </label>
           <input
             id="prod-cost"
-            type="number"
+            type="text"
             inputMode="decimal"
-            min="0"
-            step="0.01"
             className={fieldClass}
             placeholder={t("products.costPlaceholder")}
             value={cost}

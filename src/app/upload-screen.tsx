@@ -237,9 +237,20 @@ function Ledger({
   const [showClients, setShowClients] = useState(false);
   /** Search landed on a client — ClientsPage opens on their detail. */
   const [clientsFocus, setClientsFocus] = useState<string | null>(null);
+  /** Bumped per search click so the SAME client re-focuses after the
+   *  user navigated away inside ClientsPage (the key must change). */
+  const [clientsFocusSeq, setClientsFocusSeq] = useState(0);
 
   function openClientFromSearch(id: string) {
+    // A half-typed expense or sale must not be vaporized by a search tap
+    // (the takeover chain would unmount it, losing the entry). Money in
+    // flight beats navigation; the notice says why nothing moved.
+    if (quickAdd || logAgain || showNewSale) {
+      setSaleNotice(t("home.finishEntryFirst"));
+      return;
+    }
     setClientsFocus(id);
+    setClientsFocusSeq((n) => n + 1);
     setShowClients(true);
   }
   const [showProducts, setShowProducts] = useState(false);
@@ -727,6 +738,10 @@ function Ledger({
           // The user can flip in/out on the sheet — a misread sign is the
           // most consequential extraction error there is.
           direction: tx.direction,
+          // The Schedule-C label picked on the sheet — the row was
+          // inserted at arrival with category null, so forgetting it
+          // here silently un-categorized every receipt (review catch).
+          category: tx.category,
         }),
       );
     }
@@ -1099,6 +1114,10 @@ function Ledger({
     setShowRecentSales(false);
     setShowOwed(false);
     setShowClients(false);
+    // Leaving a search-focused client page for the sale flow: forget the
+    // focus, or the Clients BUTTON later reopens that client's detail
+    // instead of the list (review catch).
+    setClientsFocus(null);
     setShowNewSale(true);
   }
 
@@ -1171,9 +1190,10 @@ function Ledger({
   } else if (showClients) {
     takeover = (
       <ClientsPage
-        // Remount when search targets a different client, so the detail
-        // opens fresh instead of keeping the previous navigation state.
-        key={clientsFocus ?? "clients"}
+        // Remount when search targets a client — seq included so tapping
+        // the SAME client again re-focuses even after navigating away
+        // inside the page.
+        key={clientsFocus ? `${clientsFocus}-${clientsFocusSeq}` : "clients"}
         clients={clients}
         sales={sales}
         templates={templates}
@@ -1379,7 +1399,11 @@ function Ledger({
             <button
               type="button"
               className="rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 dark:hover:bg-neutral-900"
-              onClick={() => setShowClients(true)}
+              onClick={() => {
+                // The button opens the LIST — never a stale search focus.
+                setClientsFocus(null);
+                setShowClients(true);
+              }}
             >
               {t("home.clients")}
             </button>

@@ -20,8 +20,22 @@ export const fold = (text: string): string =>
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 
+/**
+ * Money the way the OWNER writes it must find money the way the INDEX
+ * stores it ("1234.56" / "1234"). Strip a leading $, drop en-US
+ * thousands grouping, and read a comma decimal ("120,50") as a dot —
+ * the app itself DISPLAYS "$1,234.56", so a copied-from-screen query
+ * has to hit.
+ */
+const normalizeToken = (token: string): string => {
+  const bare = token.startsWith("$") ? token.slice(1) : token;
+  if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(bare)) return bare.replace(/,/g, "");
+  if (/^\d+,\d{1,2}$/.test(bare)) return bare.replace(",", ".");
+  return bare;
+};
+
 const tokens = (query: string): string[] =>
-  fold(query).split(/\s+/).filter(Boolean);
+  fold(query).split(/\s+/).map(normalizeToken).filter(Boolean);
 
 /** "12000 cents" → searchable as both "120" and "120.00". */
 const moneyHaystack = (cents: number): string =>

@@ -130,10 +130,8 @@ export default function ConfirmationSheet({
                 </label>
                 <input
                   id={`${tx.id}-amount`}
-                  type="number"
+                  type="text"
                   inputMode="decimal"
-                  step="0.01"
-                  min="0"
                   className={inputClass(isUncertain(tx, "amountCents"))}
                   defaultValue={centsToDollars(tx.amountCents)}
                   onChange={(event) =>

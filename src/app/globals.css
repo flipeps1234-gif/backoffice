@@ -53,16 +53,22 @@ body {
 /* Proof-of-income printing (v0.6.5). window.print IS the PDF export —
    when the proof view is mounted, everything else vanishes from the
    printed page and the document owns the sheet. Screen rendering is
-   untouched. */
+   untouched.
+
+   The gate is a body CLASS set by the component, not :has() — on a
+   browser without :has() the hide rule would be dropped as invalid
+   while the positioning rules survived, printing the proof ON TOP of
+   whatever else was on screen (review catch). A class parses
+   everywhere. */
 @media print {
-  body:has([data-print-root]) * {
+  body.printing-proof * {
     visibility: hidden;
   }
-  [data-print-root],
-  [data-print-root] * {
+  body.printing-proof [data-print-root],
+  body.printing-proof [data-print-root] * {
     visibility: visible;
   }
-  [data-print-root] {
+  body.printing-proof [data-print-root] {
     position: absolute;
     left: 0;
     top: 0;
