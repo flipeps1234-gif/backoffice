@@ -9,7 +9,10 @@
  * Versioned so a material change can ask again. Bumping the version re-prompts
  * everyone; that is the point, so don't bump it for a typo.
  */
-export const TERMS_VERSION = "2026-08-06";
+// 2026-08-13: v0.6 added photos attached to sales, which ARE kept —
+// the first retained images in the app. That changes the "we keep the
+// rows, not the images" story materially, so everyone is asked again.
+export const TERMS_VERSION = "2026-08-13";
 
 // Renamed from "swipebooks.terms" with the rebrand. A device that accepted
 // under the old key will not have this one, so it sees the terms once more —

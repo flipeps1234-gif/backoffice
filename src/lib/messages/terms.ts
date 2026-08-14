@@ -25,6 +25,16 @@ export const messages = {
     es: "Cuando subes una captura o foto, la imagen va a OpenAI, que lee el texto y devuelve los pagos que encontró. Esa imagen suele tener los nombres de tus clientes, cuánto pagaron y cuándo. Sale de tu dispositivo. Guardamos las filas que confirmas — no las imágenes.",
     pt: "Quando você envia uma captura ou foto, a imagem vai para a OpenAI, que lê o texto e devolve os pagamentos encontrados. Essa imagem geralmente tem os nomes dos seus clientes, quanto pagaram e quando. Ela sai do seu aparelho. Guardamos as linhas que você confirma — não as imagens.",
   },
+  "terms.photoTitle": {
+    en: "Photos you attach to a sale are kept",
+    es: "Las fotos que adjuntas a una venta sí se guardan",
+    pt: "As fotos que você anexa a uma venda são guardadas",
+  },
+  "terms.photoBody": {
+    en: "The screenshots above are read and discarded. A photo you attach to a sale is different: it's stored with that sale, and there's no delete yet — so attach only what you're fine keeping.",
+    es: "Las capturas de arriba se leen y se descartan. Una foto que adjuntas a una venta es distinta: se guarda con esa venta, y todavía no hay forma de borrarla — así que adjunta solo lo que no te importe conservar.",
+    pt: "As capturas acima são lidas e descartadas. Uma foto anexada a uma venda é diferente: ela fica guardada com a venda, e ainda não dá para apagar — então anexe só o que você não se importa de manter.",
+  },
   "terms.checkTitle": {
     en: "Check every row before you keep it",
     es: "Revisa cada fila antes de guardarla",

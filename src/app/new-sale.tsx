@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { compressPhoto } from "./photo";
 import ProductCard from "./product-card";
 import { useLocale } from "./use-locale";
 import { findClientByName, type Client } from "@/lib/client";
@@ -114,6 +115,27 @@ export default function NewSale({
   const [cadence, setCadence] = useState<Cadence>({ type: "weekly" });
   const [everyN, setEveryN] = useState("30");
   const [saveClient, setSaveClient] = useState(true);
+  // Proof-of-work, v0.6 — both optional, both decoration on the money.
+  const [showProof, setShowProof] = useState(false);
+  const [notes, setNotes] = useState("");
+  const [photo, setPhoto] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
+
+  async function attachPhoto(file: File | undefined) {
+    if (!file) return;
+    setPhotoBusy(true);
+    setPhotoError(false);
+    try {
+      setPhoto(await compressPhoto(file));
+    } catch {
+      // A bad photo must never block the sale — the money is the record,
+      // the picture is decoration.
+      setPhotoError(true);
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   const lineItems = useMemo((): LineItem[] => {
     const items: LineItem[] = [];
@@ -174,6 +196,8 @@ export default function NewSale({
       method: paid ? method : null,
       matchedTxnId: null,
       recurringTemplateId: null,
+      notes: notes.trim(),
+      photo,
     };
 
     const template =
@@ -358,6 +382,74 @@ export default function NewSale({
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />
+        </div>
+
+        {/* Proof-of-work — FLOW.md's `photo/notes (opt.)`. Collapsed by
+            default: the ten-second driveway sale never sees it. */}
+        <div className="rounded-lg border border-neutral-300 p-3 dark:border-neutral-700">
+          {!showProof && !notes && !photo ? (
+            <button
+              type="button"
+              className="text-sm font-medium text-neutral-500 hover:underline"
+              onClick={() => setShowProof(true)}
+            >
+              {t("sale.addProof")}
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <label className={labelClass} htmlFor="sale-notes">
+                  {t("sale.noteLabel")}
+                </label>
+                <textarea
+                  id="sale-notes"
+                  className={fieldClass}
+                  rows={2}
+                  placeholder={t("sale.notePlaceholder")}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
+              <div>
+                {photo ? (
+                  <div className="flex items-center gap-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- data URL, no loader */}
+                    <img
+                      src={photo}
+                      alt={t("sale.photoAlt")}
+                      className="h-14 w-14 rounded-md object-cover"
+                    />
+                    <button
+                      type="button"
+                      className="text-sm text-neutral-500 hover:underline"
+                      onClick={() => setPhoto(null)}
+                    >
+                      {t("sale.photoRemove")}
+                    </button>
+                  </div>
+                ) : (
+                  <label className="inline-block cursor-pointer rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800">
+                    {photoBusy ? t("sale.photoReading") : t("sale.photoAdd")}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={photoBusy}
+                      onChange={(e) => {
+                        void attachPhoto(e.target.files?.[0]);
+                        e.target.value = "";
+                      }}
+                    />
+                  </label>
+                )}
+                {photoError && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {t("sale.photoError")}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="rounded-lg border border-neutral-300 p-3 dark:border-neutral-700">

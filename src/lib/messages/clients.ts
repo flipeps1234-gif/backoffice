@@ -131,4 +131,9 @@ export const messages = {
     es: "Cada {days} días",
     pt: "A cada {days} dias",
   },
+  "clients.salePhotoAlt": {
+    en: "Photo from this sale — tap to enlarge",
+    es: "Foto de esta venta — toca para ampliar",
+    pt: "Foto desta venda — toque para ampliar",
+  },
 } as const;

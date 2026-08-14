@@ -19,6 +19,8 @@ type Row = {
   method: string | null;
   matched_txn_id: string | null;
   recurring_template_id: string | null;
+  notes: string | null;
+  photo: string | null;
 };
 
 const asState = (raw: string): SaleState =>
@@ -33,6 +35,13 @@ const toSale = (row: Row): Sale => ({
   method: row.method === "cash" || row.method === "digital" ? row.method : null,
   matchedTxnId: row.matched_txn_id,
   recurringTemplateId: row.recurring_template_id,
+  notes: typeof row.notes === "string" ? row.notes : "",
+  // Only a data URL renders; anything else from the jsonb-era paranoia
+  // bucket is dropped rather than injected into an <img src>.
+  photo:
+    typeof row.photo === "string" && row.photo.startsWith("data:image/")
+      ? row.photo
+      : null,
 });
 
 const toRow = (sale: Sale, accountId: string) => ({
@@ -45,6 +54,8 @@ const toRow = (sale: Sale, accountId: string) => ({
   method: sale.method,
   matched_txn_id: sale.matchedTxnId,
   recurring_template_id: sale.recurringTemplateId,
+  notes: sale.notes,
+  photo: sale.photo,
 });
 
 export const loadSales = async (): Promise<Sale[]> => {
@@ -55,7 +66,7 @@ export const loadSales = async (): Promise<Sale[]> => {
     supabase
       .from("sales")
       .select(
-        "id, client_id, occurred_on, line_items, state, method, matched_txn_id, recurring_template_id",
+        "id, client_id, occurred_on, line_items, state, method, matched_txn_id, recurring_template_id, notes, photo",
       )
       .order("occurred_on", { ascending: false })
       .order("id", { ascending: false })
@@ -98,6 +109,8 @@ export const updateSale = async (
   if (patch.matchedTxnId !== undefined) row.matched_txn_id = patch.matchedTxnId;
   if (patch.recurringTemplateId !== undefined)
     row.recurring_template_id = patch.recurringTemplateId;
+  if (patch.notes !== undefined) row.notes = patch.notes;
+  if (patch.photo !== undefined) row.photo = patch.photo;
   if (Object.keys(row).length === 0) return;
 
   const { error } = await supabase.from("sales").update(row).eq("id", id);

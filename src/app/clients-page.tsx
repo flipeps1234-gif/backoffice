@@ -58,6 +58,7 @@ export default function ClientsPage({
   sales,
   templates,
   services,
+  initialOpenId,
   onUpdateClient,
   onUpdateTemplate,
   onLogAgain,
@@ -67,13 +68,15 @@ export default function ClientsPage({
   sales: Sale[];
   templates: RecurringTemplate[];
   services: Service[];
+  /** Open straight on this client's detail — how search lands here. */
+  initialOpenId?: string | null;
   onUpdateClient: (id: string, patch: Partial<Pick<Client, "name" | "notes">>) => void;
   onUpdateTemplate: (id: string, patch: Partial<RecurringTemplate>) => void;
   onLogAgain: (sale: Sale) => void;
   onClose: () => void;
 }) {
   const { t } = useLocale();
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(initialOpenId ?? null);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
@@ -84,6 +87,10 @@ export default function ClientsPage({
   const [customAmount, setCustomAmount] = useState("");
   const [customLabel, setCustomLabel] = useState("");
   const [endConfirmId, setEndConfirmId] = useState<string | null>(null);
+  /** Which history row's photo is expanded in place. */
+  const [expandedPhotoSaleId, setExpandedPhotoSaleId] = useState<string | null>(
+    null,
+  );
 
   function startTemplateEdit(tpl: RecurringTemplate) {
     setEditTplId(tpl.id);
@@ -545,36 +552,63 @@ export default function ClientsPage({
           ) : (
             <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
               {theirSales.map((sale) => (
-                <li
-                  key={sale.id}
-                  className="flex items-center gap-3 px-3 py-2.5"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm">
-                      {sale.lineItems.map((i) => i.name).join(", ") ||
-                        t("clients.sale")}
-                    </p>
-                    <p className="text-xs text-neutral-500">
-                      {sale.date} ·{" "}
-                      {sale.state === "open"
-                        ? t("clients.owesYou")
-                        : sale.state === "expected"
-                          ? t("clients.paidWaiting")
-                          : sale.method === "cash"
-                            ? t("clients.paidCash")
-                            : t("clients.paid")}
-                    </p>
+                <li key={sale.id} className="px-3 py-2.5">
+                  <div className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm">
+                        {sale.lineItems.map((i) => i.name).join(", ") ||
+                          t("clients.sale")}
+                      </p>
+                      <p className="text-xs text-neutral-500">
+                        {sale.date} ·{" "}
+                        {sale.state === "open"
+                          ? t("clients.owesYou")
+                          : sale.state === "expected"
+                            ? t("clients.paidWaiting")
+                            : sale.method === "cash"
+                              ? t("clients.paidCash")
+                              : t("clients.paid")}
+                      </p>
+                    </div>
+                    <span className="text-sm font-semibold tabular-nums">
+                      {formatCents(saleTotalCents(sale))}
+                    </span>
+                    <button
+                      type="button"
+                      className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                      onClick={() => onLogAgain(sale)}
+                    >
+                      {t("common.logAgain")}
+                    </button>
                   </div>
-                  <span className="text-sm font-semibold tabular-nums">
-                    {formatCents(saleTotalCents(sale))}
-                  </span>
-                  <button
-                    type="button"
-                    className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
-                    onClick={() => onLogAgain(sale)}
-                  >
-                    {t("common.logAgain")}
-                  </button>
+                  {/* Proof-of-work, when the owner attached any. The photo
+                      expands in place — no lightbox machinery. */}
+                  {(sale.notes || sale.photo) && (
+                    <div className="mt-1.5 flex items-start gap-2">
+                      {sale.photo && (
+                        // eslint-disable-next-line @next/next/no-img-element -- data URL, no loader
+                        <img
+                          src={sale.photo}
+                          alt={t("clients.salePhotoAlt")}
+                          className={
+                            expandedPhotoSaleId === sale.id
+                              ? "max-h-80 max-w-full cursor-zoom-out rounded-md object-contain"
+                              : "h-10 w-10 shrink-0 cursor-zoom-in rounded-md object-cover"
+                          }
+                          onClick={() =>
+                            setExpandedPhotoSaleId(
+                              expandedPhotoSaleId === sale.id ? null : sale.id,
+                            )
+                          }
+                        />
+                      )}
+                      {sale.notes && (
+                        <p className="min-w-0 whitespace-pre-wrap text-xs text-neutral-500">
+                          {sale.notes}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

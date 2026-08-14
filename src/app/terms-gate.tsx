@@ -2,7 +2,6 @@
 
 import { useSyncExternalStore } from "react";
 import { acceptedVersion, subscribeToTerms, TERMS_VERSION } from "@/lib/terms";
-import LocalePicker from "./locale-picker";
 import { useLocale } from "./use-locale";
 
 /**
@@ -45,18 +44,18 @@ export default function TermsGate({ onAccept }: { onAccept: () => void }) {
   const { t } = useLocale();
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">
-            {t("terms.title")}
-          </h2>
-          <p className="mt-1 text-sm text-neutral-500">{t("terms.subtitle")}</p>
-        </div>
-        <LocalePicker compact />
+      {/* The language switcher lives in the page header just above — the
+          first screen must not double it up. */}
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight">
+          {t("terms.title")}
+        </h2>
+        <p className="mt-1 text-sm text-neutral-500">{t("terms.subtitle")}</p>
       </div>
 
       <div className="space-y-5">
         <Term title={t("terms.aiTitle")}>{t("terms.aiBody")}</Term>
+        <Term title={t("terms.photoTitle")}>{t("terms.photoBody")}</Term>
         <Term title={t("terms.checkTitle")}>{t("terms.checkBody")}</Term>
         <Term title={t("terms.recordTitle")}>{t("terms.recordBody")}</Term>
         <Term title={t("terms.othersTitle")}>{t("terms.othersBody")}</Term>

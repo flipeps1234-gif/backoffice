@@ -185,6 +185,10 @@ export const generateDue = (
         method: null,
         matchedTxnId: null,
         recurringTemplateId: template.id,
+        // Fresh instances carry no proof-of-work — the photo/note belong
+        // to a specific visit, and this visit hasn't happened yet.
+        notes: "",
+        photo: null,
       });
     }
     nextDue = advance(nextDue, template.cadence);

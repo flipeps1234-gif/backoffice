@@ -177,4 +177,45 @@ export const messages = {
     es: "¿Para qué? (opcional)",
     pt: "Para quê? (opcional)",
   },
+  // Proof-of-work at checkout (photo + note), v0.6.
+  "sale.addProof": {
+    en: "Add a note or photo (optional)",
+    es: "Agregar una nota o foto (opcional)",
+    pt: "Adicionar uma nota ou foto (opcional)",
+  },
+  "sale.noteLabel": {
+    en: "Note",
+    es: "Nota",
+    pt: "Nota",
+  },
+  "sale.notePlaceholder": {
+    en: "Anything worth remembering about this job…",
+    es: "Algo que valga la pena recordar de este trabajo…",
+    pt: "Algo que valha a pena lembrar deste trabalho…",
+  },
+  "sale.photoAdd": {
+    en: "Add a photo",
+    es: "Agregar una foto",
+    pt: "Adicionar uma foto",
+  },
+  "sale.photoReading": {
+    en: "Reading photo…",
+    es: "Leyendo la foto…",
+    pt: "Lendo a foto…",
+  },
+  "sale.photoRemove": {
+    en: "Remove photo",
+    es: "Quitar la foto",
+    pt: "Remover a foto",
+  },
+  "sale.photoAlt": {
+    en: "Photo attached to this sale",
+    es: "Foto adjunta a esta venta",
+    pt: "Foto anexada a esta venda",
+  },
+  "sale.photoError": {
+    en: "Couldn't read that photo. The sale can still be logged without it.",
+    es: "No pudimos leer esa foto. Igual puedes registrar la venta sin ella.",
+    pt: "Não conseguimos ler essa foto. Você ainda pode registrar a venda sem ela.",
+  },
 } as const;

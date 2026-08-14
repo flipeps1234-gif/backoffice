@@ -20,6 +20,7 @@ import RecentSales from "./recent-sales";
 import ProgressBar from "./progress-bar";
 import QuickAdd from "./quick-add";
 import RunningTotals from "./running-totals";
+import SearchPanel from "./search-panel";
 import SignIn from "./sign-in";
 import SwipeDeck from "./swipe-deck";
 import TermsGate, { useAcceptedTerms } from "./terms-gate";
@@ -234,6 +235,13 @@ function Ledger({
   const [showRecentSales, setShowRecentSales] = useState(false);
   const [showOwed, setShowOwed] = useState(false);
   const [showClients, setShowClients] = useState(false);
+  /** Search landed on a client — ClientsPage opens on their detail. */
+  const [clientsFocus, setClientsFocus] = useState<string | null>(null);
+
+  function openClientFromSearch(id: string) {
+    setClientsFocus(id);
+    setShowClients(true);
+  }
   const [showProducts, setShowProducts] = useState(false);
   /** One line of good news after a sale/match, with undo where honest. */
   const [saleNotice, setSaleNotice] = useState("");
@@ -1161,10 +1169,14 @@ function Ledger({
   } else if (showClients) {
     takeover = (
       <ClientsPage
+        // Remount when search targets a different client, so the detail
+        // opens fresh instead of keeping the previous navigation state.
+        key={clientsFocus ?? "clients"}
         clients={clients}
         sales={sales}
         templates={templates}
         services={services}
+        initialOpenId={clientsFocus}
         onUpdateClient={(id, patch) => {
           setClients((current) =>
             current.map((c) => (c.id === id ? { ...c, ...patch } : c)),
@@ -1178,7 +1190,10 @@ function Ledger({
           void persist(() => saveTemplate(id, patch));
         }}
         onLogAgain={pickSaleAgain}
-        onClose={() => setShowClients(false)}
+        onClose={() => {
+          setShowClients(false);
+          setClientsFocus(null);
+        }}
       />
     );
   } else if (showProducts) {
@@ -1405,6 +1420,22 @@ function Ledger({
               </>
             )}
           </div>
+
+          {/* Global search — phones only; the desktop rail has its own.
+              Only once there is anything to find: a search box above an
+              empty ledger is furniture. */}
+          {(sales.length > 0 ||
+            clients.length > 0 ||
+            transactions.length > 0) && (
+            <div className="mt-4 lg:hidden">
+              <SearchPanel
+                clients={clients}
+                sales={sales}
+                transactions={transactions}
+                onOpenClient={openClientFromSearch}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -1648,6 +1679,12 @@ function Ledger({
       <div className="min-w-0 lg:sticky lg:top-8">{takeover ?? mainLoop}</div>
       {isDesktop && (
         <aside className="min-w-0 space-y-10 border-neutral-200 lg:border-l lg:pl-10">
+          <SearchPanel
+            clients={clients}
+            sales={sales}
+            transactions={transactions}
+            onOpenClient={openClientFromSearch}
+          />
           <OwedTab
             sales={sales}
             clients={clients}

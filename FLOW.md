@@ -120,14 +120,14 @@ the chart is unchanged):
   at the template. `endedOn` is checked independently of `active` in
   generation, so a stale `active=true` can't reanimate an ended template.
 
-Spec-ahead-of-build (drawn in the chart before the code exists):
-
-- **photo / notes (optional)** at CHECKOUT — a proof-of-work
-  attachment (a picture of the finished lawn, a note) on the sale.
-  This is a **v0.6 roadmap item**, not in the v0.5 build; it sits in
-  the chart so the flow is designed around it now. The CHECKOUT box
-  shows it as `photo/notes (opt.)`. Until v0.6 ships it, this is the
-  one place the chart intentionally leads the implementation.
+Spec-ahead-of-build: **none** as of v0.6. The `photo/notes (opt.)`
+line at CHECKOUT — drawn ahead of the code on 2026-08-13 — SHIPPED the
+same day: a collapsed "Add a note or photo" row at checkout, photo
+compressed client-side (~≤300KB JPEG data URL, src/app/photo.ts) and
+stored in the sale row (migration 0010), shown on the client's history.
+Because this is the first place the app RETAINS an image, the terms
+gained a block saying exactly that, and TERMS_VERSION was bumped so
+every device is asked again. The chart and the code agree everywhere.
 
 Implementation sync — checked 2026-08-13, every other box matches the
 code:

@@ -48,6 +48,11 @@ export type Sale = {
   matchedTxnId: string | null;
   /** Set when this sale was auto-created from a recurring template. */
   recurringTemplateId: string | null;
+  /** Proof-of-work, v0.6. Free text; "" = none. */
+  notes: string;
+  /** Compressed JPEG data URL (~≤300KB, src/app/photo.ts), or null.
+   *  Stored IN the row on purpose — the sale's RLS protects its photo. */
+  photo: string | null;
 };
 
 /** Rounded per line, not per batch — same rule as priceFor in service.ts. */
