@@ -10,6 +10,7 @@ import {
   type Transaction,
 } from "@/lib/transaction";
 import { useLocale } from "./use-locale";
+import { CATEGORIES, isCategoryId } from "@/lib/category";
 
 /**
  * The pre-filled sheet. Every row is already correct as far as we know — the
@@ -174,6 +175,34 @@ export default function ConfirmationSheet({
                 />
               </div>
             </div>
+
+            {/* Receipts get a Schedule-C-grade label here, at confirm time
+                — optional, and the tax CSV inherits it. Income rows never
+                show this: categories are an expense concept. */}
+            {tx.direction === "out" && (
+              <div>
+                <label className={labelClass} htmlFor={`${tx.id}-category`}>
+                  {t("cats.pickerLabel")}
+                </label>
+                <select
+                  id={`${tx.id}-category`}
+                  className={inputClass(false)}
+                  value={isCategoryId(tx.category) ? tx.category : ""}
+                  onChange={(event) =>
+                    onChange(tx.id, {
+                      category: event.target.value === "" ? null : event.target.value,
+                    })
+                  }
+                >
+                  <option value="">{t("cats.none")}</option>
+                  {CATEGORIES.map(({ id }) => (
+                    <option key={id} value={id}>
+                      {t(`cats.${id}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </li>
         ))}
       </ul>

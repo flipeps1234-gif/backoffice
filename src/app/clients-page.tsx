@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Client } from "@/lib/client";
+import { formatMiles, parseMilesToTenths } from "@/lib/mileage";
 import {
   fastForwardPastGap,
   RECURRING_PAUSE_AFTER_MISSES,
@@ -70,7 +71,10 @@ export default function ClientsPage({
   services: Service[];
   /** Open straight on this client's detail — how search lands here. */
   initialOpenId?: string | null;
-  onUpdateClient: (id: string, patch: Partial<Pick<Client, "name" | "notes">>) => void;
+  onUpdateClient: (
+    id: string,
+    patch: Partial<Pick<Client, "name" | "notes" | "distanceTenths">>,
+  ) => void;
   onUpdateTemplate: (id: string, patch: Partial<RecurringTemplate>) => void;
   onLogAgain: (sale: Sale) => void;
   onClose: () => void;
@@ -80,6 +84,8 @@ export default function ClientsPage({
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
+  /** Round-trip miles as typed ("12.5"); parsed to tenths on save. */
+  const [distance, setDistance] = useState("");
 
   // ---- template edit/end state (one template at a time) ----
   const [editTplId, setEditTplId] = useState<string | null>(null);
@@ -177,6 +183,25 @@ export default function ClientsPage({
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div>
+            <div>
+              <label className={labelClass} htmlFor="client-distance">
+                {t("clients.distanceLabel")}
+              </label>
+              <input
+                id="client-distance"
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="any"
+                className={fieldClass}
+                placeholder="12.5"
+                value={distance}
+                onChange={(e) => setDistance(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-neutral-500">
+                {t("clients.distanceHint")}
+              </p>
+            </div>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -186,6 +211,7 @@ export default function ClientsPage({
                   onUpdateClient(detail.id, {
                     name: name.trim(),
                     notes: notes.trim(),
+                    distanceTenths: parseMilesToTenths(distance),
                   });
                   setEditing(false);
                 }}
@@ -213,6 +239,11 @@ export default function ClientsPage({
               onClick={() => {
                 setName(detail.name);
                 setNotes(detail.notes);
+                setDistance(
+                  detail.distanceTenths === null
+                    ? ""
+                    : formatMiles(detail.distanceTenths),
+                );
                 setEditing(true);
               }}
             >

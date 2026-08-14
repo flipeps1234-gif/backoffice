@@ -821,6 +821,7 @@ function Ledger({
           : null,
       business: true,
       matchedSaleId: sale.id,
+      category: null,
       confidence: {},
     };
     patchSale(sale.id, { state: "paid", method: "cash", matchedTxnId: txn.id });
@@ -971,6 +972,7 @@ function Ledger({
             : null,
         business: true,
         matchedSaleId: sale.id,
+        category: null,
         confidence: {},
       };
       sale = { ...sale, state: "paid", method: "cash", matchedTxnId: txn.id };
@@ -1254,6 +1256,8 @@ function Ledger({
       <Dashboard
         transactions={transactions}
         services={services}
+        sales={sales}
+        clients={clients}
         onClose={() => setShowDashboard(false)}
       />
     );
@@ -1718,7 +1722,12 @@ function Ledger({
         }}
             onLogAgain={pickSaleAgain}
           />
-          <Dashboard transactions={transactions} services={services} />
+          <Dashboard
+            transactions={transactions}
+            services={services}
+            sales={sales}
+            clients={clients}
+          />
           <HistoryList
             transactions={transactions}
             services={services}

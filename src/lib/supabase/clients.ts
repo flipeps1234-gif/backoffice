@@ -6,12 +6,17 @@ type Row = {
   id: string;
   name: string;
   notes: string;
+  distance_tenths: number | null;
 };
 
 const toClient = (row: Row): Client => ({
   id: row.id,
   name: row.name,
   notes: row.notes,
+  distanceTenths:
+    typeof row.distance_tenths === "number" && row.distance_tenths > 0
+      ? Math.round(row.distance_tenths)
+      : null,
 });
 
 export const loadClients = async (): Promise<Client[]> => {
@@ -21,7 +26,7 @@ export const loadClients = async (): Promise<Client[]> => {
   const rows = await loadAllPages<Row>((from, to) =>
     supabase
       .from("clients")
-      .select("id, name, notes")
+      .select("id, name, notes, distance_tenths")
       .order("name", { ascending: true })
       .order("id", { ascending: true })
       .range(from, to),
@@ -41,13 +46,14 @@ export const insertClient = async (
     account_id: accountId,
     name: client.name,
     notes: client.notes,
+    distance_tenths: client.distanceTenths,
   });
   if (error) throw new Error(error.message);
 };
 
 export const updateClient = async (
   id: string,
-  patch: Partial<Pick<Client, "name" | "notes">>,
+  patch: Partial<Pick<Client, "name" | "notes" | "distanceTenths">>,
 ): Promise<void> => {
   const supabase = getSupabase();
   if (!supabase) return;
@@ -55,6 +61,8 @@ export const updateClient = async (
   const row: Record<string, unknown> = {};
   if (patch.name !== undefined) row.name = patch.name;
   if (patch.notes !== undefined) row.notes = patch.notes;
+  if (patch.distanceTenths !== undefined)
+    row.distance_tenths = patch.distanceTenths;
   if (Object.keys(row).length === 0) return;
 
   const { error } = await supabase.from("clients").update(row).eq("id", id);

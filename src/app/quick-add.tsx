@@ -8,6 +8,7 @@ import {
   type RateUnit,
   type Service,
 } from "@/lib/service";
+import { CATEGORIES, type CategoryId } from "@/lib/category";
 import type { Remembered } from "@/lib/customer-memory";
 import {
   dollarsToCents,
@@ -129,6 +130,9 @@ export default function QuickAdd({
     expense ? "out" : (prefill?.direction ?? "in"),
   );
   const [justSaved, setJustSaved] = useState("");
+  /** Schedule-C-grade label on expenses, v0.6.5. Optional — a skipped
+   *  category is a blank CSV cell, never a guessed tax line. */
+  const [category, setCategory] = useState<CategoryId | null>(null);
   const spending = direction === "out";
 
   // Chip + mini-calc state. fromChip marks an amount the user didn't type,
@@ -286,6 +290,8 @@ export default function QuickAdd({
       quantity: quantityForSave(),
       business,
       matchedSaleId: null,
+      // Categories are for expenses; an income row never carries one.
+      category: spending ? category : null,
       confidence: {},
     };
   }
@@ -549,6 +555,33 @@ export default function QuickAdd({
           {t("quickadd.spent")}
         </button>
       </div>
+      )}
+
+      {/* Expense categories — a LABEL for the tax CSV, one optional tap.
+          The same chip pattern as services, because the thumb already
+          knows it. */}
+      {spending && (
+        <div
+          className="flex max-h-24 flex-wrap gap-2 overflow-y-auto"
+          role="group"
+          aria-label={t("cats.pickerLabel")}
+        >
+          {CATEGORIES.map(({ id }) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={category === id}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                category === id
+                  ? "bg-foreground text-background"
+                  : "border border-neutral-300 bg-white text-neutral-900"
+              }`}
+              onClick={() => setCategory(category === id ? null : id)}
+            >
+              {t(`cats.${id}`)}
+            </button>
+          ))}
+        </div>
       )}
 
       {!spending && services.length > 0 && (

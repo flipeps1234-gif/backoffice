@@ -1,7 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { byMonth, marginByService, revenueByService } from "@/lib/dashboard";
-import { everythingCsv, taxCsv } from "@/lib/csv";
+import type { Client } from "@/lib/client";
+import { everythingCsv, mileageCsv, taxCsv } from "@/lib/csv";
+import { formatMiles, mileageLog, totalTenths } from "@/lib/mileage";
+import type { Sale } from "@/lib/sale";
+import { quarterIncomeCents, quarterOf, setAsideCents } from "@/lib/setaside";
 import { formatCents, type Transaction } from "@/lib/transaction";
 import type { Service } from "@/lib/service";
 import { useLocale } from "./use-locale";
@@ -10,6 +15,11 @@ import { useLocale } from "./use-locale";
  * The financial picture: money in vs out by month, revenue by service, and
  * the margin view. Margin is estimates (catalog cost field) and says so;
  * the CSV is actuals only. Charts are plain CSS bars — no chart library.
+ *
+ * v0.6.5 adds the tax story: a set-aside NUDGE (information, never a tax
+ * engine), the computed mileage estimate, and a proof-of-income view that
+ * prints through the browser — window.print IS the PDF export, no
+ * dependency, and the print CSS in globals.css isolates the document.
  */
 
 const monthLabel = (month: string, tag: string, noDate: string): string =>
@@ -21,20 +31,127 @@ const monthLabel = (month: string, tag: string, noDate: string): string =>
         timeZone: "UTC",
       });
 
+/** Same local-calendar rule as everywhere else in the app. */
+const localToday = (): string => {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+};
+
 export default function Dashboard({
   transactions,
   services,
+  sales,
+  clients,
   onClose,
 }: {
   transactions: Transaction[];
   services: Service[];
+  sales: Sale[];
+  clients: Client[];
   /** Omitted when embedded in the desktop rail — no takeover, no Close. */
   onClose?: () => void;
 }) {
   const { t, tag } = useLocale();
+  const [proofOpen, setProofOpen] = useState(false);
   const months = byMonth(transactions);
   const revenue = revenueByService(transactions, services);
   const margins = marginByService(transactions, services);
+
+  const today = localToday();
+  const quarterIncome = quarterIncomeCents(transactions, today);
+
+  // Mileage: this calendar year's logged visits to clients whose
+  // round-trip distance is on file. An estimate assembled from two
+  // owner-typed facts — never GPS.
+  const distanceByClient = new Map(
+    clients
+      .filter((c) => c.distanceTenths !== null && c.distanceTenths > 0)
+      .map((c) => [c.id, c.distanceTenths as number]),
+  );
+  const year = today.slice(0, 4);
+  const mileage = mileageLog(
+    distanceByClient,
+    sales.filter((s) => s.date.startsWith(year)),
+  );
+
+  // ---- proof of income: a printable document, not a dashboard ----
+  if (proofOpen) {
+    const totalIn = months.reduce((sum, m) => sum + m.inCents, 0);
+    return (
+      <div
+        data-print-root
+        className="space-y-5 rounded-lg bg-white p-5 text-neutral-900 print:rounded-none print:p-0"
+      >
+        <div className="flex items-baseline justify-between print:hidden">
+          <button
+            type="button"
+            className="text-sm text-neutral-500 hover:underline"
+            onClick={() => setProofOpen(false)}
+          >
+            {t("common.back")}
+          </button>
+          <button
+            type="button"
+            className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+            onClick={() => window.print()}
+          >
+            {t("dash.proofPrint")}
+          </button>
+        </div>
+
+        <div>
+          <h2 className="text-lg font-semibold">
+            contado — {t("dash.proofTitle")}
+          </h2>
+          <p className="text-sm text-neutral-500">
+            {t("dash.proofGenerated", { date: today })}
+          </p>
+        </div>
+
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-neutral-300 text-left">
+              <th className="py-2 font-medium">{t("dash.proofMonth")}</th>
+              <th className="py-2 text-right font-medium">
+                {t("dash.proofIncome")}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {months.map((m) => (
+              <tr key={m.month || "undated"} className="border-b border-neutral-200">
+                <td className="py-2">
+                  {monthLabel(m.month, tag, t("dash.noDate"))}
+                </td>
+                <td className="py-2 text-right tabular-nums">
+                  {formatCents(m.inCents)}
+                </td>
+              </tr>
+            ))}
+            <tr>
+              <td className="py-2 font-semibold">{t("dash.proofTotal")}</td>
+              <td className="py-2 text-right font-semibold tabular-nums">
+                {formatCents(totalIn)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {mileage.length > 0 && (
+          <p className="text-sm text-neutral-600">
+            {t("dash.proofMileage", {
+              miles: formatMiles(totalTenths(mileage)),
+              year,
+            })}
+          </p>
+        )}
+
+        <p className="text-xs text-neutral-500">{t("dash.proofDisclaimer")}</p>
+      </div>
+    );
+  }
 
   const maxMonth = Math.max(
     1,
@@ -206,6 +323,70 @@ export default function Dashboard({
           )}
 
         </>
+      )}
+
+      {/* Set-aside NUDGE — information, never a tax engine. 25% is the
+          middle of the range every guide repeats, not something computed
+          about THIS business, and the copy says so. */}
+      {quarterIncome > 0 && (
+        <section className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
+          <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            {t("dash.setAsideTitle", { q: quarterOf(today).quarter })}
+          </h3>
+          <p className="text-sm text-neutral-700 dark:text-neutral-300">
+            {t("dash.setAsideBody", {
+              income: formatCents(quarterIncome),
+              amount: formatCents(setAsideCents(quarterIncome)),
+            })}
+          </p>
+          <p className="mt-1 text-xs text-neutral-500">
+            {t("dash.setAsideNotAdvice")}
+          </p>
+        </section>
+      )}
+
+      {/* Mileage estimate — appears once any client has a distance. */}
+      {mileage.length > 0 && (
+        <section>
+          <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            {t("dash.mileageTitle")}
+          </h3>
+          <p className="text-sm">
+            {t(
+              mileage.length === 1
+                ? "dash.mileageSummary.one"
+                : "dash.mileageSummary.many",
+              {
+                visits: mileage.length,
+                miles: formatMiles(totalTenths(mileage)),
+                year,
+              },
+            )}
+          </p>
+          <p className="mb-2 text-xs text-neutral-500">{t("dash.mileageNote")}</p>
+          <button
+            type="button"
+            className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+            onClick={() =>
+              download(mileageCsv(mileage, clients), "contado-mileage.csv")
+            }
+          >
+            {t("dash.mileageCsv")}
+          </button>
+        </section>
+      )}
+
+      {/* Proof of income — a printable statement of what THEY logged. */}
+      {months.length > 0 && (
+        <section>
+          <button
+            type="button"
+            className="w-full rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+            onClick={() => setProofOpen(true)}
+          >
+            {t("dash.proofButton")}
+          </button>
+        </section>
       )}
 
       {/* Outside the branch above on purpose. These used to live inside it, so

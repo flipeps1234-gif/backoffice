@@ -29,6 +29,10 @@ export type Transaction = {
    * — "one payment, one sale" — so totals must skip it. See FLOW.md.
    */
   matchedSaleId: string | null;
+  /** Schedule-C-grade label on EXPENSE rows (src/lib/category.ts), or
+   *  null. A label for the tax CSV, never tax logic. Meaningless on
+   *  income rows and left null there. */
+  category: string | null;
   /** 0..1 per field. Anything below LOW_CONFIDENCE gets flagged in the sheet. */
   confidence: Partial<Record<FieldName, number>>;
 };

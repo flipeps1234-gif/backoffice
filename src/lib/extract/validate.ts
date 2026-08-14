@@ -70,6 +70,7 @@ const validateTransaction = (
     quantity: null,
     business: null,
     matchedSaleId: null,
+    category: null,
     confidence: {
       payer: asConfidence(rawConfidence.payer),
       amountCents: asConfidence(rawConfidence.amountCents),

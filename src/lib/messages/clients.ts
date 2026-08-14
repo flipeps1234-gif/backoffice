@@ -131,6 +131,16 @@ export const messages = {
     es: "Cada {days} días",
     pt: "A cada {days} dias",
   },
+  "clients.distanceLabel": {
+    en: "Distance from home, round trip (miles) — optional",
+    es: "Distancia desde tu casa, ida y vuelta (millas) — opcional",
+    pt: "Distância da sua casa, ida e volta (milhas) — opcional",
+  },
+  "clients.distanceHint": {
+    en: "Typed once, used to estimate mileage from your logged visits. Never GPS, never tracking.",
+    es: "Se escribe una vez y sirve para estimar las millas según tus visitas registradas. Nunca GPS, nunca rastreo.",
+    pt: "Digitada uma vez, usada para estimar as milhas pelas visitas registradas. Nunca GPS, nunca rastreamento.",
+  },
   "clients.salePhotoAlt": {
     en: "Photo from this sale — tap to enlarge",
     es: "Foto de esta venta — toca para ampliar",

@@ -49,3 +49,23 @@ body {
     opacity: 0.55;
   }
 }
+
+/* Proof-of-income printing (v0.6.5). window.print IS the PDF export —
+   when the proof view is mounted, everything else vanishes from the
+   printed page and the document owns the sheet. Screen rendering is
+   untouched. */
+@media print {
+  body:has([data-print-root]) * {
+    visibility: hidden;
+  }
+  [data-print-root],
+  [data-print-root] * {
+    visibility: visible;
+  }
+  [data-print-root] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

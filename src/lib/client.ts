@@ -13,6 +13,11 @@ export type Client = {
   id: string;
   name: string;
   notes: string;
+  /** Round-trip distance per visit, integer TENTHS of a mile (the
+   *  integer-cents philosophy applied to distance). Typed once by the
+   *  owner; × logged visits = the mileage estimate. null = never set.
+   *  NEVER measured — no GPS, no tracking (v0.6.5 boundary). */
+  distanceTenths: number | null;
 };
 
 const norm = (name: string): string => name.trim().toLowerCase();

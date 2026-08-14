@@ -22,6 +22,7 @@ type Row = {
   quantity: number | null;
   business: boolean | null;
   matched_sale_id: string | null;
+  category: string | null;
 };
 
 const toTransaction = (row: Row): Transaction => ({
@@ -36,6 +37,7 @@ const toTransaction = (row: Row): Transaction => ({
   quantity: row.quantity,
   business: row.business,
   matchedSaleId: row.matched_sale_id,
+  category: row.category,
   confidence: {},
 });
 
@@ -53,6 +55,7 @@ const toRow = (tx: Transaction, accountId: string) => ({
   quantity: tx.quantity,
   business: tx.business,
   matched_sale_id: tx.matchedSaleId,
+  category: tx.category,
 });
 
 export const loadTransactions = async (): Promise<Transaction[]> => {
@@ -67,7 +70,7 @@ export const loadTransactions = async (): Promise<Transaction[]> => {
     supabase
       .from("transactions")
       .select(
-        "id, payer, amount_cents, occurred_on, memo, source, direction, service_id, quantity, business, matched_sale_id",
+        "id, payer, amount_cents, occurred_on, memo, source, direction, service_id, quantity, business, matched_sale_id, category",
       )
       .order("occurred_on", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
@@ -113,6 +116,7 @@ export const updateTransaction = async (
   if (patch.business !== undefined) row.business = patch.business;
   // Set by the matching engine's auto-link, cleared by its undo.
   if (patch.matchedSaleId !== undefined) row.matched_sale_id = patch.matchedSaleId;
+  if (patch.category !== undefined) row.category = patch.category;
   if (Object.keys(row).length === 0) return;
 
   const { error } = await supabase.from("transactions").update(row).eq("id", id);

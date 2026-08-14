@@ -1,3 +1,6 @@
+import { scheduleCLabel } from "./category";
+import type { Client } from "./client";
+import { formatMiles, type MileageEntry } from "./mileage";
 import type { Service } from "./service";
 import type { Transaction } from "./transaction";
 
@@ -51,7 +54,12 @@ export const taxCsv = (
   transactions: Transaction[],
   services: Service[],
 ): string => {
-  const lines = [["date", "type", "who", "service", "note", "amount"].join(",")];
+  // `category` (v0.6.5) is the Schedule C line the owner tagged the
+  // expense with — pre-sorted for the preparer, blank when untagged or
+  // for income. A label, never tax logic.
+  const lines = [
+    ["date", "type", "who", "service", "note", "category", "amount"].join(","),
+  ];
 
   for (const tx of chronological(transactions.filter((tx) => tx.business === true))) {
     lines.push(
@@ -61,11 +69,40 @@ export const taxCsv = (
         field(tx.payer),
         field(serviceName(tx, services)),
         field(tx.memo),
+        field(tx.direction === "out" ? scheduleCLabel(tx.category) : ""),
         signedAmount(tx),
       ].join(","),
     );
   }
 
+  return document_(lines);
+};
+
+/**
+ * The computed mileage log — v0.6.5. One row per logged visit to a
+ * client whose round-trip distance is on file. An ESTIMATE built from
+ * two facts the owner typed (distance) and logged (the visit); says so
+ * in the header so nobody mistakes it for an odometer.
+ */
+export const mileageCsv = (
+  entries: MileageEntry[],
+  clients: Client[],
+): string => {
+  const name = (id: string): string =>
+    clients.find((c) => c.id === id)?.name ?? "";
+  const lines = [["date", "client", "round_trip_miles"].join(",")];
+  let totalTenths = 0;
+  for (const entry of entries) {
+    totalTenths += entry.tenths;
+    lines.push(
+      [
+        field(entry.date),
+        field(name(entry.clientId)),
+        formatMiles(entry.tenths),
+      ].join(","),
+    );
+  }
+  lines.push(["total", "", formatMiles(totalTenths)].join(","));
   return document_(lines);
 };
 
@@ -79,9 +116,17 @@ export const everythingCsv = (
   services: Service[],
 ): string => {
   const lines = [
-    ["date", "kind", "type", "who", "service", "note", "amount", "source"].join(
-      ",",
-    ),
+    [
+      "date",
+      "kind",
+      "type",
+      "who",
+      "service",
+      "note",
+      "category",
+      "amount",
+      "source",
+    ].join(","),
   ];
 
   for (const tx of chronological(transactions)) {
@@ -97,6 +142,7 @@ export const everythingCsv = (
         field(tx.payer),
         field(serviceName(tx, services)),
         field(tx.memo),
+        field(tx.direction === "out" ? scheduleCLabel(tx.category) : ""),
         signedAmount(tx),
         tx.source,
       ].join(","),

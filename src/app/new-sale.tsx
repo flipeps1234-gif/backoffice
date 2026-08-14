@@ -184,7 +184,7 @@ export default function NewSale({
     const client =
       knownClient ??
       (trimmed && saveClient
-        ? { id: crypto.randomUUID(), name: trimmed, notes: "" }
+        ? { id: crypto.randomUUID(), name: trimmed, notes: "", distanceTenths: null }
         : null);
 
     const sale: Sale = {
