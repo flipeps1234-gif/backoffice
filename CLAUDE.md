@@ -55,19 +55,29 @@ EXISTS AND VERIFIED IN THE BROWSER (v0.6 + v0.6.5, this session):
   view with disclaimer (window.print IS the PDF export).
 - Everything verified in v0.1–v0.5 still stands.
 
+PRODUCTION-VERIFIED 2026-08-15, live E2E on the tester account AFTER
+the owner ran the combined 0001–0015 file in the Supabase SQL editor:
+- Sale with a note round-tripped a hard reload (0010); client
+  distance "8,3" saved and the mileage estimate computed (0011);
+  expense saved with its Schedule-C category (0011); business
+  profile saved and reloaded (0012); notification prefs saved
+  WhatsApp + number + timestamped consent, then flipped back to
+  Off — BOTH states survived reload (0014/0015).
+- Comma-decimal money entry proven live ("120,50" → $120.50) and
+  accent-blind search too ("marquez" finds Rosa Márquez).
+- The demo account correctly shows "can't be deleted" — the guard
+  working as designed, which also means the deletion round-trip
+  itself has only ever run against RLS in review, never live.
+- One transient console error at the instant of demo sign-in:
+  "JWT issued at future" (Supabase clock vs. device clock, seconds
+  of skew) — the very first load after minting failed, the next
+  succeeded. Recoverable by design, but a device with a badly wrong
+  clock would see it every time. Not fixed, just known.
+
 EXISTS BUT UNTESTED / UNPROVEN:
-- Every persistence path for the NEW columns (notes, photo, category,
-  distance_tenths, profile, deletion, notification prefs) — local dev
-  has no Supabase. IMPORTANT: the code SELECTS these columns, so a
-  production DB behind on migrations stops LOADING sales/transactions/
-  clients, not just saving. Migration state as verified 2026-08-15:
-  /api/health passes against production, which proves the BASE schema
-  (0001+) ran at some point — the earlier "never ran" note was stale.
-  How far past that the DB got is unverified from outside; the fix
-  needs no diagnosis: the combined file (0001–0015, idempotent —
-  every statement is if-not-exists) re-runs safely and fills whatever
-  is missing. After running it, `select * from cron.job;` must show
-  purge-deleted-accounts or account deletion never actually purges.
+- The pg_cron purge: cron.job is invisible from outside — the owner
+  must confirm `select * from cron.job;` shows purge-deleted-accounts
+  once, or account deletion never actually purges.
 - Photo attach through a real OS file dialog (the compression code
   path is reviewed but was not driven in the browser; a failed photo
   can never block the sale by design).
