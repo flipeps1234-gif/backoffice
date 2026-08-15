@@ -57,12 +57,17 @@ EXISTS AND VERIFIED IN THE BROWSER (v0.6 + v0.6.5, this session):
 
 EXISTS BUT UNTESTED / UNPROVEN:
 - Every persistence path for the NEW columns (notes, photo, category,
-  distance_tenths) — local dev has no Supabase. IMPORTANT: the code
-  now SELECTS these columns, so a production DB stops loading sales/
-  transactions/clients until migrations 0010–0011 run. The combined
-  one-paste file (0001–0011, idempotent) is regenerated and
-  delivered; migrations have STILL never been run against the live
-  project.
+  distance_tenths, profile, deletion, notification prefs) — local dev
+  has no Supabase. IMPORTANT: the code SELECTS these columns, so a
+  production DB behind on migrations stops LOADING sales/transactions/
+  clients, not just saving. Migration state as verified 2026-08-15:
+  /api/health passes against production, which proves the BASE schema
+  (0001+) ran at some point — the earlier "never ran" note was stale.
+  How far past that the DB got is unverified from outside; the fix
+  needs no diagnosis: the combined file (0001–0015, idempotent —
+  every statement is if-not-exists) re-runs safely and fills whatever
+  is missing. After running it, `select * from cron.job;` must show
+  purge-deleted-accounts or account deletion never actually purges.
 - Photo attach through a real OS file dialog (the compression code
   path is reviewed but was not driven in the browser; a failed photo
   can never block the sale by design).
