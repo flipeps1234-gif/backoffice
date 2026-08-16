@@ -50,6 +50,7 @@ export default function Dashboard({
   templates,
   profile,
   onClose,
+  exportsBlocked,
 }: {
   transactions: Transaction[];
   services: Service[];
@@ -62,6 +63,10 @@ export default function Dashboard({
   profile: BusinessProfile;
   /** Omitted when embedded in the desktop rail — no takeover, no Close. */
   onClose?: () => void;
+  /** True after a FAILED transactions load: the in-memory ledger is
+   *  empty-but-wrong, so every CSV here would silently omit payments.
+   *  The buttons make way for the load error instead. */
+  exportsBlocked?: boolean;
 }) {
   const { t, tag } = useLocale();
   const [proofOpen, setProofOpen] = useState(false);
@@ -401,11 +406,22 @@ export default function Dashboard({
         </section>
       )}
 
+      {/* After a FAILED load the CSVs would silently miss every payment —
+          worse than no export, because the delete flow calls this file the
+          user's copy. Show the load error where the buttons were; a reload
+          brings them back. (This is a failed check refusing to impersonate
+          an empty ledger, not a gate on the user's data.) */}
+      {exportsBlocked && (
+        <p className="border-t border-neutral-200 pt-5 text-sm text-red-700 dark:border-neutral-800 dark:text-red-400">
+          {t("home.errLoadFailed")}
+        </p>
+      )}
+
       {/* Outside the branch above on purpose. These used to live inside it, so
           a user whose rows were all personal or all still unsorted had NO
           export at all — and "never gate viewing or exporting a user's own
           data" is a permanent boundary, not a nice-to-have. */}
-      {transactions.length > 0 && (
+      {!exportsBlocked && transactions.length > 0 && (
         <section className="space-y-3 border-t border-neutral-200 pt-5 dark:border-neutral-800">
           <button
             type="button"

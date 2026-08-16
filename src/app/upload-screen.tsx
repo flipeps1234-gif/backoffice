@@ -903,11 +903,42 @@ function Ledger({
    * which is what keeps "one payment, one sale" true by construction.
    */
   function paySaleCash(sale: Sale) {
+    // The reuse guard below reads the in-memory ledger. After a FAILED
+    // transactions load that ledger is empty-but-wrong, and minting here
+    // would blind-double an orphan mirror already in the DB — the same
+    // failed-check-must-not-impersonate-empty rule that gates uploads.
+    if (loadFailed) {
+      setError(translate(currentLocale(), "home.errLoadFailed"));
+      setStatus("error");
+      return;
+    }
     // A prior "Got cash" whose sale update failed leaves the mirror txn
     // behind with the sale still open. Re-tapping must REUSE that txn, not
     // mint a second one — two mirrors for one sale is doubled revenue in
     // every total and the tax CSV ("one payment, one sale").
     const existing = transactions.find((t) => t.matchedSaleId === sale.id);
+    if (existing && existing.source !== "manual") {
+      // Not a cash mirror: an INGESTED payment still linked to this sale
+      // (a partially-persisted undo). Cash on top of a linked digital
+      // payment would double-count, so restore the link instead — the
+      // sale goes back to paid-digital and undo works again from there.
+      patchSale(sale.id, {
+        state: "paid",
+        method: "digital",
+        matchedTxnId: existing.id,
+      });
+      resetTemplateMisses(sale);
+      if (accountId) {
+        void persist(() =>
+          saveSale(sale.id, {
+            state: "paid",
+            method: "digital",
+            matchedTxnId: existing.id,
+          }),
+        );
+      }
+      return;
+    }
     if (existing) {
       patchSale(sale.id, {
         state: "paid",
@@ -1016,14 +1047,18 @@ function Ledger({
     // swipe deck. Undo puts it back exactly as it was. Provenance rides
     // along (same rule as the cash mirror) so revenue-by-service, margins
     // and the tax CSV's service column see digital jobs, not "No service".
-    // Only when the sale HAS one: a multi-line sale must not null out a
-    // service the payment row already carries from quick-add.
+    // FILL-ONLY, never overwrite: a payment row that already carries its
+    // own serviceId/quantity (quick-add's remembered size) keeps them —
+    // and a qty-1 sale's provenance is {serviceId, quantity: null}, so a
+    // blind spread would null a real quantity. Same rule in handleSaleDone.
     const prov = saleProvenance(sale);
-    const patch = {
-      matchedSaleId: sale.id,
-      business: true,
-      ...(prov.serviceId !== null ? prov : {}),
-    };
+    const patch: Partial<Transaction> = { matchedSaleId: sale.id, business: true };
+    if (prov.serviceId !== null && txn.serviceId === null) {
+      patch.serviceId = prov.serviceId;
+      if (prov.quantity !== null && txn.quantity === null) {
+        patch.quantity = prov.quantity;
+      }
+    }
     updateTransaction(txn.id, patch);
     // ONE queue item: with two, the per-item catch let the txn update run
     // after a failed sale update (payment spent against an unpaid sale).
@@ -1051,6 +1086,10 @@ function Ledger({
         quantity: undo.prevQuantity,
       });
       // ONE item per undone match, same shape as the link it reverses.
+      // Sale first ON PURPOSE: if the txn unlink then fails, the residue
+      // is open-sale + still-linked txn — counted nowhere twice, and
+      // paySaleCash heals it by restoring the link. The reverse order's
+      // residue (paid sale + unlinked business txn) double-counts.
       void persist(async () => {
         await saveSale(undo.saleId, {
           state: undo.prevState,
@@ -1146,15 +1185,21 @@ function Ledger({
             prevQuantity: txn.quantity,
           },
         ]);
-        // Same provenance rule as linkSaleToTxn: the dashboard and tax CSV
-        // read the transaction stream, so the matched payment carries the
-        // sale's service — without clobbering one it already has.
+        // Same FILL-ONLY provenance rule as linkSaleToTxn: the dashboard
+        // and tax CSV read the transaction stream, so the matched payment
+        // carries the sale's service — but a value the payment row already
+        // has always wins, and a null quantity never overwrites a real one.
         const prov = saleProvenance(sale);
-        const patch = {
+        const patch: Partial<Transaction> = {
           matchedSaleId: sale.id,
           business: true,
-          ...(prov.serviceId !== null ? prov : {}),
         };
+        if (prov.serviceId !== null && txn.serviceId === null) {
+          patch.serviceId = prov.serviceId;
+          if (prov.quantity !== null && txn.quantity === null) {
+            patch.quantity = prov.quantity;
+          }
+        }
         updateTransaction(txn.id, patch);
         digitalMatch = { txnId: txn.id, patch };
         setSaleNotice(
@@ -1428,6 +1473,7 @@ function Ledger({
         clients={clients}
         templates={templates}
         profile={profile}
+        exportsBlocked={loadFailed}
         onClose={() => setShowDashboard(false)}
       />
     );
@@ -1476,6 +1522,10 @@ function Ledger({
         // outcome to show pending/failed truthfully.
         onRequestDeletion={async () => {
           if (!accountId) return false;
+          // A failed ledger load means the "export your CSV first" copy
+          // just above this button is a lie right now — the CSV would be
+          // missing every payment. Refuse until a reload proves the data.
+          if (loadFailed) return false;
           try {
             await requestDeletion(accountId);
             setDeletionAt(new Date().toISOString());
@@ -1494,12 +1544,20 @@ function Ledger({
             return false;
           }
         }}
-        onExportEverything={() =>
+        onExportEverything={() => {
+          // Same guard as deletion: after a failed load the payments
+          // section would silently export empty while the other sections
+          // look complete — a "backup" that isn't one.
+          if (loadFailed) {
+            setError(translate(currentLocale(), "home.errLoadFailed"));
+            setStatus("error");
+            return;
+          }
           downloadCsv(
             everythingCsv(transactions, services, sales, clients, templates),
             "contado-everything.csv",
-          )
-        }
+          );
+        }}
         onOpenProducts={() => {
           setShowSettings(false);
           setShowProducts(true);
@@ -2080,6 +2138,7 @@ function Ledger({
             clients={clients}
             templates={templates}
             profile={profile}
+            exportsBlocked={loadFailed}
           />
           <HistoryList
             transactions={transactions}

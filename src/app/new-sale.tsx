@@ -565,7 +565,9 @@ export default function NewSale({
                     value={everyN}
                     onChange={(e) => setEveryN(e.target.value)}
                   />
-                  <span>{t("sale.daysStarting", { date })}</span>
+                  {/* Same fallback finish() applies — a cleared date field
+                      must not render a blank anchor in the summary. */}
+                  <span>{t("sale.daysStarting", { date: date || today() })}</span>
                 </div>
               )}
               <p className="text-xs text-neutral-500">

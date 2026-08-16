@@ -230,19 +230,25 @@ function ChannelAlerts({
                   ? channelConsentAt
                   : now
                 : null;
+            // Nulling optedOutAt below erases the STOP from the row, so a
+            // pre-STOP stamp on the OTHER channel would suddenly read as
+            // uninterrupted consent too. Dead evidence is dropped: the
+            // other channel keeps its stamp only if no STOP postdates it
+            // (re-selecting that channel later forces a fresh tick anyway).
+            const carried = (at: string | null) => (stillValid(at) ? at : null);
             onSave({
               channel: consent || channel === "off" ? channel : "off",
               phone: phone.trim(),
               // Only the SELECTED channel's consent moves; the other
-              // channel keeps its history untouched.
+              // channel carries only still-valid history.
               whatsappConsentAt:
                 channel === "whatsapp"
                   ? kept(prefs.channel === "whatsapp" ? prefs.whatsappConsentAt : null)
-                  : prefs.whatsappConsentAt,
+                  : carried(prefs.whatsappConsentAt),
               smsConsentAt:
                 channel === "sms"
                   ? kept(prefs.channel === "sms" ? prefs.smsConsentAt : null)
-                  : prefs.smsConsentAt,
+                  : carried(prefs.smsConsentAt),
               // A fresh tick on either channel is an explicit re-opt-in.
               optedOutAt: consent ? null : prefs.optedOutAt,
             });
