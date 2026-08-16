@@ -240,9 +240,9 @@ export const messages = {
     pt: "Apagar conta",
   },
   "settings.deleteExplain": {
-    en: "Everything — payments, sales, clients, photos — is erased for good 7 days after you confirm. You can cancel any time in those 7 days. Export your CSV first if you want a copy.",
-    es: "Todo — pagos, ventas, clientes, fotos — se elimina para siempre 7 días después de confirmar. Puedes cancelar en cualquier momento durante esos 7 días. Exporta tu CSV antes si quieres una copia.",
-    pt: "Tudo — pagamentos, vendas, clientes, fotos — é eliminado de vez 7 dias depois de confirmar. Você pode cancelar a qualquer momento nesses 7 dias. Exporte seu CSV antes se quiser uma cópia.",
+    en: "Everything — payments, sales, clients, photos — is erased for good 7 days after you confirm. You can cancel any time in those 7 days. Export your CSV first if you want a copy — photos aren't in it, so save any you need from each sale.",
+    es: "Todo — pagos, ventas, clientes, fotos — se elimina para siempre 7 días después de confirmar. Puedes cancelar en cualquier momento durante esos 7 días. Exporta tu CSV antes si quieres una copia — las fotos no van en él, así que guarda las que necesites desde cada venta.",
+    pt: "Tudo — pagamentos, vendas, clientes, fotos — é eliminado de vez 7 dias depois de confirmar. Você pode cancelar a qualquer momento nesses 7 dias. Exporte seu CSV antes se quiser uma cópia — as fotos não vão nele, então salve as que precisar em cada venda.",
   },
   "settings.deleteTypeEmail": {
     en: "Type your email to confirm: {email}",

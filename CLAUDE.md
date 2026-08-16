@@ -87,6 +87,58 @@ EXISTS BUT UNTESTED / UNPROVEN:
   consistency, but NOT native-speaker-reviewed. The owner reads PT —
   a pass over messages/*.ts would be worth an evening.
 
+Find-and-fix pass (2026-08-16, five never-run review lenses —
+schema-drift, copy-vs-behavior, product-semantics, resilience,
+authz/exposure — each finding adversarially verified before fixing;
+the authz lens over all six API routes and every RLS policy came
+back CLEAN). Ten distinct defects found and NINE fixed, harness-
+proven (19 cases) and browser-smoked:
+- Cash-sale writes were two separate queue items with no idempotency
+  guard: a dropped fetch or tab kill could persist a paid sale with
+  no money row, or leave the mirror txn while "Got cash" re-minted a
+  second one (doubled revenue). Now: one queue item per logical pair
+  (paySaleCash, handleSaleDone, linkSaleToTxn, undoMatches), txn
+  inserted before the sale so failure residue keeps totals right,
+  and paySaleCash reuses an existing mirror instead of minting.
+- The save-failure banner rendered only inside mainLoop, which mobile
+  takeovers REPLACE — "Got cash"/quick-add during an outage looked
+  fully successful and lost everything. The banner now lives in the
+  shared wrapper above {takeover ?? mainLoop}.
+- After a failed initial ledger load the app stayed writable and the
+  duplicate screen compared re-uploads against an EMPTY in-memory
+  ledger — one transient failed GET away from double-counting every
+  row. Uploads now refuse while loadFailed until a reload.
+- "Export everything" exported only transactions while the delete
+  flow called the CSV the user's copy: the owed book, clients, notes
+  and templates were in NO export. everythingCsv is now sectioned
+  (payments/sales/clients/recurring); photos stay out and the delete
+  copy now says so in all three languages.
+- Settings' backup line watched the transient error string, not the
+  sticky saveFailed flag — green after a lost write, amber after a
+  mere file-type mistake. Now wired to saveFailed.
+- A cleared date field made a sale violate occurred_on NOT NULL (sale
+  lost, mirror txn kept) and recurring's advance("") threw. Empty
+  date now means today at finish time.
+- Re-ticking consent after an inbound STOP wrote back the PRE-STOP
+  timestamp and erased the STOP — the exact record a Meta/carrier
+  dispute reads as ignoring one. A re-opt-in now stamps the fresh
+  tick (old timestamps survive only if no STOP postdates them).
+- Both webhooks wrote provider status strings into the queue's
+  CHECK-constrained column; Meta's 'deleted'/'warning' and Twilio's
+  'accepted'/'sending'/'canceled' would fail the CHECK and silently
+  freeze the row. Both now whitelist what the schema holds.
+- Digitally-matched sales lost service attribution (cash jobs
+  attributed, digital ones landed under "No service"): the matching
+  engine's link writes now stamp the same saleProvenance the cash
+  mirror uses, and undo restores what was there.
+- Search now finds pt-BR/es full-format amounts ("1.234,56") the
+  entry fields already accept.
+DEFERRED from the same pass, documented not fixed: a stale client
+list on a second device can insert a duplicate-named client, fail
+the unique index, and take the dependent sale down with it (the
+cash mirror survives as an orphan). Needs an on-conflict re-query
+that remaps the sale's client_id — do it deliberately, not inline.
+
 MISSING / KNOWN GAPS (deliberate, or pre-existing and documented):
 - API route error bodies surface in English (server doesn't know the
   device language; needs error codes in the contract — noted in

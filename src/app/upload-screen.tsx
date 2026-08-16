@@ -61,6 +61,7 @@ import { matchBatch, txnCandidatesForSale } from "@/lib/matching";
 import { generateDue, type RecurringTemplate } from "@/lib/recurring";
 import {
   owedCents,
+  saleProvenance,
   saleTotalCents,
   type PaymentMethod,
   type Sale,
@@ -252,6 +253,14 @@ function Ledger({
   const [lastBatchIds, setLastBatchIds] = useState<string[]>([]);
   /** Set when any database write failed — see the finish copy. */
   const [saveFailed, setSaveFailed] = useState(false);
+  /**
+   * Set when the initial ledger pull failed. While true, uploads are OFF:
+   * the duplicate screen compares new batches against the in-memory ledger,
+   * and after a failed load that ledger is indistinguishable from a truly
+   * empty one — a re-dropped screenshot batch would sail past isDuplicate
+   * and persist a second copy of every row next to the invisible originals.
+   */
+  const [loadFailed, setLoadFailed] = useState(false);
 
   // ---- v0.5: sales, clients, recurring (see FLOW.md) ----
   const [sales, setSales] = useState<Sale[]>([]);
@@ -313,6 +322,8 @@ function Ledger({
       prevState: Sale["state"];
       prevMethod: PaymentMethod | null;
       prevBusiness: boolean | null;
+      prevServiceId: string | null;
+      prevQuantity: number | null;
     }[]
   >([]);
   /** Ambiguous matches waiting on the owner. Never a silent guess.
@@ -374,6 +385,7 @@ function Ledger({
       })
       .catch((cause) => {
         console.error("Load failed:", cause);
+        setLoadFailed(true);
         setError(translate(currentLocale(), "home.errLoadFailed"));
         setStatus("error");
       });
@@ -523,6 +535,14 @@ function Ledger({
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
+    // A failed load means the dedupe screen would run against an empty
+    // in-memory ledger and wave duplicates straight into the account.
+    // Refuse until a reload brings the real rows back.
+    if (loadFailed) {
+      setError(t("home.errLoadFailed"));
+      setStatus("error");
+      return;
+    }
     if (reading.current) return;
     reading.current = true;
     try {
@@ -883,6 +903,29 @@ function Ledger({
    * which is what keeps "one payment, one sale" true by construction.
    */
   function paySaleCash(sale: Sale) {
+    // A prior "Got cash" whose sale update failed leaves the mirror txn
+    // behind with the sale still open. Re-tapping must REUSE that txn, not
+    // mint a second one — two mirrors for one sale is doubled revenue in
+    // every total and the tax CSV ("one payment, one sale").
+    const existing = transactions.find((t) => t.matchedSaleId === sale.id);
+    if (existing) {
+      patchSale(sale.id, {
+        state: "paid",
+        method: "cash",
+        matchedTxnId: existing.id,
+      });
+      resetTemplateMisses(sale);
+      if (accountId) {
+        void persist(() =>
+          saveSale(sale.id, {
+            state: "paid",
+            method: "cash",
+            matchedTxnId: existing.id,
+          }),
+        );
+      }
+      return;
+    }
     const txn: Transaction = {
       id: crypto.randomUUID(),
       payer: clientNameOf(sale.clientId),
@@ -894,17 +937,9 @@ function Ledger({
       memo: sale.lineItems.map((i) => i.name).join(", "),
       source: "manual",
       direction: "in",
-      serviceId:
-        sale.lineItems.length === 1 ? sale.lineItems[0].serviceId : null,
-      // The size survives for customer memory ("Rosa's lawn is 4000 sqft"),
-      // but only when it means something: one line, a real service, and a
-      // quantity that isn't just "1 of a total".
-      quantity:
-        sale.lineItems.length === 1 &&
-        sale.lineItems[0].serviceId &&
-        sale.lineItems[0].quantity !== 1
-          ? sale.lineItems[0].quantity
-          : null,
+      // Shared with linkSaleToTxn and the digital checkout match — every
+      // payment row linked to a sale carries the same provenance.
+      ...saleProvenance(sale),
       business: true,
       matchedSaleId: sale.id,
       category: null,
@@ -914,14 +949,19 @@ function Ledger({
     setTransactions((current) => [txn, ...current]);
     resetTemplateMisses(sale);
     if (accountId) {
-      void persist(() => insertTransactions([txn], accountId));
-      void persist(() =>
-        saveSale(sale.id, {
+      // ONE queue item, not two: with separate items the per-item catch lets
+      // the sale update run after a failed insert (paid sale, no money row),
+      // and a tab kill between items strands whichever landed first. Txn
+      // first: its orphan keeps totals right and the guard above heals it.
+      const acct = accountId;
+      void persist(async () => {
+        await insertTransactions([txn], acct);
+        await saveSale(sale.id, {
           state: "paid",
           method: "cash",
           matchedTxnId: txn.id,
-        }),
-      );
+        });
+      });
     }
   }
 
@@ -963,6 +1003,8 @@ function Ledger({
         prevState: sale.state,
         prevMethod: sale.method,
         prevBusiness: txn.business,
+        prevServiceId: txn.serviceId,
+        prevQuantity: txn.quantity,
       },
     ]);
     patchSale(sale.id, {
@@ -971,18 +1013,28 @@ function Ledger({
       matchedTxnId: txn.id,
     });
     // The match IS the evidence this payment was business — it skips the
-    // swipe deck. Undo puts it back exactly as it was.
-    updateTransaction(txn.id, { matchedSaleId: sale.id, business: true });
-    void persist(() =>
-      saveSale(sale.id, {
+    // swipe deck. Undo puts it back exactly as it was. Provenance rides
+    // along (same rule as the cash mirror) so revenue-by-service, margins
+    // and the tax CSV's service column see digital jobs, not "No service".
+    // Only when the sale HAS one: a multi-line sale must not null out a
+    // service the payment row already carries from quick-add.
+    const prov = saleProvenance(sale);
+    const patch = {
+      matchedSaleId: sale.id,
+      business: true,
+      ...(prov.serviceId !== null ? prov : {}),
+    };
+    updateTransaction(txn.id, patch);
+    // ONE queue item: with two, the per-item catch let the txn update run
+    // after a failed sale update (payment spent against an unpaid sale).
+    void persist(async () => {
+      await saveSale(sale.id, {
         state: "paid",
         method: "digital",
         matchedTxnId: txn.id,
-      }),
-    );
-    void persist(() =>
-      saveTransaction(txn.id, { matchedSaleId: sale.id, business: true }),
-    );
+      });
+      await saveTransaction(txn.id, patch);
+    });
   }
 
   function undoMatches() {
@@ -995,20 +1047,23 @@ function Ledger({
       updateTransaction(undo.txnId, {
         matchedSaleId: null,
         business: undo.prevBusiness,
+        serviceId: undo.prevServiceId,
+        quantity: undo.prevQuantity,
       });
-      void persist(() =>
-        saveSale(undo.saleId, {
+      // ONE item per undone match, same shape as the link it reverses.
+      void persist(async () => {
+        await saveSale(undo.saleId, {
           state: undo.prevState,
           method: undo.prevMethod,
           matchedTxnId: null,
-        }),
-      );
-      void persist(() =>
-        saveTransaction(undo.txnId, {
+        });
+        await saveTransaction(undo.txnId, {
           matchedSaleId: null,
           business: undo.prevBusiness,
-        }),
-      );
+          serviceId: undo.prevServiceId,
+          quantity: undo.prevQuantity,
+        });
+      });
     }
     setMatchUndo([]);
     setSaleNotice("");
@@ -1037,6 +1092,18 @@ function Ledger({
     }
 
     let sale = result.sale;
+    // Writes that must land WITH the sale row, in one queue item — split
+    // items let a transient failure persist half a logical record (paid
+    // sale with no money row, or a payment spent on a sale that never
+    // landed). Cash mirror inserts BEFORE the sale: its orphan keeps
+    // totals right; the reverse is silent corruption. The digital match
+    // update lands AFTER: an unmarked payment can re-match, a payment
+    // marked for a nonexistent sale is unusable forever.
+    let cashTxn: Transaction | null = null;
+    let digitalMatch: {
+      txnId: string;
+      patch: Partial<Transaction>;
+    } | null = null;
 
     if (paid && method === "cash") {
       // One mirror transaction, linked both ways — see paySaleCash.
@@ -1048,14 +1115,7 @@ function Ledger({
         memo: sale.lineItems.map((i) => i.name).join(", "),
         source: "manual",
         direction: "in",
-        serviceId:
-          sale.lineItems.length === 1 ? sale.lineItems[0].serviceId : null,
-        quantity:
-          sale.lineItems.length === 1 &&
-          sale.lineItems[0].serviceId &&
-          sale.lineItems[0].quantity !== 1
-            ? sale.lineItems[0].quantity
-            : null,
+        ...saleProvenance(sale),
         business: true,
         matchedSaleId: sale.id,
         category: null,
@@ -1063,9 +1123,7 @@ function Ledger({
       };
       sale = { ...sale, state: "paid", method: "cash", matchedTxnId: txn.id };
       setTransactions((current) => [txn, ...current]);
-      if (accountId) {
-        void persist(() => insertTransactions([txn], accountId));
-      }
+      cashTxn = txn;
       setSaleNotice(
         t("home.paidDone", { amount: formatCents(saleTotalCents(sale)) }),
       );
@@ -1084,12 +1142,21 @@ function Ledger({
             prevState: "expected",
             prevMethod: "digital",
             prevBusiness: txn.business,
+            prevServiceId: txn.serviceId,
+            prevQuantity: txn.quantity,
           },
         ]);
-        updateTransaction(txn.id, { matchedSaleId: sale.id, business: true });
-        void persist(() =>
-          saveTransaction(txn.id, { matchedSaleId: sale.id, business: true }),
-        );
+        // Same provenance rule as linkSaleToTxn: the dashboard and tax CSV
+        // read the transaction stream, so the matched payment carries the
+        // sale's service — without clobbering one it already has.
+        const prov = saleProvenance(sale);
+        const patch = {
+          matchedSaleId: sale.id,
+          business: true,
+          ...(prov.serviceId !== null ? prov : {}),
+        };
+        updateTransaction(txn.id, patch);
+        digitalMatch = { txnId: txn.id, patch };
         setSaleNotice(
           t("home.matchedTo", {
             payer: txn.payer || t("home.aPayment"),
@@ -1127,7 +1194,15 @@ function Ledger({
     // Newest-first invariant, same as transactions.
     setSales((current) => [sale, ...current]);
     if (accountId) {
-      void persist(() => insertSales([sale], accountId));
+      const acct = accountId;
+      const savedSale = sale;
+      const savedMatch = digitalMatch;
+      const savedCash = cashTxn;
+      void persist(async () => {
+        if (savedCash) await insertTransactions([savedCash], acct);
+        await insertSales([savedSale], acct);
+        if (savedMatch) await saveTransaction(savedMatch.txnId, savedMatch.patch);
+      });
     }
 
     if (result.template) {
@@ -1351,6 +1426,7 @@ function Ledger({
         services={services}
         sales={sales}
         clients={clients}
+        templates={templates}
         profile={profile}
         onClose={() => setShowDashboard(false)}
       />
@@ -1377,7 +1453,12 @@ function Ledger({
         // Anonymous has nothing stored to protect; signed-in gates the
         // business Save until the stored profile actually loaded.
         profileReady={accountId === null || profileLoaded}
-        hasSaveError={error !== ""}
+        // The STICKY flag, not the transient banner string: `error` also
+        // fires for upload/file-type problems (false amber) and is cleared
+        // at the start of every upload run (false green after a real lost
+        // write). saveFailed exists precisely to remember unrecovered save
+        // failures for the life of the session.
+        hasSaveError={saveFailed}
         onSaveProfile={(next) => {
           setProfile(next);
           if (accountId) void persist(() => saveProfile(next, accountId));
@@ -1415,7 +1496,7 @@ function Ledger({
         }}
         onExportEverything={() =>
           downloadCsv(
-            everythingCsv(transactions, services),
+            everythingCsv(transactions, services, sales, clients, templates),
             "contado-everything.csv",
           )
         }
@@ -1707,12 +1788,6 @@ function Ledger({
         </div>
       )}
 
-      {status === "error" && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-          {error}
-        </p>
-      )}
-
       {/* Batch messages describe the batch wherever the user is looking —
           gating them to one stage hid them exactly when they mattered. */}
       {batchNotice && (
@@ -1944,7 +2019,19 @@ function Ledger({
     <div className="lg:grid lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start lg:gap-10">
       {/* Sticky so a long history in the rail scrolls past the flow instead
           of dragging it off the top of the screen. */}
-      <div className="min-w-0 lg:sticky lg:top-8">{takeover ?? mainLoop}</div>
+      <div className="min-w-0 lg:sticky lg:top-8">
+        {/* The failure banner lives OUTSIDE mainLoop: every mutation the
+            takeover screens can reach (Got cash, quick-add, client edits)
+            reports here, and on a phone a takeover REPLACES mainLoop — a
+            banner inside it is guaranteed unmounted at the exact moment
+            those saves fail. Silent loss looked like success. */}
+        {status === "error" && (
+          <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+            {error}
+          </p>
+        )}
+        {takeover ?? mainLoop}
+      </div>
       {isDesktop && (
         <aside className="min-w-0 space-y-10 border-neutral-200 lg:border-l lg:pl-10">
           <SearchPanel
@@ -1991,6 +2078,7 @@ function Ledger({
             services={services}
             sales={sales}
             clients={clients}
+            templates={templates}
             profile={profile}
           />
           <HistoryList

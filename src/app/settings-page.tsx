@@ -215,8 +215,21 @@ function ChannelAlerts({
           className="rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-40"
           onClick={() => {
             const now = new Date().toISOString();
+            // An old tick timestamp is only still valid PROOF if no STOP
+            // came after it. Re-opting in after an opt-out must stamp the
+            // fresh tick — carrying the pre-STOP date forward (and nulling
+            // the opt-out below) would leave a record claiming uninterrupted
+            // consent across a STOP, which is exactly what a Meta/carrier
+            // dispute reads as ignoring one.
+            const stillValid = (at: string | null) =>
+              at !== null &&
+              (prefs.optedOutAt === null || prefs.optedOutAt < at);
             const kept = (channelConsentAt: string | null) =>
-              consent ? (channelConsentAt ?? now) : null;
+              consent
+                ? stillValid(channelConsentAt)
+                  ? channelConsentAt
+                  : now
+                : null;
             onSave({
               channel: consent || channel === "off" ? channel : "off",
               phone: phone.trim(),

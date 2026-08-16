@@ -7,6 +7,7 @@ import { everythingCsv, mileageCsv, taxCsv } from "@/lib/csv";
 import { downloadCsv } from "./download";
 import type { BusinessProfile } from "@/lib/profile";
 import { formatMiles, mileageLog, totalTenths } from "@/lib/mileage";
+import type { RecurringTemplate } from "@/lib/recurring";
 import type { Sale } from "@/lib/sale";
 import { quarterIncomeCents, quarterOf, setAsideCents } from "@/lib/setaside";
 import { formatCents, type Transaction } from "@/lib/transaction";
@@ -46,6 +47,7 @@ export default function Dashboard({
   services,
   sales,
   clients,
+  templates,
   profile,
   onClose,
 }: {
@@ -53,6 +55,9 @@ export default function Dashboard({
   services: Service[];
   sales: Sale[];
   clients: Client[];
+  /** For the everything-export only — the file is the user's pre-delete
+   *  copy, so it carries the whole data model, templates included. */
+  templates: RecurringTemplate[];
   /** Business name/owner/state — tops the tax CSV and the proof title. */
   profile: BusinessProfile;
   /** Omitted when embedded in the desktop rail — no takeover, no Close. */
@@ -184,7 +189,7 @@ export default function Dashboard({
 
   const downloadEverythingCsv = () =>
     downloadCsv(
-      everythingCsv(transactions, services),
+      everythingCsv(transactions, services, sales, clients, templates),
       "contado-everything.csv",
     );
 

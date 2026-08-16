@@ -2,6 +2,8 @@ import { scheduleCLabel } from "./category";
 import type { Client } from "./client";
 import { formatMiles, type MileageEntry } from "./mileage";
 import { hasProfile, type BusinessProfile } from "./profile";
+import { cadenceLabel, type RecurringTemplate } from "./recurring";
+import { saleTotalCents, type Sale } from "./sale";
 import type { Service } from "./service";
 import type { Transaction } from "./transaction";
 
@@ -125,12 +127,32 @@ export const mileageCsv = (
  * Everything, with nothing filtered out. The extra `kind` column is what makes
  * that safe to hand around: a row marked personal or unsorted cannot be
  * mistaken for business income by whoever opens the file.
+ *
+ * Multi-section since the export gap fix: the payments table alone was
+ * everything in v0.4, but the delete flow tells users this file is their
+ * copy before a permanent purge — so it must also carry what v0.5/v0.6
+ * added: the sales book (INCLUDING open ones, which have no payment row),
+ * the client directory, and recurring templates. Photos are the one thing
+ * that stays out (data-URLs don't belong in a spreadsheet); the delete
+ * copy says so instead of pretending otherwise. Same sectioned shape as
+ * the tax CSV's preamble — the audience is the owner, not a rigid parser.
  */
 export const everythingCsv = (
   transactions: Transaction[],
   services: Service[],
+  sales: Sale[] = [],
+  clients: Client[] = [],
+  templates: RecurringTemplate[] = [],
 ): string => {
+  const clientName = (id: string | null): string =>
+    id ? (clients.find((c) => c.id === id)?.name ?? "") : "";
+  const itemsLabel = (items: Sale["lineItems"]): string =>
+    items
+      .map((i) => (i.quantity !== 1 ? `${i.name} x${i.quantity}` : i.name))
+      .join(", ");
+
   const lines = [
+    "payments",
     [
       "date",
       "kind",
@@ -162,6 +184,64 @@ export const everythingCsv = (
         tx.source,
       ].join(","),
     );
+  }
+
+  if (sales.length > 0) {
+    lines.push(
+      "",
+      "sales",
+      ["date", "client", "state", "method", "items", "total", "note", "photo"].join(","),
+    );
+    const byDate = [...sales].sort((a, b) =>
+      (a.date || "9999").localeCompare(b.date || "9999"),
+    );
+    for (const sale of byDate) {
+      lines.push(
+        [
+          field(sale.date || "unknown"),
+          field(clientName(sale.clientId)),
+          sale.state,
+          sale.method ?? "",
+          field(itemsLabel(sale.lineItems)),
+          dollars(saleTotalCents(sale)),
+          field(sale.notes),
+          sale.photo ? "yes" : "",
+        ].join(","),
+      );
+    }
+  }
+
+  if (clients.length > 0) {
+    lines.push("", "clients", ["name", "notes", "round_trip_miles"].join(","));
+    for (const client of clients) {
+      lines.push(
+        [
+          field(client.name),
+          field(client.notes),
+          client.distanceTenths === null ? "" : formatMiles(client.distanceTenths),
+        ].join(","),
+      );
+    }
+  }
+
+  if (templates.length > 0) {
+    lines.push(
+      "",
+      "recurring",
+      ["client", "items", "total", "cadence", "next_due", "status"].join(","),
+    );
+    for (const tpl of templates) {
+      lines.push(
+        [
+          field(clientName(tpl.clientId)),
+          field(itemsLabel(tpl.lineItems)),
+          dollars(saleTotalCents({ lineItems: tpl.lineItems })),
+          field(cadenceLabel(tpl.cadence)),
+          field(tpl.nextDue),
+          tpl.endedOn ? "ended" : tpl.active ? "active" : "paused",
+        ].join(","),
+      );
+    }
   }
 
   return document_(lines);

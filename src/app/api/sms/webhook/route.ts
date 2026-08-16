@@ -69,6 +69,15 @@ export async function POST(request: Request) {
   if (messageSid && messageStatus && !params.get("Body")) {
     const mapped =
       messageStatus === "failed" ? "undelivered" : messageStatus;
+    // Same guard as the WhatsApp webhook: Twilio's vocabulary is wider
+    // than the queue column's CHECK (0014) — 'accepted', 'sending' and
+    // 'canceled' would fail it and silently freeze the row's status.
+    if (
+      !["queued", "sent", "delivered", "read", "undelivered"].includes(mapped)
+    ) {
+      console.log(`sms status ignored (not in schema): ${messageStatus}`);
+      return twimlEmpty();
+    }
     if (db) {
       const { error } = await db
         .from("notification_queue")

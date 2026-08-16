@@ -30,6 +30,11 @@ export const fold = (text: string): string =>
 const normalizeToken = (token: string): string => {
   const bare = token.startsWith("$") ? token.slice(1) : token;
   if (/^\d{1,3}(,\d{3})+(\.\d+)?$/.test(bare)) return bare.replace(/,/g, "");
+  // pt-BR/es full form, both separators — "1.234,56". The entry fields
+  // accept it (dollarsToCents's whichever-separator-is-last rule), so a
+  // query written the same way has to hit the same row.
+  if (/^\d{1,3}(\.\d{3})+(,\d{1,2})?$/.test(bare))
+    return bare.replace(/\./g, "").replace(",", ".");
   if (/^\d+,\d{1,2}$/.test(bare)) return bare.replace(",", ".");
   return bare;
 };

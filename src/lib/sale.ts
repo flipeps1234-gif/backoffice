@@ -76,6 +76,25 @@ export const saleMarginCents = (
   return margin;
 };
 
+/**
+ * Service provenance the sale's payment row carries — the dashboard's
+ * revenue/margin-by-service and the tax CSV's service column all read the
+ * TRANSACTION stream, so whatever links a payment to a sale (cash mirror or
+ * the matching engine) must stamp this on the transaction or the job lands
+ * under "No service". Only when it means something: one line, a real
+ * service, and a quantity that isn't just "1 of a total".
+ */
+export const saleProvenance = (
+  sale: Pick<Sale, "lineItems">,
+): { serviceId: string | null; quantity: number | null } => {
+  const only = sale.lineItems.length === 1 ? sale.lineItems[0] : null;
+  return {
+    serviceId: only ? only.serviceId : null,
+    quantity:
+      only && only.serviceId && only.quantity !== 1 ? only.quantity : null,
+  };
+};
+
 /** Build a line item from a catalog service, snapshotting price and cost. */
 export const lineFromService = (
   service: Service,

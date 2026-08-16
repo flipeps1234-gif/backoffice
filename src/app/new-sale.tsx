@@ -194,6 +194,12 @@ export default function NewSale({
 
   /** Assemble the SaleResult once; every terminal button routes through. */
   function finish(paid: boolean, method: PaymentMethod | null) {
+    // The native date input is clearable (select-and-delete, Android's
+    // Clear) and nothing stops checkout with it empty — but the sales
+    // table's occurred_on is NOT NULL (0006), so a "" date is a sale that
+    // never persists, and advance("") throws before onDone ever runs.
+    // An empty date means "today", same default the field started with.
+    const when = date || today();
     const trimmed = clientName.trim();
     const client =
       knownClient ??
@@ -205,7 +211,7 @@ export default function NewSale({
       id: crypto.randomUUID(),
       clientId: client?.id ?? null,
       lineItems,
-      date,
+      date: when,
       state: paid ? (method === "cash" ? "paid" : "expected") : "open",
       method: paid ? method : null,
       matchedTxnId: null,
@@ -230,7 +236,7 @@ export default function NewSale({
             // this sale itself covers the anchor date, and a nextDue of
             // today would generate a duplicate instance immediately.
             nextDue: advance(
-              date,
+              when,
               cadence.type === "everyN"
                 ? { type: "everyN", days: Math.max(1, Math.round(Number(everyN) || 30)) }
                 : cadence,

@@ -92,6 +92,14 @@ export async function POST(request: Request) {
         if (!status.id || !status.status) continue;
         const mapped =
           status.status === "failed" ? "undelivered" : status.status;
+        // The queue column has a CHECK (0014) narrower than Meta's status
+        // vocabulary — 'deleted' and 'warning' are documented Cloud API
+        // values that would fail it, erroring the update and silently
+        // freezing the row's status. Skip what the schema can't hold.
+        if (!["sent", "delivered", "read", "undelivered"].includes(mapped)) {
+          console.log(`whatsapp status ignored (not in schema): ${status.status}`);
+          continue;
+        }
         if (db) {
           const { error } = await db
             .from("notification_queue")
