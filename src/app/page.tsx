@@ -1,51 +1,18 @@
-import LocalePicker from "./locale-picker";
-import UploadScreen from "./upload-screen";
+import type { Metadata } from "next";
+import Landing from "./landing";
 
-/** The two-cards mark, drawn in the page's own text color so it works in
- *  both themes. The favicon (icon.svg) is the same mark on black. */
-function Mark() {
-  return (
-    <svg viewBox="0 0 96 96" className="h-6 w-6" aria-hidden="true">
-      <rect
-        x="34"
-        y="20"
-        width="52"
-        height="34"
-        rx="17"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="9"
-      />
-      <g transform="rotate(-12 38 58)">
-        <rect
-          x="8"
-          y="40"
-          width="58"
-          height="36"
-          rx="18"
-          fill="var(--background)"
-          stroke="currentColor"
-          strokeWidth="9"
-        />
-      </g>
-    </svg>
-  );
-}
+/**
+ * The public landing page took the root; the app itself lives at /app
+ * (see src/app/app/page.tsx). Signed-in visitors are bounced to /app by
+ * the Landing component — auth is device-local, so the server can't
+ * know; the page renders either way and the bounce is instant.
+ */
+export const metadata: Metadata = {
+  title: "contado — your payments, turned into books",
+  description:
+    "Turn Venmo, Cash App, Zelle and cash into real books, automatically. Built for cleaners, landscapers and barbers. Free.",
+};
 
 export default function Home() {
-  return (
-    <main className="mx-auto w-full max-w-lg px-4 py-8 lg:max-w-5xl lg:px-8">
-      {/* The picker lives in the permanent header — every screen, every
-          state, including signed-out. A language switcher you have to hunt
-          for might as well not exist. */}
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <Mark />
-          contado
-        </h1>
-        <LocalePicker compact />
-      </div>
-      <UploadScreen />
-    </main>
-  );
+  return <Landing />;
 }

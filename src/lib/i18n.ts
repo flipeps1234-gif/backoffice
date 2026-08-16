@@ -4,6 +4,7 @@ import { messages as common } from "./messages/common";
 import { messages as dash } from "./messages/dash";
 import { messages as home } from "./messages/home";
 import { messages as insights } from "./messages/insights";
+import { messages as landing } from "./messages/landing";
 import { messages as owed } from "./messages/owed";
 import { messages as products } from "./messages/products";
 import { messages as quickadd } from "./messages/quickadd";
@@ -64,6 +65,7 @@ const ALL = {
   ...owed,
   ...clients,
   ...cats,
+  ...landing,
 } as const;
 
 export type MessageKey = keyof typeof ALL;
