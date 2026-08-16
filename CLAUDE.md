@@ -139,6 +139,46 @@ the unique index, and take the dependent sale down with it (the
 cash mirror survives as an orphan). Needs an on-conflict re-query
 that remaps the sale's client_id — do it deliberately, not inline.
 
+Public surface (v0.6.8, 2026-08-16): landing + help center + legal,
+all in the main repo — this doubles as the app-store support URL at
+v0.7. The APP MOVED from / to /app (signed-in visitors on / bounce
+there client-side; auth is device-local so the server can't know).
+design-tokens.md (repo root) is the audited palette and the LAW for
+public pages: no color, face or component style the app doesn't
+already use. What shipped:
+- / landing: single column ~640px, hero + founding-hundred email
+  capture (migration 0016: founding_list, INSERT-only RLS, the list
+  is never readable with the anon key; /api/founding rate-limited,
+  duplicates return ok). Demos are the REAL components — the
+  confirmation sheet with an amber flag, OwedTab with an aged row,
+  RunningTotals — inert inside plain frames, marked "Demo data".
+- /help + /help/[slug]: public, static, searchable (the app's own
+  accent-blind fold()), rendering help-docs/{en,es,pt}/*.md — SINGLE
+  SOURCE for help content, never fork it; a missing translation
+  fails the build. Hand-rolled markdown reader in lib/markdown.ts
+  (no deps). Six articles × three languages shipped.
+- /privacy and /terms COMPOSE the same i18n keys as the in-app terms
+  gate and settings promise — no forked legal copy; a plain "lawyer
+  text will replace this" note sits on both.
+- SEO: per-page metadata, metadataBase, sitemap.ts, robots.ts
+  (disallows /app and /api), opengraph-image.tsx drawn from the
+  token palette. Everything prerenders static.
+- Deviation from the spec, on purpose: logged-out visitors to /app
+  see the app's own sign-in gate (which IS the front door — demo
+  word included), not a redirect to the landing; a redirect would
+  kill the try-anonymously flow.
+- Landing/help/legal browser-verified EN + ES (PT is same-mechanism,
+  same-authorship). Founding capture NOT tested against production —
+  migration 0016 must run there first (combined file regenerated).
+  Known dev-only console noise: React warns about the layout's
+  pre-paint theme <script> on client navigations (it only needs to
+  run at first parse; behavior correct in prod).
+Slop-list self-audit (banned: gradient heroes, purple/indigo, emoji
+icons, three-column feature cards, stock illustration, fake
+testimonials/logo bars, floating blobs, buzzwords, neon glow):
+ZERO violations to fix — the token discipline made them
+unrepresentable. Full report in the session log.
+
 MISSING / KNOWN GAPS (deliberate, or pre-existing and documented):
 - API route error bodies surface in English (server doesn't know the
   device language; needs error codes in the contract — noted in
@@ -272,6 +312,8 @@ chart has NO spec-ahead-of-build entries left.
   expense categories on receipts; proof-of-income via print-to-PDF.
 - v0.7 Native/Expo port. Revisit trigger unchanged: install friction
   on iOS, where there is no install prompt at all (see IDEAS.md).
+  Public surface = landing + help + legal on the main app; doubles
+  as the app-store support URL at v0.7.
 - v0.8 Optional bank feeds (Plaid) as the top rung of the reliability
   ladder; Zelle coverage arrives via feeds. Screenshot-first remains
   the product's default and identity.

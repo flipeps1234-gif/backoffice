@@ -13,6 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Absolute base for OG/twitter image URLs on every page's metadata.
+  metadataBase: new URL("https://backoffice-nine-blond.vercel.app"),
   title: "contado",
   description: "Snap your payment screenshots. We do the bookkeeping.",
 };
