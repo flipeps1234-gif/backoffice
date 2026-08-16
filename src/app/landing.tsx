@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import ConfirmationSheet from "./confirmation-sheet";
-import LocalePicker from "./locale-picker";
-import Mark from "./mark";
 import OwedTab from "./owed-tab";
+import { PublicFooter, PublicHeader } from "./public-shell";
 import RunningTotals from "./running-totals";
 import { useLocale } from "./use-locale";
 import { useSession } from "@/lib/supabase/use-session";
@@ -21,9 +21,6 @@ import type { Transaction } from "@/lib/transaction";
  * Copy is trilingual through the same i18n as the app. One CTA
  * (founding-hundred email capture), repeated twice, per spec.
  */
-
-/** Support number, same build-time gate as the settings page. */
-const SUPPORT_WHATSAPP = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP;
 
 const demoTxn = (patch: Partial<Transaction>): Transaction => ({
   id: "demo",
@@ -248,21 +245,7 @@ export default function Landing() {
 
   return (
     <main className="mx-auto w-full max-w-[40rem] px-4 py-8">
-      <header className="mb-10 flex items-center justify-between">
-        <p className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <Mark />
-          contado
-        </p>
-        <div className="flex items-center gap-3">
-          <LocalePicker compact />
-          <a
-            href="/app"
-            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-900"
-          >
-            {t("landing.openApp")}
-          </a>
-        </div>
-      </header>
+      <PublicHeader />
 
       {/* HERO */}
       <section className="space-y-6">
@@ -368,9 +351,9 @@ export default function Landing() {
           <li>{t("landing.trust3")}</li>
           <li>{t("landing.trust4")}</li>
         </ul>
-        <a href="/privacy" className="inline-block text-sm font-medium underline">
+        <Link href="/privacy" className="inline-block text-sm font-medium underline">
           {t("landing.trustLink")}
-        </a>
+        </Link>
       </section>
 
       {/* CTA, second and last time */}
@@ -378,29 +361,7 @@ export default function Landing() {
         <Cta />
       </div>
 
-      <footer className="mt-14 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-neutral-200 pt-6 text-sm text-neutral-500 dark:border-neutral-800">
-        <a href="/help" className="hover:underline">
-          {t("landing.footerHelp")}
-        </a>
-        <a href="/privacy" className="hover:underline">
-          {t("landing.footerPrivacy")}
-        </a>
-        <a href="/terms" className="hover:underline">
-          {t("landing.footerTerms")}
-        </a>
-        {SUPPORT_WHATSAPP ? (
-          <a
-            href={`https://wa.me/${SUPPORT_WHATSAPP}`}
-            target="_blank"
-            rel="noreferrer"
-            className="hover:underline"
-          >
-            {t("landing.textUs")}
-          </a>
-        ) : (
-          <span>{t("landing.textUsSoon")}</span>
-        )}
-      </footer>
+      <PublicFooter />
     </main>
   );
 }
