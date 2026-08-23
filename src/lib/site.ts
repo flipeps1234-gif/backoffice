@@ -1,0 +1,55 @@
+/**
+ * The public website's identity, in one place.
+ *
+ * SITE_URL is the canonical origin every absolute URL on the site is built
+ * from — metadataBase, canonicals, the sitemap, robots, JSON-LD. It reads
+ * NEXT_PUBLIC_SITE_URL so the day the custom domain goes live is one env
+ * var and a redeploy (NEXT_PUBLIC_* is inlined at build — see DEPLOY.md),
+ * with the Vercel origin as the fallback so nothing breaks before then.
+ *
+ * Pure constants and tiny helpers; no DOM, no React — the site map below
+ * feeds sitemap.ts, the footer and the breadcrumbs alike, so they can't
+ * drift apart.
+ */
+
+export const SITE_NAME = "contado";
+
+export const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://backoffice-nine-blond.vercel.app"
+).replace(/\/+$/, "");
+
+/** Absolute URL for a site-relative path. */
+export const absolute = (path: string): string =>
+  `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+
+/** The three trades the product is built for — each gets a public page.
+ *  Slugs are URLs: add, don't rename. */
+export const TRADES = ["cleaners", "landscapers", "barbers"] as const;
+export type Trade = (typeof TRADES)[number];
+export const isTrade = (value: string): value is Trade =>
+  (TRADES as readonly string[]).includes(value);
+
+/** Every public page that belongs in the sitemap, with crawl hints.
+ *  /help/[slug] is appended by sitemap.ts from HELP_SLUGS. The app
+ *  (/app) is deliberately absent — it is a sign-in gate, not content,
+ *  and robots.ts disallows it. */
+export const PUBLIC_PAGES: readonly {
+  path: string;
+  changeFrequency: "weekly" | "monthly";
+  priority: number;
+}[] = [
+  { path: "/", changeFrequency: "weekly", priority: 1 },
+  { path: "/how-it-works", changeFrequency: "monthly", priority: 0.9 },
+  { path: "/pricing", changeFrequency: "monthly", priority: 0.9 },
+  ...TRADES.map((trade) => ({
+    path: `/for/${trade}`,
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  })),
+  { path: "/help", changeFrequency: "weekly", priority: 0.8 },
+  { path: "/faq", changeFrequency: "monthly", priority: 0.7 },
+  { path: "/about", changeFrequency: "monthly", priority: 0.6 },
+  { path: "/contact", changeFrequency: "monthly", priority: 0.5 },
+  { path: "/privacy", changeFrequency: "monthly", priority: 0.4 },
+  { path: "/terms", changeFrequency: "monthly", priority: 0.4 },
+];

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { absolute } from "@/lib/site";
 
 /** Public pages are crawlable; the app shell and API are not content. */
 export default function robots(): MetadataRoute.Robots {
@@ -8,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/app", "/api/"],
     },
-    sitemap: "https://backoffice-nine-blond.vercel.app/sitemap.xml",
+    sitemap: absolute("/sitemap.xml"),
   };
 }

@@ -15,6 +15,7 @@ import { messages as settings } from "./messages/settings";
 import { messages as sheet } from "./messages/sheet";
 import { messages as shell } from "./messages/shell";
 import { messages as signin } from "./messages/signin";
+import { messages as site } from "./messages/site";
 import { messages as terms } from "./messages/terms";
 
 /**
@@ -68,6 +69,7 @@ const ALL = {
   ...cats,
   ...landing,
   ...help,
+  ...site,
 } as const;
 
 export type MessageKey = keyof typeof ALL;

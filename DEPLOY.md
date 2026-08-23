@@ -102,6 +102,9 @@ built against a Supabase host that no longer exists in DNS.
 | `DEMO_EMAIL` / `DEMO_PASSWORD` | Vercel, server-only | The demo word stops working |
 | `DEMO_EXTRACTION=mock` | Vercel | Tester spends your OpenAI budget |
 | `NEXT_PUBLIC_SUPPORT_WHATSAPP` | Vercel, optional | Settings shows "Support line — coming soon" instead of the WhatsApp link. Digits only, country code first (e.g. `15551234567`); build-time inlined, so set it and redeploy |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | Vercel, optional | The contact page and footer show no email link. Build-time inlined |
+| `NEXT_PUBLIC_SITE_URL` | Vercel, optional | Canonicals, sitemap, robots and share cards point at the Vercel origin instead of the real domain. Set it to `https://<your-domain>` (no trailing slash) the day the custom domain is live, then redeploy — every absolute URL on the site reads it from `src/lib/site.ts` |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Vercel, optional | No analytics at all — the default build loads no third-party tag. Set the GA4 measurement ID (`G-XXXXXXXXXX`) to count visits on the PUBLIC pages only: `/app` and `/api` never load it, and a browser sending Do Not Track gets nothing (see `src/app/analytics.tsx`). Build-time inlined |
 
 ---
 

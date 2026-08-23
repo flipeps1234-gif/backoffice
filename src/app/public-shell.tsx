@@ -1,43 +1,116 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import LocalePicker from "./locale-picker";
 import Mark from "./mark";
 import { useLocale } from "./use-locale";
+import type { MessageKey } from "@/lib/i18n";
+import { localeTag } from "@/lib/i18n";
 
 /**
- * The frame every public page shares (landing, help, privacy, terms):
- * the app's own header row and a plain footer. One place, so the
- * public surface can't drift apart page by page.
+ * The frame every public page shares (landing, how it works, pricing,
+ * trade pages, help, about, contact, FAQ, legal): the app's own header
+ * row, a site nav under it, and a footer that lists every public page
+ * once. One place, so the public surface can't drift apart page by page
+ * — and so a crawler finds every page from any page.
+ *
+ * Tokens only (design-tokens.md): neutral text, the foreground for the
+ * current page, no new component styles.
  */
 
 const SUPPORT_WHATSAPP = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP;
+const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL;
+const YEAR = new Date().getFullYear();
+
+const NAV: readonly { href: string; key: MessageKey }[] = [
+  { href: "/how-it-works", key: "site.navHow" },
+  { href: "/pricing", key: "site.navPricing" },
+  { href: "/help", key: "site.navHelp" },
+  { href: "/about", key: "site.navAbout" },
+];
+
+const PRODUCT_LINKS: readonly { href: string; key: MessageKey }[] = [
+  { href: "/how-it-works", key: "site.navHow" },
+  { href: "/pricing", key: "site.navPricing" },
+  { href: "/for/cleaners", key: "site.forCleaners" },
+  { href: "/for/landscapers", key: "site.forLandscapers" },
+  { href: "/for/barbers", key: "site.forBarbers" },
+];
+
+const COMPANY_LINKS: readonly { href: string; key: MessageKey }[] = [
+  { href: "/about", key: "site.navAbout" },
+  { href: "/contact", key: "site.navContact" },
+  { href: "/faq", key: "site.navFaq" },
+  { href: "/help", key: "site.navHelp" },
+];
+
+const LEGAL_LINKS: readonly { href: string; key: MessageKey }[] = [
+  { href: "/privacy", key: "landing.footerPrivacy" },
+  { href: "/terms", key: "landing.footerTerms" },
+];
+
+/** Keep <html lang> honest after hydration: the server says "en" because
+ *  it can't know the device language; once the client knows, the
+ *  document says so too (screen readers and translation tools read it). */
+function useLangSync() {
+  const { locale } = useLocale();
+  useEffect(() => {
+    document.documentElement.lang = localeTag(locale);
+  }, [locale]);
+}
 
 export function PublicHeader() {
   const { t } = useLocale();
+  const pathname = usePathname();
+  useLangSync();
   return (
-    <header className="mb-10 flex items-center justify-between">
-      <Link
-        href="/"
-        className="flex items-center gap-2 text-lg font-semibold tracking-tight"
-      >
-        <Mark />
-        contado
-      </Link>
-      <div className="flex items-center gap-3">
-        <LocalePicker compact />
+    <header className="mb-10 space-y-4">
+      <div className="flex items-center justify-between">
         <Link
-          href="/app"
-          className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-900"
+          href="/"
+          className="flex items-center gap-2 text-lg font-semibold tracking-tight"
         >
-          {t("landing.openApp")}
+          <Mark />
+          contado
         </Link>
+        <div className="flex items-center gap-3">
+          <LocalePicker compact />
+          <Link
+            href="/app"
+            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-900"
+          >
+            {t("landing.openApp")}
+          </Link>
+        </div>
       </div>
+      <nav aria-label={t("site.siteNav")} className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        {NAV.map((item) => {
+          const current =
+            pathname === item.href || pathname?.startsWith(`${item.href}/`);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={current ? "page" : undefined}
+              className={
+                current
+                  ? "font-medium"
+                  : "text-neutral-500 hover:underline"
+              }
+            >
+              {t(item.key)}
+            </Link>
+          );
+        })}
+      </nav>
     </header>
   );
 }
 
-/** The gated support link, shared by the footer and the help page. */
+/** The gated support link, shared by the footer, the help page and the
+ *  contact page. No number configured → the honest "coming soon". */
 export function TextUs() {
   const { t } = useLocale();
   if (SUPPORT_WHATSAPP) {
@@ -55,20 +128,58 @@ export function TextUs() {
   return <span>{t("landing.textUsSoon")}</span>;
 }
 
+/** The gated email link — same posture as TextUs. */
+export function EmailUs() {
+  const { t } = useLocale();
+  if (!SUPPORT_EMAIL) return null;
+  return (
+    <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:underline">
+      {t("site.emailUs")}
+    </a>
+  );
+}
+
+function FooterColumn({
+  title,
+  links,
+}: {
+  title: MessageKey;
+  links: readonly { href: string; key: MessageKey }[];
+}) {
+  const { t } = useLocale();
+  return (
+    <div className="space-y-2">
+      <p className="text-xs uppercase tracking-wide text-neutral-500">
+        {t(title)}
+      </p>
+      <ul className="space-y-1.5 text-sm">
+        {links.map((link) => (
+          <li key={link.href}>
+            <Link href={link.href} className="hover:underline">
+              {t(link.key)}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function PublicFooter() {
   const { t } = useLocale();
   return (
-    <footer className="mt-14 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-neutral-200 pt-6 text-sm text-neutral-500 dark:border-neutral-800">
-      <Link href="/help" className="hover:underline">
-        {t("landing.footerHelp")}
-      </Link>
-      <Link href="/privacy" className="hover:underline">
-        {t("landing.footerPrivacy")}
-      </Link>
-      <Link href="/terms" className="hover:underline">
-        {t("landing.footerTerms")}
-      </Link>
-      <TextUs />
+    <footer className="mt-14 space-y-6 border-t border-neutral-200 pt-8 dark:border-neutral-800">
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+        <FooterColumn title="site.footerProduct" links={PRODUCT_LINKS} />
+        <FooterColumn title="site.footerCompany" links={COMPANY_LINKS} />
+        <FooterColumn title="site.footerLegal" links={LEGAL_LINKS} />
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-neutral-500">
+        <span>{t("landing.trustTitle")}</span>
+        <TextUs />
+        <EmailUs />
+        <span className="tabular-nums">{t("site.copyright", { year: YEAR })}</span>
+      </div>
     </footer>
   );
 }

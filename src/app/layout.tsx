@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Analytics from "./analytics";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -12,11 +14,29 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+/**
+ * Site-wide SEO defaults. Every public page sets its own title and
+ * description; this is what they inherit — the title suffix, the
+ * canonical base, the share-card defaults, and an explicit "index me".
+ * metadataBase comes from lib/site.ts so the custom domain is one env var.
+ */
 export const metadata: Metadata = {
-  // Absolute base for OG/twitter image URLs on every page's metadata.
-  metadataBase: new URL("https://backoffice-nine-blond.vercel.app"),
-  title: "contado",
-  description: "Snap your payment screenshots. We do the bookkeeping.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} — your payments, turned into books`,
+    template: `%s — ${SITE_NAME}`,
+  },
+  description:
+    "Turn Venmo, Cash App, Zelle and cash into real books, automatically. Built for cleaners, landscapers and barbers. Free.",
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "en_US",
+    alternateLocale: ["es_419", "pt_BR"],
+  },
+  twitter: { card: "summary_large_image" },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({
@@ -44,6 +64,9 @@ export default function RootLayout({
           }}
         />
         {children}
+        {/* Public-site analytics only: gated on an env var, never on /app,
+            honors Do Not Track — see analytics.tsx. */}
+        <Analytics />
       </body>
     </html>
   );
