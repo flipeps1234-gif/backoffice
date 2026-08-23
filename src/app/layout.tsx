@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Analytics from "./analytics";
+import { OG_BASE, TW_BASE } from "@/lib/seo";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import "./globals.css";
 
@@ -29,13 +30,10 @@ export const metadata: Metadata = {
   description:
     "Turn Venmo, Cash App, Zelle and cash into real books, automatically. Built for cleaners, landscapers and barbers. Free.",
   applicationName: SITE_NAME,
-  openGraph: {
-    type: "website",
-    siteName: SITE_NAME,
-    locale: "en_US",
-    alternateLocale: ["es_419", "pt_BR"],
-  },
-  twitter: { card: "summary_large_image" },
+  // The same base every page spreads into its own openGraph/twitter —
+  // Next replaces nested objects instead of merging them (lib/seo.ts).
+  openGraph: { ...OG_BASE },
+  twitter: { ...TW_BASE },
   robots: { index: true, follow: true },
 };
 

@@ -56,6 +56,21 @@ order by column_name;
 You need `direction` and `quantity` in that list. If either is missing,
 stop and run the migration.
 
+### 1b. Verify the account-purge cron exists — BLOCKING for the deletion promise
+
+The public pages and the in-app terms promise that a deleted account is
+erased for good seven days later. That purge is a pg_cron job created by
+migration 0013; nothing in the app can see whether it was actually
+scheduled. After running the migrations:
+
+```sql
+select jobname from cron.job;
+```
+
+You need `purge-deleted-accounts` in that list. If it is missing, enable
+the `pg_cron` extension (Database → Extensions) and re-run the combined
+migration file. Until it shows, the seven-day promise is not being kept.
+
 ### 2. Add the app's origin to Supabase Redirect URLs — BLOCKING for sign-in
 
 Supabase → Authentication → URL Configuration → Redirect URLs.
@@ -104,7 +119,7 @@ built against a Supabase host that no longer exists in DNS.
 | `NEXT_PUBLIC_SUPPORT_WHATSAPP` | Vercel, optional | Settings shows "Support line — coming soon" instead of the WhatsApp link. Digits only, country code first (e.g. `15551234567`); build-time inlined, so set it and redeploy |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | Vercel, optional | The contact page and footer show no email link. Build-time inlined |
 | `NEXT_PUBLIC_SITE_URL` | Vercel, optional | Canonicals, sitemap, robots and share cards point at the Vercel origin instead of the real domain. Set it to `https://<your-domain>` (no trailing slash) the day the custom domain is live, then redeploy — every absolute URL on the site reads it from `src/lib/site.ts` |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Vercel, optional | No analytics at all — the default build loads no third-party tag. Set the GA4 measurement ID (`G-XXXXXXXXXX`) to count visits on the PUBLIC pages only: `/app` and `/api` never load it, and a browser sending Do Not Track gets nothing (see `src/app/analytics.tsx`). Build-time inlined |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Vercel, optional | No analytics at all — the default build loads no third-party tag. Set the GA4 measurement ID (`G-XXXXXXXXXX`) to count visits on the PUBLIC pages only: `/app` and `/api` never send a hit (the opt-out flag is set there and the two ways into the app are full-page navigations), and a browser sending Do Not Track gets nothing (see `src/app/analytics.tsx`). Leave GA4's **Enhanced measurement** ON (the default) — it counts client-side navigations; the app sends no manual page_view, so turning it off would undercount, and adding a manual one would double-count. Build-time inlined |
 
 ---
 

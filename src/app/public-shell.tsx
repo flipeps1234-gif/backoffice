@@ -77,12 +77,16 @@ export function PublicHeader() {
         </Link>
         <div className="flex items-center gap-3">
           <LocalePicker compact />
-          <Link
+          {/* A full-document navigation on purpose (not <Link>): the
+              public site's analytics tag must not ride a client-side
+              transition into the app. 44px tall — the tokens' secondary
+              button, not a shrunken one. */}
+          <a
             href="/app"
-            className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-900"
+            className="inline-flex h-11 items-center rounded-lg border border-neutral-300 px-4 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-900"
           >
             {t("landing.openApp")}
-          </Link>
+          </a>
         </div>
       </div>
       <nav aria-label={t("site.siteNav")} className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
@@ -178,7 +182,12 @@ export function PublicFooter() {
         <span>{t("landing.trustTitle")}</span>
         <TextUs />
         <EmailUs />
-        <span className="tabular-nums">{t("site.copyright", { year: YEAR })}</span>
+        {/* The year is baked into the static HTML at build; after New
+            Year the client's year differs until the next deploy. Let the
+            client win silently instead of warning on every visit. */}
+        <span className="tabular-nums" suppressHydrationWarning>
+          {t("site.copyright", { year: YEAR })}
+        </span>
       </div>
     </footer>
   );

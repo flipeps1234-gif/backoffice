@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import JsonLd from "./json-ld";
 import Landing from "./landing";
-import { organization, softwareApplication } from "@/lib/seo";
+import { OG_BASE, TW_BASE, organization, softwareApplication } from "@/lib/seo";
 import { SITE_NAME, absolute } from "@/lib/site";
 
 /**
@@ -20,9 +20,15 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   alternates: { canonical: "/" },
   openGraph: {
+    ...OG_BASE,
     title: `${SITE_NAME} — your payments, turned into books`,
     description: DESCRIPTION,
     url: absolute("/"),
+  },
+  twitter: {
+    ...TW_BASE,
+    title: `${SITE_NAME} — your payments, turned into books`,
+    description: DESCRIPTION,
   },
 };
 

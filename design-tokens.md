@@ -71,7 +71,12 @@ no gradients anywhere.
   total), `text-2xl font-semibold tabular-nums text-emerald-600`
   (business total). This is the "Owed big-number style".
 - Headings on public pages: reuse `text-lg font-semibold
-  tracking-tight` (the header size) and `text-base font-semibold`;
+  tracking-tight` (the header size) and `text-base font-semibold`.
+  Marketing pages (landing, how it works, pricing, trade pages,
+  about, contact, FAQ) open with ONE `text-4xl font-semibold
+  tracking-tight` h1 — the Owed big-number size, already in the app;
+  reading pages (help, privacy, terms) keep `text-lg`. Two h1 sizes,
+  each tied to a page kind — not a free choice per page;
   the app has no display sizes beyond `text-4xl` and no font weight
   above `font-semibold` — so neither do public pages. No `font-bold`.
 

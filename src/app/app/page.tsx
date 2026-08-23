@@ -1,6 +1,16 @@
+import type { Metadata } from "next";
 import LocalePicker from "../locale-picker";
 import Mark from "../mark";
 import UploadScreen from "../upload-screen";
+
+/** The sign-in gate is not content: its own title, and an explicit
+ *  noindex so search engines don't list the bare URL that every public
+ *  page's "Open the app" button points at (robots.ts lets it be fetched
+ *  precisely so this tag can be read). */
+export const metadata: Metadata = {
+  title: "Open the app",
+  robots: { index: false, follow: false },
+};
 
 /**
  * The app itself, moved from / to /app when the landing page took the

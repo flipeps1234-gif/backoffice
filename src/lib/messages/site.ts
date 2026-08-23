@@ -36,9 +36,9 @@ export const messages = {
     pt: "Não é um app de faturas — ele registra quem te deve e dá baixa quando o pagamento aparece.",
   },
   "site.not2": {
-    en: "Not a bank connection — you upload your own screenshots. No login to your bank, ever.",
-    es: "No se conecta a tu banco — tú subes tus propias capturas. Nunca te pedimos la clave del banco.",
-    pt: "Não se conecta ao seu banco — você envia suas próprias capturas. Nunca pedimos a senha do banco.",
+    en: "Not a bank connection — you upload your own screenshots, and screenshots will always be the default. There is no bank login in contado today.",
+    es: "No se conecta a tu banco — tú subes tus propias capturas, y las capturas siempre serán lo principal. Hoy no hay acceso bancario en contado.",
+    pt: "Não se conecta ao seu banco — você envia suas próprias capturas, e as capturas sempre serão o padrão. Hoje não existe login bancário no contado.",
   },
   "site.not3": {
     en: "Not a tax filer — it gets you ready: categories, mileage, proof of income, a CSV your preparer opens.",
@@ -59,9 +59,9 @@ export const messages = {
     pt: "Quatro telas, sem configuração. Você tira print, confirma, desliza — e seu livro-caixa existe.",
   },
   "site.how1Detail": {
-    en: "Open Venmo, Cash App or Zelle, screenshot the Transactions list — not the social feed, which hides amounts — and add as many as you like. They're read once and discarded.",
-    es: "Abre Venmo, Cash App o Zelle, toma captura de la lista de Transacciones — no del feed social, que oculta los montos — y agrega todas las que quieras. Se leen una vez y se descartan.",
-    pt: "Abra o Venmo, Cash App ou Zelle, tire print da lista de Transações — não do feed social, que esconde os valores — e adicione quantas quiser. Elas são lidas uma vez e descartadas.",
+    en: "Open Venmo, Cash App or Zelle, screenshot the Transactions list — not the social feed, which hides amounts — and add as many as you like. They're sent to an AI service to be read, then discarded — never stored.",
+    es: "Abre Venmo, Cash App o Zelle, toma captura de la lista de Transacciones — no del feed social, que oculta los montos — y agrega todas las que quieras. Se envían a un servicio de IA para leerlas y luego se descartan — nunca se guardan.",
+    pt: "Abra o Venmo, Cash App ou Zelle, tire print da lista de Transações — não do feed social, que esconde os valores — e adicione quantas quiser. Elas são enviadas a um serviço de IA para leitura e depois descartadas — nunca ficam guardadas.",
   },
   "site.how2Title": { en: "Check every row", es: "Revisa cada fila", pt: "Confira cada linha" },
   "site.how2Detail": {
@@ -82,8 +82,8 @@ export const messages = {
   },
   "site.how5Detail": {
     en: "Log a job before the money arrives and it waits in Owed, grouped by client, aged. Tap once when the cash comes — or a payment in your next screenshots clears it on its own.",
-    es: "Registra un trabajo antes de que llegue el dinero y queda en Te deben, por cliente, con los días. Un toque cuando llega el efectivo — o un pago en tus próximas capturas lo cierra solo.",
-    pt: "Registre um serviço antes de o dinheiro chegar e ele espera em Devendo, por cliente, com os dias. Um toque quando o dinheiro chega — ou um pagamento nos próximos prints dá baixa sozinho.",
+    es: "Registra un trabajo antes de que llegue el dinero y queda en la pestaña Por cobrar, por cliente, con los días. Un toque cuando llega el efectivo — o un pago en tus próximas capturas lo cierra solo.",
+    pt: "Registre um serviço antes de o dinheiro chegar e ele espera na aba A receber, por cliente, com os dias. Um toque quando o dinheiro chega — ou um pagamento nos próximos prints dá baixa sozinho.",
   },
 
   // ---- pricing ----
@@ -101,8 +101,8 @@ export const messages = {
   },
   "site.free2": {
     en: "Sales, clients and the Owed tab, with one-tap matching.",
-    es: "Ventas, clientes y la pestaña Te deben, con emparejado de un toque.",
-    pt: "Vendas, clientes e a aba Devendo, com conciliação de um toque.",
+    es: "Ventas, clientes y la pestaña Por cobrar, con emparejado de un toque.",
+    pt: "Vendas, clientes e a aba A receber, com conciliação de um toque.",
   },
   "site.free3": {
     en: "Your whole history, at any age. Never metered, never gated.",
@@ -119,16 +119,16 @@ export const messages = {
     es: "Inglés, español y portugués. Nunca cobramos por el idioma.",
     pt: "Inglês, espanhol e português. Nunca cobramos pelo idioma.",
   },
-  "site.laterTitle": { en: "Paid later, on top", es: "De pago más adelante, encima", pt: "Pago depois, por cima" },
+  "site.laterTitle": { en: "Paid later, on top", es: "De pago, más adelante, como extra", pt: "Pagos, mais tarde, como extra" },
   "site.laterIntro": {
-    en: "Four modules are planned — each adds something on top of your data. None exists yet; none will ever un-cripple the core.",
-    es: "Hay cuatro módulos planeados — cada uno agrega algo encima de tus datos. Ninguno existe todavía; ninguno va a bloquear lo esencial.",
-    pt: "Quatro módulos estão planejados — cada um acrescenta algo por cima dos seus dados. Nenhum existe ainda; nenhum vai travar o essencial.",
+    en: "Four modules are planned — the paid layer on top of your data. Some of it already works in today's free app; nothing is billed yet, and what's free for you today stays free for you.",
+    es: "Hay cuatro módulos planeados — la capa de pago sobre tus datos. Parte de eso ya funciona en la app gratis de hoy; todavía no se cobra nada, y lo que hoy es gratis para ti sigue siendo gratis para ti.",
+    pt: "Quatro módulos estão planejados — a camada paga por cima dos seus dados. Parte disso já funciona no app grátis de hoje; nada é cobrado ainda, e o que é grátis para você hoje continua grátis para você.",
   },
   "site.modAutopilot": {
     en: "Autopilot — automatic matching, Owed that clears itself, recurring jobs.",
-    es: "Autopilot — emparejado automático, Te deben que se cierra solo, trabajos recurrentes.",
-    pt: "Autopilot — conciliação automática, Devendo que se fecha sozinho, serviços recorrentes.",
+    es: "Autopilot — emparejado automático, Por cobrar que se cierra solo, trabajos recurrentes.",
+    pt: "Autopilot — conciliação automática, A receber que se fecha sozinho, serviços recorrentes.",
   },
   "site.modAlerts": {
     en: "Alerts — owed reminders and confirmations on WhatsApp or by text.",
@@ -165,7 +165,7 @@ export const messages = {
     es: "En inglés, español y portugués — cambia cuando quieras, gratis.",
     pt: "Em inglês, espanhol e português — troque quando quiser, grátis.",
   },
-  "site.tradeOthers": { en: "Also built for", es: "También para", pt: "Também para" },
+  "site.tradeOthers": { en: "See also:", es: "Ver también:", pt: "Veja também:" },
   "site.faqLangQ": {
     en: "Can I use it in Spanish or Portuguese?",
     es: "¿Puedo usarlo en español o portugués?",
@@ -209,9 +209,9 @@ export const messages = {
     pt: "Tire print do seu Venmo, Cash App e Zelle — o contado lê cada pagamento e separa negócio de pessoal com um deslize.",
   },
   "site.cleanersDoes2": {
-    en: "Log the limpeza before the money arrives; it waits in Owed under Maria's name until her payment shows up — then clears itself.",
-    es: "Registra la limpieza antes de que llegue el dinero; queda en Te deben bajo el nombre de Maria hasta que aparece su pago — y se cierra solo.",
-    pt: "Registre a limpeza antes de o dinheiro chegar; ela espera em Devendo no nome da Maria até o pagamento aparecer — e dá baixa sozinha.",
+    en: "Log the clean before the money arrives; it waits in Owed under Maria's name until her payment shows up — then clears itself.",
+    es: "Registra la limpieza antes de que llegue el dinero; queda en la pestaña Por cobrar bajo el nombre de Maria hasta que aparece su pago — y se cierra solo.",
+    pt: "Registre a limpeza antes de o dinheiro chegar; ela espera na aba A receber no nome da Maria até o pagamento aparecer — e dá baixa sozinha.",
   },
   "site.cleanersDoes3": {
     en: "Supplies go in with a photo of the receipt, tagged for Schedule C. Mileage is estimated from each client's distance — no GPS.",
@@ -272,13 +272,13 @@ export const messages = {
   },
   "site.landscapersDoes2": {
     en: "Make the monthly account a recurring job: it expects the money on the day, waits in Owed if it's late, and flags after three misses.",
-    es: "Convierte la cuenta mensual en un trabajo recurrente: espera el dinero ese día, queda en Te deben si se atrasa y avisa tras tres faltas.",
-    pt: "Transforme a conta mensal em serviço recorrente: ele espera o dinheiro no dia, fica em Devendo se atrasar e avisa depois de três faltas.",
+    es: "Convierte la cuenta mensual en un trabajo recurrente: espera el dinero ese día, queda en la pestaña Por cobrar si se atrasa y avisa tras tres faltas.",
+    pt: "Transforme a conta mensal em serviço recorrente: ele espera o dinheiro no dia, fica na aba A receber se atrasar e avisa depois de três faltas.",
   },
   "site.landscapersDoes3": {
     en: "Snap the gas receipt, tag it Car & truck. Each client's round trip × your visits becomes a mileage estimate — never GPS.",
-    es: "Fotografía el recibo de gasolina, etiquétalo como Car & truck. El viaje redondo de cada cliente × tus visitas se vuelve una estimación de millaje — nunca GPS.",
-    pt: "Fotografe o recibo de gasolina, marque como Car & truck. A ida e volta de cada cliente × suas visitas vira uma estimativa de quilometragem — nunca GPS.",
+    es: "Fotografía el recibo de gasolina, etiquétalo como Auto y camioneta. El viaje redondo de cada cliente × tus visitas se vuelve una estimación de millaje — nunca GPS.",
+    pt: "Fotografe o recibo de gasolina, marque como Carro e caminhonete. A ida e volta de cada cliente × suas visitas vira uma estimativa de quilometragem — nunca GPS.",
   },
   "site.landscapersFaq1Q": { en: "Can it handle a crew?", es: "¿Sirve para una cuadrilla?", pt: "Serve para uma equipe?" },
   "site.landscapersFaq1A": {
@@ -314,9 +314,9 @@ export const messages = {
     pt: "O Cash App diz uma coisa, a gaveta outra, e o aluguel da cadeira vence sexta.",
   },
   "site.barbersPain2": {
-    en: "Regulars who 'get you next week' — and you can't remember who.",
-    es: "Clientes fijos que 'te pagan la próxima' — y no recuerdas quiénes.",
-    pt: "Clientes fixos que 'acertam semana que vem' — e você não lembra quem.",
+    en: "Regulars who “get you next week” — and you can't remember who.",
+    es: "Clientes fijos que “te pagan la próxima” — y no recuerdas quiénes.",
+    pt: "Clientes fixos que “acertam semana que vem” — e você não lembra quem.",
   },
   "site.barbersPain3": {
     en: "Clippers, product, the chair — what did the year actually cost?",
@@ -329,9 +329,9 @@ export const messages = {
     pt: "Fim do dia: print do Cash App, o dinheiro digitado. Dois minutos, uma mão, e o dia está lançado.",
   },
   "site.barbersDoes2": {
-    en: "Log the cut when the regular says 'next week' — it waits in Owed under his name, and clears when he pays.",
-    es: "Registra el corte cuando el cliente dice 'la próxima' — queda en Te deben a su nombre y se cierra cuando paga.",
-    pt: "Registre o corte quando o cliente diz 'semana que vem' — fica em Devendo no nome dele e dá baixa quando ele pagar.",
+    en: "Log the cut when the regular says “next week” — it waits in Owed under his name, and clears when he pays.",
+    es: "Registra el corte cuando el cliente dice “la próxima” — queda en la pestaña Por cobrar a su nombre y se cierra cuando paga.",
+    pt: "Registre o corte quando o cliente diz “semana que vem” — fica na aba A receber no nome dele e dá baixa quando ele pagar.",
   },
   "site.barbersDoes3": {
     en: "Photograph the supply receipt, tag it. Chair rent, product, tools — categorized for Schedule C before January.",
@@ -385,9 +385,9 @@ export const messages = {
   },
   "site.aboutHow": { en: "How it's built", es: "Cómo está hecho", pt: "Como é feito" },
   "site.aboutHowBody": {
-    en: "One web app that works on any phone, in English, Spanish and Portuguese. Money is stored to the cent, never as a float. Your rows are fenced to your account at the database, by row-level security. Everything is exportable and deletable, always.",
-    es: "Una app web que funciona en cualquier teléfono, en inglés, español y portugués. El dinero se guarda al centavo, nunca como decimal flotante. Tus filas están cercadas a tu cuenta en la base de datos, con seguridad a nivel de fila. Todo se puede exportar y borrar, siempre.",
-    pt: "Um app web que funciona em qualquer celular, em inglês, espanhol e português. O dinheiro é guardado em centavos, nunca como número flutuante. Suas linhas ficam cercadas à sua conta no banco de dados, por segurança em nível de linha. Tudo pode ser exportado e apagado, sempre.",
+    en: "One web app that works on any phone, in English, Spanish and Portuguese. Money is stored to the cent, never as a float. Your rows are fenced to your account at the database, by row-level security. Every row is exportable any time, and your whole account is deletable, always.",
+    es: "Una app web que funciona en cualquier teléfono, en inglés, español y portugués. El dinero se guarda al centavo, nunca como decimal flotante. Tus filas están cercadas a tu cuenta en la base de datos, con seguridad a nivel de fila. Cada fila se puede exportar cuando quieras, y tu cuenta entera se puede borrar, siempre.",
+    pt: "Um app web que funciona em qualquer celular, em inglês, espanhol e português. O dinheiro é guardado em centavos, nunca como número flutuante. Suas linhas ficam cercadas à sua conta no banco de dados, por segurança em nível de linha. Cada linha pode ser exportada quando quiser, e sua conta inteira pode ser apagada, sempre.",
   },
   "site.aboutTalk": { en: "Questions? Talk to us.", es: "¿Preguntas? Háblanos.", pt: "Dúvidas? Fale com a gente." },
 
@@ -416,8 +416,8 @@ export const messages = {
   "site.faq1Q": { en: "Is contado free?", es: "¿contado es gratis?", pt: "O contado é grátis?" },
   "site.faq1A": {
     en: "Yes. The core is free forever: logging, confirming, totals, who owes you, exports, every language. Paid modules will come later, on top — and the founding hundred lock $6/mo for all of them.",
-    es: "Sí. Lo esencial es gratis para siempre: registrar, confirmar, totales, quién te debe, exportar, todos los idiomas. Más adelante habrá módulos de pago, encima — y los cien fundadores aseguran $6/mes por todos.",
-    pt: "Sim. O essencial é grátis para sempre: registrar, confirmar, totais, quem te deve, exportar, todos os idiomas. Módulos pagos virão depois, por cima — e os cem fundadores garantem $6/mês por todos.",
+    es: "Sí. Lo esencial es gratis para siempre: registrar, confirmar, totales, quién te debe, exportar, todos los idiomas. Más adelante habrá módulos de pago como extra sobre lo gratis — y los cien fundadores aseguran $6/mes por todos.",
+    pt: "Sim. O essencial é grátis para sempre: registrar, confirmar, totais, quem te deve, exportar, todos os idiomas. Módulos pagos virão depois, como extra sobre o grátis — e os cem fundadores garantem $6/mês por todos.",
   },
   "site.faq2Q": { en: "Which payment apps work?", es: "¿Qué apps de pago funcionan?", pt: "Quais apps de pagamento funcionam?" },
   "site.faq2A": {
@@ -427,15 +427,15 @@ export const messages = {
   },
   "site.faq3Q": { en: "Do I have to connect my bank?", es: "¿Tengo que conectar mi banco?", pt: "Preciso conectar meu banco?" },
   "site.faq3A": {
-    en: "No, never. You upload your own screenshots. There is no bank login anywhere in contado.",
-    es: "No, nunca. Tú subes tus propias capturas. No hay acceso bancario en ningún lado de contado.",
-    pt: "Não, nunca. Você envia seus próprios prints. Não existe login bancário em lugar nenhum do contado.",
+    en: "No. You upload your own screenshots — there is no bank login in contado today, and screenshots will always be the default.",
+    es: "No. Tú subes tus propias capturas — hoy no hay acceso bancario en contado, y las capturas siempre serán lo principal.",
+    pt: "Não. Você envia seus próprios prints — hoje não existe login bancário no contado, e os prints sempre serão o padrão.",
   },
   "site.faq4Q": { en: "What happens to my screenshots?", es: "¿Qué pasa con mis capturas?", pt: "O que acontece com meus prints?" },
   "site.faq4A": {
-    en: "They're read once and discarded — not stored. The only images we keep are photos you choose to attach to a sale, and those stay with that sale until you delete your account.",
-    es: "Se leen una vez y se descartan — no se guardan. Las únicas imágenes que guardamos son fotos que tú decides adjuntar a una venta, y quedan con esa venta hasta que borres tu cuenta.",
-    pt: "São lidos uma vez e descartados — não ficam guardados. As únicas imagens que guardamos são fotos que você escolhe anexar a uma venda, e elas ficam com essa venda até você apagar a conta.",
+    en: "They're sent to an AI service to be read, then discarded — never stored. The only images we keep are photos you choose to attach to a sale, and those stay with that sale until you delete your account.",
+    es: "Se envían a un servicio de IA para leerlas y luego se descartan — nunca se guardan. Las únicas imágenes que guardamos son fotos que tú decides adjuntar a una venta, y quedan con esa venta hasta que borres tu cuenta.",
+    pt: "São enviados a um serviço de IA para leitura e depois descartados — nunca ficam guardados. As únicas imagens que guardamos são fotos que você escolhe anexar a uma venda, e elas ficam com essa venda até você apagar a conta.",
   },
   "site.faq5Q": { en: "Does it do invoices or estimates?", es: "¿Hace facturas o presupuestos?", pt: "Faz faturas ou orçamentos?" },
   "site.faq5A": {
@@ -459,7 +459,7 @@ export const messages = {
   "site.faq8A": {
     en: "Always. Export everything as CSV any time, free. Delete your account in Settings and everything is erased for good seven days later — you can change your mind inside those seven days.",
     es: "Siempre. Exporta todo en CSV cuando quieras, gratis. Borra tu cuenta en Ajustes y todo se elimina para siempre siete días después — puedes arrepentirte dentro de esos siete días.",
-    pt: "Sempre. Exporte tudo em CSV quando quiser, grátis. Apague sua conta em Ajustes e tudo é removido para sempre sete dias depois — você pode mudar de ideia dentro desses sete dias.",
+    pt: "Sempre. Exporte tudo em CSV quando quiser, grátis. Apague sua conta em Configurações e tudo é removido para sempre sete dias depois — você pode mudar de ideia dentro desses sete dias.",
   },
   "site.faq9Q": { en: "Is there a way to try it without an account?", es: "¿Se puede probar sin cuenta?", pt: "Dá para testar sem conta?" },
   "site.faq9A": {
@@ -476,8 +476,8 @@ export const messages = {
 
   // ---- privacy: the website's analytics, disclosed ----
   "site.privacyAnalytics": {
-    en: "The public website (these pages, not the app) may use Google Analytics to count visits. The app itself never loads it, and a browser that sends Do Not Track gets no analytics at all.",
-    es: "El sitio público (estas páginas, no la app) puede usar Google Analytics para contar visitas. La app nunca lo carga, y un navegador que envía Do Not Track no recibe ningún análisis.",
-    pt: "O site público (estas páginas, não o app) pode usar o Google Analytics para contar visitas. O app em si nunca o carrega, e um navegador que envia Do Not Track não recebe análise nenhuma.",
+    en: "The public website (these pages, not the app) may use Google Analytics to count visits. The app itself never sends analytics, and a browser that sends Do Not Track gets none at all.",
+    es: "El sitio público (estas páginas, no la app) puede usar Google Analytics para contar visitas. La app nunca envía datos de análisis, y un navegador que envía Do Not Track no recibe ninguno.",
+    pt: "O site público (estas páginas, não o app) pode usar o Google Analytics para contar visitas. O app em si nunca envia dados de análise, e um navegador que envia Do Not Track não recebe nenhum.",
   },
 } as const;

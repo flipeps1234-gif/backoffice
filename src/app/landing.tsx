@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ConfirmationSheet from "./confirmation-sheet";
 import Dashboard from "./dashboard";
@@ -41,13 +40,14 @@ import { EMPTY_PROFILE } from "@/lib/profile";
 export default function Landing() {
   const { t } = useLocale();
   const { user } = useSession();
-  const router = useRouter();
   const mounted = useMounted();
 
   // Signed in already? This page is a poster on the door — go inside.
+  // A full-document navigation, not router.replace: the public site's
+  // analytics tag must not ride along into the app.
   useEffect(() => {
-    if (user) router.replace("/app");
-  }, [user, router]);
+    if (user) window.location.replace("/app");
+  }, [user]);
 
   const owed = mounted ? owedDemo() : null;
 

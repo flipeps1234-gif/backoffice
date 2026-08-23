@@ -186,6 +186,51 @@ testimonials/logo bars, floating blobs, buzzwords, neon glow):
 ZERO violations to fix — the token discipline made them
 unrepresentable. Full report in the session log.
 
+Company website (v0.6.9, 2026-08-22): the public surface grew from a
+landing page into a multi-page site, all static, all in the main app,
+all trilingual through the same i18n (new fragment
+src/lib/messages/site.ts, ~190 keys × 3). Routes: / · /how-it-works ·
+/pricing · /for/{cleaners,landscapers,barbers} (one SSG page per
+trade, generateStaticParams, unknown trade = 404) · /about · /contact
+· /faq, plus the existing /help, /help/[slug], /privacy, /terms. Every
+illustration is a real component fed demo data (public-demos.tsx is the
+one source for the fixtures; founding-cta.tsx the one CTA). SEO
+plumbing: lib/site.ts (SITE_URL from NEXT_PUBLIC_SITE_URL, Vercel
+fallback; the public-page map the sitemap/footer/breadcrumbs share),
+lib/seo.ts (pageMetadata: title + description + canonical + the SHARED
+OG/Twitter base — Next replaces nested metadata objects instead of
+merging, a review catch that had every subpage shipping an imageless
+card), JSON-LD per page (Organization, WebSite, SoftwareApplication,
+BreadcrumbList, FAQPage from the same list the page renders), title
+template in the root layout, sitemap.ts + robots.ts off the one URL,
+/app noindex. Analytics: analytics.tsx loads GA4 only with
+NEXT_PUBLIC_GA_MEASUREMENT_ID, public pages only (the two ways into
+/app are full-document navigations and the ga-disable flag is set
+inside the app), Do Not Track honored, page views from GA4's own
+config + Enhanced Measurement (no manual page_view — double-counts).
+The privacy page discloses exactly that. Pricing is bundle-first and
+honest: free forever list, founding hundred $6/mo, the four modules
+named but unpriced, and the correction from review that parts of them
+already ship free today. A 13-agent adversarial pass (SEO, truth,
+tokens, i18n, analytics) confirmed 8 defects, all FIXED, plus the
+overflow and lows taken: the OG merge bug, help-article descriptions
+built from a raw search-text slice, the pricing "none exists yet"
+falsehood, "never/ever" bank-login absolutes vs the v0.8 roadmap, a
+34px header button, ES/PT naming the Owed tab "Te deben"/"Devendo"
+instead of the app's "Por cobrar"/"A receber", "Also built for For
+landscapers", the AI-transfer of screenshots now disclosed in the FAQ
+and walkthrough, "everything deletable" softened to what is true.
+Slop-list self-audit over all 19 new files: zero banned words, zero
+banned styles, palette in use = neutral/emerald/amber/red only
+(positive-controlled grep — the first pass was invalid because zsh
+doesn't word-split, and was redone). UNTESTED: GA4 against a real
+property (no ID exists yet — set NEXT_PUBLIC_GA_MEASUREMENT_ID and
+redeploy to turn it on); share cards in a real scraper (the built HTML
+was checked for the tags, not the rendered card); ES/PT still agent-
+written, not native-reviewed. Owner-side: NEXT_PUBLIC_SITE_URL when the
+domain is live, NEXT_PUBLIC_SUPPORT_EMAIL, and the pg_cron purge check
+(now a BLOCKING item in DEPLOY.md because the site promises it).
+
 MISSING / KNOWN GAPS (deliberate, or pre-existing and documented):
 - API route error bodies surface in English (server doesn't know the
   device language; needs error codes in the contract — noted in
