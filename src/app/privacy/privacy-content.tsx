@@ -33,6 +33,12 @@ export default function PrivacyContent() {
       <p className="mt-6 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
         {t("settings.privacyPromise")}
       </p>
+      {/* The website's analytics, disclosed where the promise is made:
+          public pages only, never the app, Do Not Track honored — the
+          exact behavior of analytics.tsx, stated in plain words. */}
+      <p className="mt-3 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+        {t("site.privacyAnalytics")}
+      </p>
 
       <div className="mt-8 space-y-6">
         {BLOCKS.map(([title, body]) => (

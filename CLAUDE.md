@@ -319,8 +319,10 @@ chart has NO spec-ahead-of-build entries left.
   expense categories on receipts; proof-of-income via print-to-PDF.
 - v0.7 Native/Expo port. Revisit trigger unchanged: install friction
   on iOS, where there is no install prompt at all (see IDEAS.md).
-  Public surface = landing + help + legal on the main app; doubles
-  as the app-store support URL at v0.7.
+  Public surface = the company website (landing, how it works,
+  pricing, /for/{cleaners,landscapers,barbers}, about, contact, FAQ)
+  + help + legal, all on the main app; doubles as the app-store
+  support URL at v0.7.
 - v0.8 Optional bank feeds (Plaid) as the top rung of the reliability
   ladder; Zelle coverage arrives via feeds. Screenshot-first remains
   the product's default and identity.

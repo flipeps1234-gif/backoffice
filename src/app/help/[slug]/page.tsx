@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { HELP_SLUGS, isHelpSlug } from "@/lib/help";
 import { LOCALES } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/seo";
 import ArticleView from "./article-view";
 import { loadArticle } from "../load";
 
@@ -19,10 +20,13 @@ export async function generateMetadata({
   const { slug } = await params;
   if (!isHelpSlug(slug)) return {};
   const article = await loadArticle(slug, "en");
-  return {
-    title: `${article.title} — contado`,
+  // The root layout appends " — contado"; the canonical keeps each
+  // article's URL unambiguous for crawlers.
+  return pageMetadata({
+    title: article.title,
     description: article.text.slice(0, 150),
-  };
+    path: `/help/${slug}`,
+  });
 }
 
 export default async function ArticlePage({

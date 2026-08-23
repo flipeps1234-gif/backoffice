@@ -26,4 +26,458 @@ export const messages = {
   "site.emailUs": { en: "Email us", es: "Escríbenos un correo", pt: "Mande um e-mail" },
   "site.copyright": { en: "© {year} contado", es: "© {year} contado", pt: "© {year} contado" },
   "site.siteNav": { en: "Site", es: "Sitio", pt: "Site" },
+  "site.commonQuestions": { en: "Common questions", es: "Preguntas comunes", pt: "Perguntas comuns" },
+
+  // ---- shared: what contado is not ----
+  "site.whatNot": { en: "What contado is not", es: "Lo que contado no es", pt: "O que o contado não é" },
+  "site.not1": {
+    en: "Not an invoicing app — it tracks who owes you and clears it when the payment shows up.",
+    es: "No es una app de facturas — registra quién te debe y lo marca pagado cuando aparece el pago.",
+    pt: "Não é um app de faturas — ele registra quem te deve e dá baixa quando o pagamento aparece.",
+  },
+  "site.not2": {
+    en: "Not a bank connection — you upload your own screenshots. No login to your bank, ever.",
+    es: "No se conecta a tu banco — tú subes tus propias capturas. Nunca te pedimos la clave del banco.",
+    pt: "Não se conecta ao seu banco — você envia suas próprias capturas. Nunca pedimos a senha do banco.",
+  },
+  "site.not3": {
+    en: "Not a tax filer — it gets you ready: categories, mileage, proof of income, a CSV your preparer opens.",
+    es: "No presenta tus impuestos — te deja listo: categorías, millaje, comprobante de ingresos y un CSV que tu contador abre.",
+    pt: "Não declara seus impostos — ele te deixa pronto: categorias, quilometragem, comprovante de renda e um CSV que seu contador abre.",
+  },
+  "site.not4": {
+    en: "Not a scheduler, not ads, not selling your data.",
+    es: "No es una agenda, no tiene anuncios, no vende tus datos.",
+    pt: "Não é agenda, não tem anúncios, não vende seus dados.",
+  },
+
+  // ---- how it works ----
+  "site.howTitle": { en: "How contado works", es: "Cómo funciona contado", pt: "Como o contado funciona" },
+  "site.howIntro": {
+    en: "Four screens, no setup. You screenshot, you confirm, you swipe — and your books exist.",
+    es: "Cuatro pantallas, sin configurar nada. Tomas capturas, confirmas, deslizas — y tus libros existen.",
+    pt: "Quatro telas, sem configuração. Você tira print, confirma, desliza — e seu livro-caixa existe.",
+  },
+  "site.how1Detail": {
+    en: "Open Venmo, Cash App or Zelle, screenshot the Transactions list — not the social feed, which hides amounts — and add as many as you like. They're read once and discarded.",
+    es: "Abre Venmo, Cash App o Zelle, toma captura de la lista de Transacciones — no del feed social, que oculta los montos — y agrega todas las que quieras. Se leen una vez y se descartan.",
+    pt: "Abra o Venmo, Cash App ou Zelle, tire print da lista de Transações — não do feed social, que esconde os valores — e adicione quantas quiser. Elas são lidas uma vez e descartadas.",
+  },
+  "site.how2Title": { en: "Check every row", es: "Revisa cada fila", pt: "Confira cada linha" },
+  "site.how2Detail": {
+    en: "Every payment comes back as a row: who, how much, when. Anything we weren't sure about is ringed in amber — tap it to fix. Nothing lands in your books until you've looked at it.",
+    es: "Cada pago vuelve como una fila: quién, cuánto, cuándo. Lo que no pudimos leer bien queda marcado en ámbar — tócalo para corregir. Nada entra en tus libros hasta que lo revisaste.",
+    pt: "Cada pagamento volta como uma linha: quem, quanto, quando. O que não conseguimos ler bem fica marcado em âmbar — toque para corrigir. Nada entra no seu livro-caixa antes de você conferir.",
+  },
+  "site.how3Title": { en: "Sort with a swipe", es: "Ordena deslizando", pt: "Separe com um deslize" },
+  "site.how3Detail": {
+    en: "One card at a time. Right is business, left is personal. Personal rows stay out of your books and out of your taxes.",
+    es: "Una tarjeta a la vez. Derecha es negocio, izquierda es personal. Lo personal queda fuera de tus libros y de tus impuestos.",
+    pt: "Um cartão por vez. Direita é negócio, esquerda é pessoal. O pessoal fica fora do seu livro-caixa e dos seus impostos.",
+  },
+  "site.how4Detail": {
+    en: "Money in, money out, what you kept — by month, by service. Every log is saved to your account the moment you make it, on any device you sign into.",
+    es: "Dinero que entra, dinero que sale, lo que te quedó — por mes, por servicio. Cada registro se guarda en tu cuenta al instante, en cualquier dispositivo donde entres.",
+    pt: "Dinheiro que entra, que sai, o que sobrou — por mês, por serviço. Cada registro é salvo na sua conta na hora, em qualquer aparelho em que você entrar.",
+  },
+  "site.how5Detail": {
+    en: "Log a job before the money arrives and it waits in Owed, grouped by client, aged. Tap once when the cash comes — or a payment in your next screenshots clears it on its own.",
+    es: "Registra un trabajo antes de que llegue el dinero y queda en Te deben, por cliente, con los días. Un toque cuando llega el efectivo — o un pago en tus próximas capturas lo cierra solo.",
+    pt: "Registre um serviço antes de o dinheiro chegar e ele espera em Devendo, por cliente, com os dias. Um toque quando o dinheiro chega — ou um pagamento nos próximos prints dá baixa sozinho.",
+  },
+
+  // ---- pricing ----
+  "site.pricingTitle": { en: "Free while we build.", es: "Gratis mientras lo construimos.", pt: "Grátis enquanto construímos." },
+  "site.pricingIntro": {
+    en: "contado is free today, with no limits and nothing gated. When paid modules arrive, the core stays free forever — and the founding hundred lock in one price for all of it.",
+    es: "contado es gratis hoy, sin límites y sin nada bloqueado. Cuando lleguen los módulos de pago, lo esencial seguirá siendo gratis para siempre — y los cien fundadores aseguran un solo precio por todo.",
+    pt: "O contado é grátis hoje, sem limites e sem nada bloqueado. Quando os módulos pagos chegarem, o essencial continua grátis para sempre — e os cem fundadores garantem um preço único por tudo.",
+  },
+  "site.freeForever": { en: "Free forever", es: "Gratis para siempre", pt: "Grátis para sempre" },
+  "site.free1": {
+    en: "Screenshots in, books out — the whole core loop.",
+    es: "Capturas que entran, libros que salen — todo el ciclo central.",
+    pt: "Prints entrando, livro-caixa saindo — todo o ciclo central.",
+  },
+  "site.free2": {
+    en: "Sales, clients and the Owed tab, with one-tap matching.",
+    es: "Ventas, clientes y la pestaña Te deben, con emparejado de un toque.",
+    pt: "Vendas, clientes e a aba Devendo, com conciliação de um toque.",
+  },
+  "site.free3": {
+    en: "Your whole history, at any age. Never metered, never gated.",
+    es: "Todo tu historial, sin importar la antigüedad. Nunca medido, nunca bloqueado.",
+    pt: "Todo o seu histórico, de qualquer data. Nunca limitado, nunca bloqueado.",
+  },
+  "site.free4": {
+    en: "Export everything, any time. Your data is yours.",
+    es: "Exporta todo, cuando quieras. Tus datos son tuyos.",
+    pt: "Exporte tudo, quando quiser. Seus dados são seus.",
+  },
+  "site.free5": {
+    en: "English, Spanish and Portuguese. We never charge for language.",
+    es: "Inglés, español y portugués. Nunca cobramos por el idioma.",
+    pt: "Inglês, espanhol e português. Nunca cobramos pelo idioma.",
+  },
+  "site.laterTitle": { en: "Paid later, on top", es: "De pago más adelante, encima", pt: "Pago depois, por cima" },
+  "site.laterIntro": {
+    en: "Four modules are planned — each adds something on top of your data. None exists yet; none will ever un-cripple the core.",
+    es: "Hay cuatro módulos planeados — cada uno agrega algo encima de tus datos. Ninguno existe todavía; ninguno va a bloquear lo esencial.",
+    pt: "Quatro módulos estão planejados — cada um acrescenta algo por cima dos seus dados. Nenhum existe ainda; nenhum vai travar o essencial.",
+  },
+  "site.modAutopilot": {
+    en: "Autopilot — automatic matching, Owed that clears itself, recurring jobs.",
+    es: "Autopilot — emparejado automático, Te deben que se cierra solo, trabajos recurrentes.",
+    pt: "Autopilot — conciliação automática, Devendo que se fecha sozinho, serviços recorrentes.",
+  },
+  "site.modAlerts": {
+    en: "Alerts — owed reminders and confirmations on WhatsApp or by text.",
+    es: "Alerts — recordatorios de cobro y confirmaciones por WhatsApp o SMS.",
+    pt: "Alerts — lembretes de cobrança e confirmações por WhatsApp ou SMS.",
+  },
+  "site.modInsights": {
+    en: "Insights — reports, margins, your year in review.",
+    es: "Insights — reportes, márgenes, tu año en resumen.",
+    pt: "Insights — relatórios, margens, seu ano em resumo.",
+  },
+  "site.modTime": {
+    en: "Time Machine — version history and restore.",
+    es: "Time Machine — historial de versiones y restauración.",
+    pt: "Time Machine — histórico de versões e restauração.",
+  },
+  "site.laterNote": {
+    en: "Module prices will be announced when they ship. Founding members pay $6/mo for all of them, forever — a price that never rises.",
+    es: "Los precios de cada módulo se anunciarán cuando salgan. Los fundadores pagan $6/mes por todos, para siempre — un precio que nunca sube.",
+    pt: "Os preços dos módulos serão anunciados quando saírem. Os fundadores pagam $6/mês por todos, para sempre — um preço que nunca sobe.",
+  },
+  "site.filterTitle": { en: "The rule we charge by", es: "La regla con la que cobramos", pt: "A regra pela qual cobramos" },
+  "site.filterBody": {
+    en: "We charge for what we build on top of your data — never to unlock your own records, never to meter them, never by selling them.",
+    es: "Cobramos por lo que construimos encima de tus datos — nunca por desbloquear tus propios registros, nunca por medirlos, nunca vendiéndolos.",
+    pt: "Cobramos pelo que construímos por cima dos seus dados — nunca para liberar seus próprios registros, nunca para limitá-los, nunca vendendo-os.",
+  },
+
+  // ---- trade pages: shared ----
+  "site.tradeSoundFamiliar": { en: "Sound familiar?", es: "¿Te suena?", pt: "Parece familiar?" },
+  "site.tradeWhatItDoes": { en: "What contado does for you", es: "Lo que contado hace por ti", pt: "O que o contado faz por você" },
+  "site.tradeLang": {
+    en: "In English, Spanish and Portuguese — switch any time, free.",
+    es: "En inglés, español y portugués — cambia cuando quieras, gratis.",
+    pt: "Em inglês, espanhol e português — troque quando quiser, grátis.",
+  },
+  "site.tradeOthers": { en: "Also built for", es: "También para", pt: "Também para" },
+  "site.faqLangQ": {
+    en: "Can I use it in Spanish or Portuguese?",
+    es: "¿Puedo usarlo en español o portugués?",
+    pt: "Posso usar em espanhol ou português?",
+  },
+  "site.faqLangA": {
+    en: "Yes. English, Spanish and Portuguese, switchable any time. We never charge for language.",
+    es: "Sí. Inglés, español y portugués, cambiables cuando quieras. Nunca cobramos por el idioma.",
+    pt: "Sim. Inglês, espanhol e português, com troca a qualquer hora. Nunca cobramos pelo idioma.",
+  },
+
+  // ---- trade pages: cleaners ----
+  "site.cleanersTitle": {
+    en: "Bookkeeping for house cleaners paid on Venmo, Cash App, Zelle and cash.",
+    es: "Contabilidad para limpiadoras que cobran por Venmo, Cash App, Zelle y efectivo.",
+    pt: "Contabilidade para faxineiras que recebem por Venmo, Cash App, Zelle e dinheiro.",
+  },
+  "site.cleanersSub": {
+    en: "Every house, every payment, every client who still owes you — in one place, in ten seconds, from the driveway.",
+    es: "Cada casa, cada pago, cada clienta que todavía te debe — en un solo lugar, en diez segundos, desde la entrada.",
+    pt: "Cada casa, cada pagamento, cada cliente que ainda te deve — em um só lugar, em dez segundos, da calçada.",
+  },
+  "site.cleanersPain1": {
+    en: "Payments land in three apps and a pocket of cash.",
+    es: "Los pagos llegan a tres apps y a un bolsillo con efectivo.",
+    pt: "Os pagamentos chegam em três apps e num bolso com dinheiro.",
+  },
+  "site.cleanersPain2": {
+    en: "Maria pays every two weeks — except the week she forgets.",
+    es: "Maria paga cada dos semanas — menos la semana que se le olvida.",
+    pt: "A Maria paga a cada duas semanas — menos na semana em que esquece.",
+  },
+  "site.cleanersPain3": {
+    en: "In January, someone asks for your numbers and you have a phone full of screenshots.",
+    es: "En enero alguien te pide tus números y tienes un teléfono lleno de capturas.",
+    pt: "Em janeiro alguém pede seus números e você tem um celular cheio de prints.",
+  },
+  "site.cleanersDoes1": {
+    en: "Screenshot your Venmo, Cash App and Zelle — contado reads every payment and sorts business from personal with a swipe.",
+    es: "Toma captura de tu Venmo, Cash App y Zelle — contado lee cada pago y separa negocio de personal con un deslizamiento.",
+    pt: "Tire print do seu Venmo, Cash App e Zelle — o contado lê cada pagamento e separa negócio de pessoal com um deslize.",
+  },
+  "site.cleanersDoes2": {
+    en: "Log the limpeza before the money arrives; it waits in Owed under Maria's name until her payment shows up — then clears itself.",
+    es: "Registra la limpieza antes de que llegue el dinero; queda en Te deben bajo el nombre de Maria hasta que aparece su pago — y se cierra solo.",
+    pt: "Registre a limpeza antes de o dinheiro chegar; ela espera em Devendo no nome da Maria até o pagamento aparecer — e dá baixa sozinha.",
+  },
+  "site.cleanersDoes3": {
+    en: "Supplies go in with a photo of the receipt, tagged for Schedule C. Mileage is estimated from each client's distance — no GPS.",
+    es: "Los insumos entran con una foto del recibo, etiquetados para el Schedule C. El millaje se estima con la distancia de cada clienta — sin GPS.",
+    pt: "Os produtos entram com uma foto do recibo, marcados para o Schedule C. A quilometragem é estimada pela distância de cada cliente — sem GPS.",
+  },
+  "site.cleanersFaq1Q": {
+    en: "Does it work if I'm paid half on Venmo and half in cash?",
+    es: "¿Funciona si me pagan mitad por Venmo y mitad en efectivo?",
+    pt: "Funciona se me pagam metade por Venmo e metade em dinheiro?",
+  },
+  "site.cleanersFaq1A": {
+    en: "Yes. Screenshots cover the apps; cash you type in with the numpad. Both land in the same books.",
+    es: "Sí. Las capturas cubren las apps; el efectivo lo escribes con el teclado. Todo llega a los mismos libros.",
+    pt: "Sim. Os prints cobrem os apps; o dinheiro você digita no teclado. Tudo cai no mesmo livro-caixa.",
+  },
+  "site.cleanersFaq2Q": {
+    en: "Do my clients see anything?",
+    es: "¿Mis clientas ven algo?",
+    pt: "Minhas clientes veem alguma coisa?",
+  },
+  "site.cleanersFaq2A": {
+    en: "No. Your books are yours alone. Today contado never messages a client; if reminder alerts arrive later, they will be opt-in and yours to switch on.",
+    es: "No. Tus libros son solo tuyos. Hoy contado nunca le escribe a una clienta; si más adelante llegan recordatorios, serán opcionales y tú decides activarlos.",
+    pt: "Não. Seu livro-caixa é só seu. Hoje o contado nunca manda mensagem para uma cliente; se lembretes chegarem depois, serão opcionais e você decide ativar.",
+  },
+
+  // ---- trade pages: landscapers ----
+  "site.landscapersTitle": {
+    en: "Bookkeeping for landscapers paid on Venmo, Cash App, Zelle and cash.",
+    es: "Contabilidad para jardineros que cobran por Venmo, Cash App, Zelle y efectivo.",
+    pt: "Contabilidade para jardineiros que recebem por Venmo, Cash App, Zelle e dinheiro.",
+  },
+  "site.landscapersSub": {
+    en: "Mowing, edging, the monthly accounts — tracked from the truck, one hand, before the next yard.",
+    es: "Cortes, bordes, las cuentas mensuales — llevadas desde la camioneta, con una mano, antes del próximo jardín.",
+    pt: "Cortes, acabamentos, as contas mensais — controlados da caminhonete, com uma mão, antes do próximo quintal.",
+  },
+  "site.landscapersPain1": {
+    en: "Twenty yards a week, paid six different ways.",
+    es: "Veinte jardines por semana, pagados de seis maneras distintas.",
+    pt: "Vinte quintais por semana, pagos de seis jeitos diferentes.",
+  },
+  "site.landscapersPain2": {
+    en: "The monthly accounts pay late and you stop noticing which ones.",
+    es: "Las cuentas mensuales pagan tarde y dejas de notar cuáles.",
+    pt: "As contas mensais atrasam e você para de notar quais.",
+  },
+  "site.landscapersPain3": {
+    en: "Gas, blades, mulch — receipts in the glovebox until tax time.",
+    es: "Gasolina, cuchillas, mantillo — recibos en la guantera hasta la temporada de impuestos.",
+    pt: "Gasolina, lâminas, adubo — recibos no porta-luvas até a hora do imposto.",
+  },
+  "site.landscapersDoes1": {
+    en: "Screenshot the payment apps after the route; contado reads every payment and you swipe business from personal.",
+    es: "Toma captura de las apps de pago al terminar la ruta; contado lee cada pago y tú deslizas negocio o personal.",
+    pt: "Tire print dos apps de pagamento depois da rota; o contado lê cada pagamento e você desliza negócio ou pessoal.",
+  },
+  "site.landscapersDoes2": {
+    en: "Make the monthly account a recurring job: it expects the money on the day, waits in Owed if it's late, and flags after three misses.",
+    es: "Convierte la cuenta mensual en un trabajo recurrente: espera el dinero ese día, queda en Te deben si se atrasa y avisa tras tres faltas.",
+    pt: "Transforme a conta mensal em serviço recorrente: ele espera o dinheiro no dia, fica em Devendo se atrasar e avisa depois de três faltas.",
+  },
+  "site.landscapersDoes3": {
+    en: "Snap the gas receipt, tag it Car & truck. Each client's round trip × your visits becomes a mileage estimate — never GPS.",
+    es: "Fotografía el recibo de gasolina, etiquétalo como Car & truck. El viaje redondo de cada cliente × tus visitas se vuelve una estimación de millaje — nunca GPS.",
+    pt: "Fotografe o recibo de gasolina, marque como Car & truck. A ida e volta de cada cliente × suas visitas vira uma estimativa de quilometragem — nunca GPS.",
+  },
+  "site.landscapersFaq1Q": { en: "Can it handle a crew?", es: "¿Sirve para una cuadrilla?", pt: "Serve para uma equipe?" },
+  "site.landscapersFaq1A": {
+    en: "It's built for the owner's phone — one account, your books. Multi-user is deliberately not here yet.",
+    es: "Está hecho para el teléfono del dueño — una cuenta, tus libros. Multiusuario no está todavía, a propósito.",
+    pt: "Foi feito para o celular do dono — uma conta, seu livro-caixa. Multiusuário ainda não existe, de propósito.",
+  },
+  "site.landscapersFaq2Q": {
+    en: "Does it do estimates or invoices?",
+    es: "¿Hace presupuestos o facturas?",
+    pt: "Faz orçamentos ou faturas?",
+  },
+  "site.landscapersFaq2A": {
+    en: "No. contado keeps the books after the work — who paid, who owes, what you spent. Quotes and invoices are a different tool.",
+    es: "No. contado lleva los libros después del trabajo — quién pagó, quién debe, qué gastaste. Presupuestos y facturas son otra herramienta.",
+    pt: "Não. O contado cuida do livro-caixa depois do serviço — quem pagou, quem deve, o que você gastou. Orçamentos e faturas são outra ferramenta.",
+  },
+
+  // ---- trade pages: barbers ----
+  "site.barbersTitle": {
+    en: "Bookkeeping for barbers paid on Cash App, Venmo, Zelle and cash.",
+    es: "Contabilidad para barberos que cobran por Cash App, Venmo, Zelle y efectivo.",
+    pt: "Contabilidade para barbeiros que recebem por Cash App, Venmo, Zelle e dinheiro.",
+  },
+  "site.barbersSub": {
+    en: "Thirty cuts a day, half of them cash. Your real number, without counting the drawer.",
+    es: "Treinta cortes al día, la mitad en efectivo. Tu número real, sin contar la caja.",
+    pt: "Trinta cortes por dia, metade em dinheiro. Seu número real, sem contar a gaveta.",
+  },
+  "site.barbersPain1": {
+    en: "Cash App says one thing, the drawer says another, the chair rent is due Friday.",
+    es: "Cash App dice una cosa, la caja otra, y la renta de la silla vence el viernes.",
+    pt: "O Cash App diz uma coisa, a gaveta outra, e o aluguel da cadeira vence sexta.",
+  },
+  "site.barbersPain2": {
+    en: "Regulars who 'get you next week' — and you can't remember who.",
+    es: "Clientes fijos que 'te pagan la próxima' — y no recuerdas quiénes.",
+    pt: "Clientes fixos que 'acertam semana que vem' — e você não lembra quem.",
+  },
+  "site.barbersPain3": {
+    en: "Clippers, product, the chair — what did the year actually cost?",
+    es: "Máquinas, producto, la silla — ¿cuánto costó el año en realidad?",
+    pt: "Máquinas, produtos, a cadeira — quanto o ano custou de verdade?",
+  },
+  "site.barbersDoes1": {
+    en: "End of day: screenshot Cash App, tap in the cash. Two minutes, one hand, and the day is booked.",
+    es: "Al cierre: captura de Cash App, el efectivo a mano. Dos minutos, una mano, y el día queda registrado.",
+    pt: "Fim do dia: print do Cash App, o dinheiro digitado. Dois minutos, uma mão, e o dia está lançado.",
+  },
+  "site.barbersDoes2": {
+    en: "Log the cut when the regular says 'next week' — it waits in Owed under his name, and clears when he pays.",
+    es: "Registra el corte cuando el cliente dice 'la próxima' — queda en Te deben a su nombre y se cierra cuando paga.",
+    pt: "Registre o corte quando o cliente diz 'semana que vem' — fica em Devendo no nome dele e dá baixa quando ele pagar.",
+  },
+  "site.barbersDoes3": {
+    en: "Photograph the supply receipt, tag it. Chair rent, product, tools — categorized for Schedule C before January.",
+    es: "Fotografía el recibo de insumos, etiquétalo. Renta de silla, producto, herramientas — categorizados para el Schedule C antes de enero.",
+    pt: "Fotografe o recibo dos produtos, marque. Aluguel da cadeira, produtos, ferramentas — categorizados para o Schedule C antes de janeiro.",
+  },
+  "site.barbersFaq1Q": {
+    en: "I'm mostly cash. Is it still worth it?",
+    es: "Cobro casi todo en efectivo. ¿Aún vale la pena?",
+    pt: "Recebo quase tudo em dinheiro. Ainda vale a pena?",
+  },
+  "site.barbersFaq1A": {
+    en: "Yes — the numpad is built for it: amount first, one tap, done. Your cash days and your Cash App days land in the same books.",
+    es: "Sí — el teclado está hecho para eso: monto primero, un toque, listo. Tus días de efectivo y tus días de Cash App llegan a los mismos libros.",
+    pt: "Sim — o teclado foi feito para isso: valor primeiro, um toque, pronto. Seus dias de dinheiro e de Cash App caem no mesmo livro-caixa.",
+  },
+  "site.barbersFaq2Q": { en: "Does it book appointments?", es: "¿Agenda citas?", pt: "Marca horários?" },
+  "site.barbersFaq2A": {
+    en: "No. contado is the ledger, not the calendar. It keeps what you earned and what you spent; your booking app keeps the chair.",
+    es: "No. contado es el libro, no la agenda. Lleva lo que ganaste y gastaste; tu app de citas lleva la silla.",
+    pt: "Não. O contado é o livro-caixa, não a agenda. Ele guarda o que você ganhou e gastou; seu app de horários cuida da cadeira.",
+  },
+
+  // ---- about ----
+  "site.aboutTitle": { en: "Why contado exists", es: "Por qué existe contado", pt: "Por que o contado existe" },
+  "site.aboutIntro": {
+    en: "Millions of people clean, mow and cut for a living and get paid through apps and cash. Almost none of them have books. Not because they don't care — because every tool assumes a desk, a bank feed and an hour. They have a phone, a driveway and ten seconds.",
+    es: "Millones de personas limpian, cortan pasto y cortan cabello para vivir, y cobran por apps y en efectivo. Casi ninguna tiene libros. No porque no les importe — porque cada herramienta supone un escritorio, una conexión bancaria y una hora. Ellas tienen un teléfono, una entrada y diez segundos.",
+    pt: "Milhões de pessoas limpam, cortam grama e cortam cabelo para viver, e recebem por apps e em dinheiro. Quase nenhuma tem livro-caixa. Não por descuido — porque toda ferramenta pressupõe uma mesa, uma conexão bancária e uma hora. Elas têm um celular, uma calçada e dez segundos.",
+  },
+  "site.aboutWhat": {
+    en: "contado turns the screenshots you already take into real books — and stops there. No bank login, no invoicing, no ads.",
+    es: "contado convierte las capturas que ya tomas en libros de verdad — y se detiene ahí. Sin clave del banco, sin facturas, sin anuncios.",
+    pt: "O contado transforma os prints que você já tira em livro-caixa de verdade — e para por aí. Sem senha do banco, sem faturas, sem anúncios.",
+  },
+  "site.aboutBeliefs": { en: "What we hold to", es: "En qué creemos", pt: "No que acreditamos" },
+  "site.belief3": {
+    en: "Every log saved instantly, forever, free.",
+    es: "Cada registro guardado al instante, para siempre, gratis.",
+    pt: "Cada registro salvo na hora, para sempre, grátis.",
+  },
+  "site.belief4": {
+    en: "One payment, one sale. Nothing is ever counted twice.",
+    es: "Un pago, una venta. Nada se cuenta dos veces.",
+    pt: "Um pagamento, uma venda. Nada é contado duas vezes.",
+  },
+  "site.belief5": {
+    en: "Three languages, one price: none. We never charge for language.",
+    es: "Tres idiomas, un precio: ninguno. Nunca cobramos por el idioma.",
+    pt: "Três idiomas, um preço: nenhum. Nunca cobramos pelo idioma.",
+  },
+  "site.aboutHow": { en: "How it's built", es: "Cómo está hecho", pt: "Como é feito" },
+  "site.aboutHowBody": {
+    en: "One web app that works on any phone, in English, Spanish and Portuguese. Money is stored to the cent, never as a float. Your rows are fenced to your account at the database, by row-level security. Everything is exportable and deletable, always.",
+    es: "Una app web que funciona en cualquier teléfono, en inglés, español y portugués. El dinero se guarda al centavo, nunca como decimal flotante. Tus filas están cercadas a tu cuenta en la base de datos, con seguridad a nivel de fila. Todo se puede exportar y borrar, siempre.",
+    pt: "Um app web que funciona em qualquer celular, em inglês, espanhol e português. O dinheiro é guardado em centavos, nunca como número flutuante. Suas linhas ficam cercadas à sua conta no banco de dados, por segurança em nível de linha. Tudo pode ser exportado e apagado, sempre.",
+  },
+  "site.aboutTalk": { en: "Questions? Talk to us.", es: "¿Preguntas? Háblanos.", pt: "Dúvidas? Fale com a gente." },
+
+  // ---- contact ----
+  "site.contactTitle": { en: "Talk to us", es: "Háblanos", pt: "Fale com a gente" },
+  "site.contactIntro": {
+    en: "Every message gets read. For the quickest answers, the help center covers the common ones.",
+    es: "Cada mensaje se lee. Para respuestas rápidas, el centro de ayuda cubre las más comunes.",
+    pt: "Toda mensagem é lida. Para respostas rápidas, a central de ajuda cobre as mais comuns.",
+  },
+  "site.contactText": { en: "Text us on WhatsApp", es: "Escríbenos por WhatsApp", pt: "Chame no WhatsApp" },
+  "site.contactHelp": { en: "Browse the help center", es: "Ver el centro de ayuda", pt: "Ver a central de ajuda" },
+  "site.contactNoChannel": {
+    en: "Support channels are being set up — for now, the help center is the fastest way to an answer.",
+    es: "Los canales de soporte se están configurando — por ahora, el centro de ayuda es la forma más rápida de obtener respuesta.",
+    pt: "Os canais de suporte estão sendo configurados — por enquanto, a central de ajuda é o caminho mais rápido para uma resposta.",
+  },
+
+  // ---- faq ----
+  "site.faqTitle": { en: "Questions, answered plainly", es: "Preguntas, respondidas en claro", pt: "Perguntas, respondidas sem rodeios" },
+  "site.faqIntro": {
+    en: "The short version of what people ask before they try contado.",
+    es: "La versión corta de lo que la gente pregunta antes de probar contado.",
+    pt: "A versão curta do que as pessoas perguntam antes de testar o contado.",
+  },
+  "site.faq1Q": { en: "Is contado free?", es: "¿contado es gratis?", pt: "O contado é grátis?" },
+  "site.faq1A": {
+    en: "Yes. The core is free forever: logging, confirming, totals, who owes you, exports, every language. Paid modules will come later, on top — and the founding hundred lock $6/mo for all of them.",
+    es: "Sí. Lo esencial es gratis para siempre: registrar, confirmar, totales, quién te debe, exportar, todos los idiomas. Más adelante habrá módulos de pago, encima — y los cien fundadores aseguran $6/mes por todos.",
+    pt: "Sim. O essencial é grátis para sempre: registrar, confirmar, totais, quem te deve, exportar, todos os idiomas. Módulos pagos virão depois, por cima — e os cem fundadores garantem $6/mês por todos.",
+  },
+  "site.faq2Q": { en: "Which payment apps work?", es: "¿Qué apps de pago funcionan?", pt: "Quais apps de pagamento funcionam?" },
+  "site.faq2A": {
+    en: "Venmo, Cash App and Zelle screenshots, plus cash you type in. Screenshot the Transactions list, not the social feed — the feed hides amounts.",
+    es: "Capturas de Venmo, Cash App y Zelle, más el efectivo que escribes. Toma captura de la lista de Transacciones, no del feed social — el feed oculta los montos.",
+    pt: "Prints do Venmo, Cash App e Zelle, mais o dinheiro que você digita. Tire print da lista de Transações, não do feed social — o feed esconde os valores.",
+  },
+  "site.faq3Q": { en: "Do I have to connect my bank?", es: "¿Tengo que conectar mi banco?", pt: "Preciso conectar meu banco?" },
+  "site.faq3A": {
+    en: "No, never. You upload your own screenshots. There is no bank login anywhere in contado.",
+    es: "No, nunca. Tú subes tus propias capturas. No hay acceso bancario en ningún lado de contado.",
+    pt: "Não, nunca. Você envia seus próprios prints. Não existe login bancário em lugar nenhum do contado.",
+  },
+  "site.faq4Q": { en: "What happens to my screenshots?", es: "¿Qué pasa con mis capturas?", pt: "O que acontece com meus prints?" },
+  "site.faq4A": {
+    en: "They're read once and discarded — not stored. The only images we keep are photos you choose to attach to a sale, and those stay with that sale until you delete your account.",
+    es: "Se leen una vez y se descartan — no se guardan. Las únicas imágenes que guardamos son fotos que tú decides adjuntar a una venta, y quedan con esa venta hasta que borres tu cuenta.",
+    pt: "São lidos uma vez e descartados — não ficam guardados. As únicas imagens que guardamos são fotos que você escolhe anexar a uma venda, e elas ficam com essa venda até você apagar a conta.",
+  },
+  "site.faq5Q": { en: "Does it do invoices or estimates?", es: "¿Hace facturas o presupuestos?", pt: "Faz faturas ou orçamentos?" },
+  "site.faq5A": {
+    en: "No. contado is a ledger, not an invoicing app: it tracks who owes you and clears it when the payment shows up. Quotes and invoices are a different tool.",
+    es: "No. contado es un libro, no una app de facturas: registra quién te debe y lo cierra cuando aparece el pago. Presupuestos y facturas son otra herramienta.",
+    pt: "Não. O contado é um livro-caixa, não um app de faturas: ele registra quem te deve e dá baixa quando o pagamento aparece. Orçamentos e faturas são outra ferramenta.",
+  },
+  "site.faq6Q": { en: "Does it file my taxes?", es: "¿Presenta mis impuestos?", pt: "Ele declara meus impostos?" },
+  "site.faq6A": {
+    en: "No — it gets you ready. Schedule-C categories on expenses, a mileage estimate, proof of income, and a CSV your preparer opens directly. Estimates never mix with actuals.",
+    es: "No — te deja listo. Categorías del Schedule C en los gastos, una estimación de millaje, comprobante de ingresos y un CSV que tu contador abre directo. Las estimaciones nunca se mezclan con lo real.",
+    pt: "Não — ele te deixa pronto. Categorias do Schedule C nas despesas, uma estimativa de quilometragem, comprovante de renda e um CSV que seu contador abre direto. Estimativas nunca se misturam com o real.",
+  },
+  "site.faq7Q": { en: "Does it work on my phone?", es: "¿Funciona en mi teléfono?", pt: "Funciona no meu celular?" },
+  "site.faq7A": {
+    en: "Yes. It's a website that works on any phone, with no install. Every flow is built to survive ten seconds, one hand, in a driveway.",
+    es: "Sí. Es un sitio web que funciona en cualquier teléfono, sin instalar nada. Cada flujo está hecho para sobrevivir diez segundos, con una mano, en la entrada de una casa.",
+    pt: "Sim. É um site que funciona em qualquer celular, sem instalar nada. Cada fluxo foi feito para sobreviver dez segundos, com uma mão, na calçada.",
+  },
+  "site.faq8Q": { en: "Can I export or delete my data?", es: "¿Puedo exportar o borrar mis datos?", pt: "Posso exportar ou apagar meus dados?" },
+  "site.faq8A": {
+    en: "Always. Export everything as CSV any time, free. Delete your account in Settings and everything is erased for good seven days later — you can change your mind inside those seven days.",
+    es: "Siempre. Exporta todo en CSV cuando quieras, gratis. Borra tu cuenta en Ajustes y todo se elimina para siempre siete días después — puedes arrepentirte dentro de esos siete días.",
+    pt: "Sempre. Exporte tudo em CSV quando quiser, grátis. Apague sua conta em Ajustes e tudo é removido para sempre sete dias depois — você pode mudar de ideia dentro desses sete dias.",
+  },
+  "site.faq9Q": { en: "Is there a way to try it without an account?", es: "¿Se puede probar sin cuenta?", pt: "Dá para testar sem conta?" },
+  "site.faq9A": {
+    en: "Yes — a shared demo account. Everyone who uses it sees the same test data, so try everything and put nothing real in. The help center explains how.",
+    es: "Sí — una cuenta de prueba compartida. Todos los que la usan ven los mismos datos de prueba, así que prueba todo y no pongas nada real. El centro de ayuda explica cómo.",
+    pt: "Sim — uma conta de teste compartilhada. Todo mundo que a usa vê os mesmos dados de teste, então teste tudo e não coloque nada real. A central de ajuda explica como.",
+  },
+  "site.faq10Q": { en: "Who is contado for?", es: "¿Para quién es contado?", pt: "Para quem é o contado?" },
+  "site.faq10A": {
+    en: "Very small service businesses that get paid through apps and cash — cleaners, landscapers, barbers and anyone who works like them. One owner, one phone.",
+    es: "Negocios de servicios muy pequeños que cobran por apps y en efectivo — limpiadoras, jardineros, barberos y cualquiera que trabaje así. Un dueño, un teléfono.",
+    pt: "Negócios de serviço bem pequenos que recebem por apps e em dinheiro — faxineiras, jardineiros, barbeiros e quem mais trabalha assim. Um dono, um celular.",
+  },
+
+  // ---- privacy: the website's analytics, disclosed ----
+  "site.privacyAnalytics": {
+    en: "The public website (these pages, not the app) may use Google Analytics to count visits. The app itself never loads it, and a browser that sends Do Not Track gets no analytics at all.",
+    es: "El sitio público (estas páginas, no la app) puede usar Google Analytics para contar visitas. La app nunca lo carga, y un navegador que envía Do Not Track no recibe ningún análisis.",
+    pt: "O site público (estas páginas, não o app) pode usar o Google Analytics para contar visitas. O app em si nunca o carrega, e um navegador que envia Do Not Track não recebe análise nenhuma.",
+  },
 } as const;
