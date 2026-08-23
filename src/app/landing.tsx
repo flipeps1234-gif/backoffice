@@ -4,19 +4,27 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import ConfirmationSheet from "./confirmation-sheet";
+import Dashboard from "./dashboard";
+import DropZone from "./drop-zone";
+import Insights from "./insights";
 import OwedTab from "./owed-tab";
 import { PublicFooter, PublicHeader } from "./public-shell";
 import RunningTotals from "./running-totals";
+import SwipeDeck from "./swipe-deck";
 import { useLocale } from "./use-locale";
 import { useSession } from "@/lib/supabase/use-session";
+import { EMPTY_PROFILE } from "@/lib/profile";
 import type { Sale } from "@/lib/sale";
 import type { Transaction } from "@/lib/transaction";
 
 /**
  * The public landing page — design-tokens.md is the law here: only
- * colors, type and component styles the app already uses, and the
- * demos are the REAL components (ConfirmationSheet, OwedTab,
- * RunningTotals) fed demo data, not screenshots or mockups.
+ * colors, type and component styles the app already uses, and every
+ * illustration is a REAL component fed demo data — never a drawing of
+ * one. The set mirrors the audited Ledger Mockups screen for screen:
+ * the drop zone (hub), the confirmation sheet, "What we found" + the
+ * swipe deck (sorting), the totals bar + Dashboard (your books), and
+ * the Owed tab. Nothing here is chrome the app doesn't ship.
  *
  * Copy is trilingual through the same i18n as the app. One CTA
  * (founding-hundred email capture), repeated twice, per spec.
@@ -80,9 +88,10 @@ const iso = (daysAgo: number): string => {
   return `${d.getFullYear()}-${month}-${day}`;
 };
 
-/** Aged owed list: one fresh, one past the nudge threshold. Dates are
- *  relative to "today", so this only renders after mount (the server
- *  build's "today" would differ and trip hydration). */
+/** Aged owed list — the mockups' three clients: one past the 14-day
+ *  flag, one fresh, one recurring. Dates are relative to "today", so
+ *  this only renders after mount (the server build's "today" would
+ *  differ and trip hydration). */
 const owedDemo = (): { sales: Sale[]; clients: { id: string; name: string; notes: string; distanceTenths: number | null }[] } => ({
   sales: [
     {
@@ -91,7 +100,7 @@ const owedDemo = (): { sales: Sale[]; clients: { id: string; name: string; notes
       lineItems: [
         { serviceId: null, name: "Limpeza — casa completa", quantity: 1, unitCents: 12000, unitCostCents: null },
       ],
-      date: iso(5),
+      date: iso(34),
       state: "open",
       method: null,
       matchedTxnId: null,
@@ -101,11 +110,11 @@ const owedDemo = (): { sales: Sale[]; clients: { id: string; name: string; notes
     },
     {
       id: "demo-sale-2",
-      clientId: "demo-josh",
+      clientId: "demo-whitaker",
       lineItems: [
-        { serviceId: null, name: "Lawn + edges", quantity: 1, unitCents: 8500, unitCostCents: null },
+        { serviceId: null, name: "Lawn + edges", quantity: 1, unitCents: 14000, unitCostCents: null },
       ],
-      date: iso(16),
+      date: iso(11),
       state: "open",
       method: null,
       matchedTxnId: null,
@@ -113,10 +122,25 @@ const owedDemo = (): { sales: Sale[]; clients: { id: string; name: string; notes
       notes: "",
       photo: null,
     },
+    {
+      id: "demo-sale-3",
+      clientId: "demo-ana",
+      lineItems: [
+        { serviceId: null, name: "Limpeza", quantity: 1, unitCents: 6000, unitCostCents: null },
+      ],
+      date: iso(3),
+      state: "open",
+      method: null,
+      matchedTxnId: null,
+      recurringTemplateId: "demo-template-ana",
+      notes: "",
+      photo: null,
+    },
   ],
   clients: [
     { id: "demo-maria", name: "Maria Lopez", notes: "", distanceTenths: null },
-    { id: "demo-josh", name: "Josh Carter", notes: "", distanceTenths: null },
+    { id: "demo-whitaker", name: "J. Whitaker", notes: "", distanceTenths: null },
+    { id: "demo-ana", name: "Ana Reyes", notes: "", distanceTenths: null },
   ],
 });
 
@@ -273,12 +297,11 @@ export default function Landing() {
               {t("landing.step1Title")}
             </p>
             <p className="text-sm text-neutral-500">{t("landing.step1Body")}</p>
-            <div
-              aria-hidden="true"
-              className="mx-auto w-full max-w-sm rounded-xl border border-dashed border-neutral-300 px-4 py-8 text-center text-sm text-neutral-400 dark:border-neutral-700"
-            >
-              Venmo · Cash App · Zelle
-            </div>
+            {/* The hub's real drop zone — the whole box is the tap target;
+                there is no separate "choose" button in the app either. */}
+            <DemoFrame label={t("landing.demoData")}>
+              <DropZone busy={false} onFiles={noop} />
+            </DemoFrame>
           </li>
           <li className="space-y-3">
             <p className="text-base font-semibold">
@@ -286,21 +309,19 @@ export default function Landing() {
               {t("landing.step2Title")}
             </p>
             <p className="text-sm text-neutral-500">{t("landing.step2Body")}</p>
-            <div
-              aria-hidden="true"
-              inert
-              className="pointer-events-none mx-auto flex w-full max-w-sm items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-3 dark:border-neutral-800 dark:bg-neutral-900"
-            >
-              <span className="text-xs text-neutral-400">←</span>
-              <div className="min-w-0 text-center">
-                <p className="truncate text-sm font-semibold">Maria Lopez</p>
-                <p className="text-sm tabular-nums">$120.00</p>
-                <span className="mt-1 inline-block rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
-                  {t("sheet.moneyIn")}
-                </span>
+            {/* The sorting stage exactly as it ships: "What we found" on
+                top, then the deck — one card, Personal / Business below. */}
+            <DemoFrame label={t("landing.demoData")}>
+              <div className="space-y-4">
+                <Insights transactions={SHEET_DEMO} />
+                <SwipeDeck
+                  pending={SHEET_DEMO}
+                  onDecide={noop}
+                  onUndo={noop}
+                  canUndo={false}
+                />
               </div>
-              <span className="text-xs text-neutral-400">→</span>
-            </div>
+            </DemoFrame>
           </li>
           <li className="space-y-3">
             <p className="text-base font-semibold">
@@ -308,10 +329,23 @@ export default function Landing() {
               {t("landing.step3Title")}
             </p>
             <p className="text-sm text-neutral-500">{t("landing.step3Body")}</p>
+            {/* The totals bar and the Dashboard as the desktop rail shows
+                them. Dashboard reads today's date for the quarter, so it
+                waits for mount like the owed demo does. */}
             <DemoFrame label={t("landing.demoData")}>
               <div className="px-4">
                 <RunningTotals transactions={TOTALS_DEMO} />
               </div>
+              {mounted && (
+                <Dashboard
+                  transactions={TOTALS_DEMO}
+                  services={[]}
+                  sales={[]}
+                  clients={[]}
+                  templates={[]}
+                  profile={EMPTY_PROFILE}
+                />
+              )}
             </DemoFrame>
           </li>
         </ol>

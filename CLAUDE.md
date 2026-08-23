@@ -149,9 +149,16 @@ already use. What shipped:
 - / landing: single column ~640px, hero + founding-hundred email
   capture (migration 0016: founding_list, INSERT-only RLS, the list
   is never readable with the anon key; /api/founding rate-limited,
-  duplicates return ok). Demos are the REAL components — the
-  confirmation sheet with an amber flag, OwedTab with an aged row,
-  RunningTotals — inert inside plain frames, marked "Demo data".
+  duplicates return ok). Demos are the REAL components, inert inside
+  plain frames, marked "Demo data" — and since 2026-08-22 they mirror
+  the audited Ledger Mockups screen for screen: the hub's DropZone,
+  the confirmation sheet with an amber flag, Insights + SwipeDeck
+  (the real sorting stage), RunningTotals + Dashboard (mount-gated:
+  Dashboard reads today's date), and OwedTab with the mockups' three
+  clients (one past the 14-day flag, one recurring). The two hand-
+  drawn illustrations the first build shipped (a dashed "Venmo ·
+  Cash App · Zelle" box and a ←/→ mini swipe card) are gone — the
+  mockup audit rejected exactly that kind of invented chrome.
 - /help + /help/[slug]: public, static, searchable (the app's own
   accent-blind fold()), rendering help-docs/{en,es,pt}/*.md — SINGLE
   SOURCE for help content, never fork it; a missing translation
