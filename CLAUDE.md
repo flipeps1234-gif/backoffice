@@ -227,9 +227,14 @@ doesn't word-split, and was redone). UNTESTED: GA4 against a real
 property (no ID exists yet — set NEXT_PUBLIC_GA_MEASUREMENT_ID and
 redeploy to turn it on); share cards in a real scraper (the built HTML
 was checked for the tags, not the rendered card); ES/PT still agent-
-written, not native-reviewed. Owner-side: NEXT_PUBLIC_SITE_URL when the
-domain is live, NEXT_PUBLIC_SUPPORT_EMAIL, and the pg_cron purge check
-(now a BLOCKING item in DEPLOY.md because the site promises it).
+written, not native-reviewed. The domain went
+primary the same day: production is https://getcontado.com (the
+vercel.app origin 307s to it), so SITE_URL's fallback IS the domain —
+the live canonicals/sitemap pointed at the redirecting Vercel URL for
+one deploy and were corrected. Owner-side: NEXT_PUBLIC_SUPPORT_EMAIL,
+NEXT_PUBLIC_GA_MEASUREMENT_ID when a GA4 property exists, and the
+pg_cron purge check (now a BLOCKING item in DEPLOY.md because the
+site promises it).
 
 MISSING / KNOWN GAPS (deliberate, or pre-existing and documented):
 - API route error bodies surface in English (server doesn't know the

@@ -3,9 +3,11 @@
  *
  * SITE_URL is the canonical origin every absolute URL on the site is built
  * from — metadataBase, canonicals, the sitemap, robots, JSON-LD. It reads
- * NEXT_PUBLIC_SITE_URL so the day the custom domain goes live is one env
- * var and a redeploy (NEXT_PUBLIC_* is inlined at build — see DEPLOY.md),
- * with the Vercel origin as the fallback so nothing breaks before then.
+ * NEXT_PUBLIC_SITE_URL first (NEXT_PUBLIC_* is inlined at build — see
+ * DEPLOY.md); the fallback is the real domain, getcontado.com, which went
+ * primary on Vercel on 2026-08-22 — the *.vercel.app origin now 307s to
+ * it, and a canonical that redirects is an SEO defect, so the fallback
+ * must be the domain, not the Vercel URL.
  *
  * Pure constants and tiny helpers; no DOM, no React — the site map below
  * feeds sitemap.ts, the footer and the breadcrumbs alike, so they can't
@@ -15,7 +17,7 @@
 export const SITE_NAME = "contado";
 
 export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://backoffice-nine-blond.vercel.app"
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://getcontado.com"
 ).replace(/\/+$/, "");
 
 /** Absolute URL for a site-relative path. */
