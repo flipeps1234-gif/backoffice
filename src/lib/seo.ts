@@ -101,7 +101,7 @@ export const softwareApplication = (
   inLanguage: ["en", "es", "pt-BR"],
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   featureList: [
-    "Read Venmo, Cash App and Zelle payment screenshots into a ledger",
+    "AI reads Venmo, Cash App and Zelle payment screenshots into a ledger",
     "Log cash income in a few taps, built for one hand",
     "Separate business from personal payments with a swipe",
     "Track who owes you, grouped by client and aged",

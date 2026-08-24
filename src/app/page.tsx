@@ -14,7 +14,7 @@ import { SITE_NAME, absolute } from "@/lib/site";
  * suffix on the home page itself); everything else is set here.
  */
 const DESCRIPTION =
-  "The bookkeeping app for cleaners, landscapers and barbers: turn Venmo, Cash App, Zelle and cash into real books, see who owes you, and be Schedule-C-ready in January. No bank login. Free.";
+  "The AI bookkeeping app for cleaners, landscapers and barbers: AI reads your Venmo, Cash App, Zelle and cash screenshots into real books — see who owes you, be Schedule-C-ready in January. No bank login. Free.";
 
 export const metadata: Metadata = {
   description: DESCRIPTION,
@@ -23,7 +23,9 @@ export const metadata: Metadata = {
   // /track or /for page (one page per cluster — lib/seo.ts).
   keywords: [
     "contado",
+    "contado ai",
     "getcontado",
+    "AI bookkeeping app",
     "bookkeeping app",
     "ledger app",
     "no bank login bookkeeping",
