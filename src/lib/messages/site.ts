@@ -224,9 +224,9 @@ export const messages = {
     pt: "Funciona se me pagam metade por Venmo e metade em dinheiro?",
   },
   "site.cleanersFaq1A": {
-    en: "Yes. Screenshots cover the apps; cash you type in with the numpad. Both land in the same books.",
-    es: "Sí. Las capturas cubren las apps; el efectivo lo escribes con el teclado. Todo llega a los mismos libros.",
-    pt: "Sim. Os prints cobrem os apps; o dinheiro você digita no teclado. Tudo cai no mesmo livro-caixa.",
+    en: "Yes. Screenshots cover the apps; cash you log as a sale in a few taps. Both land in the same books.",
+    es: "Sí. Las capturas cubren las apps; el efectivo lo registras como venta en unos toques. Todo llega a los mismos libros.",
+    pt: "Sim. Os prints cobrem os apps; o dinheiro você registra como venda em poucos toques. Tudo cai no mesmo livro-caixa.",
   },
   "site.cleanersFaq2Q": {
     en: "Do my clients see anything?",
@@ -344,9 +344,9 @@ export const messages = {
     pt: "Recebo quase tudo em dinheiro. Ainda vale a pena?",
   },
   "site.barbersFaq1A": {
-    en: "Yes — the numpad is built for it: amount first, one tap, done. Your cash days and your Cash App days land in the same books.",
-    es: "Sí — el teclado está hecho para eso: monto primero, un toque, listo. Tus días de efectivo y tus días de Cash App llegan a los mismos libros.",
-    pt: "Sim — o teclado foi feito para isso: valor primeiro, um toque, pronto. Seus dias de dinheiro e de Cash App caem no mesmo livro-caixa.",
+    en: "Yes — a cash cut is a few taps: the amount, then paid in cash. Your cash days and your Cash App days land in the same books.",
+    es: "Sí — un corte en efectivo son unos toques: el monto y pagado en efectivo. Tus días de efectivo y tus días de Cash App llegan a los mismos libros.",
+    pt: "Sim — um corte em dinheiro são poucos toques: o valor e pago em dinheiro. Seus dias de dinheiro e de Cash App caem no mesmo livro-caixa.",
   },
   "site.barbersFaq2Q": { en: "Does it book appointments?", es: "¿Agenda citas?", pt: "Marca horários?" },
   "site.barbersFaq2A": {
@@ -479,5 +479,292 @@ export const messages = {
     en: "The public website (these pages, not the app) may use Google Analytics to count visits. The app itself never sends analytics, and a browser that sends Do Not Track gets none at all.",
     es: "El sitio público (estas páginas, no la app) puede usar Google Analytics para contar visitas. La app nunca envía datos de análisis, y un navegador que envía Do Not Track no recibe ninguno.",
     pt: "O site público (estas páginas, não o app) pode usar o Google Analytics para contar visitas. O app em si nunca envia dados de análise, e um navegador que envia Do Not Track não recebe nenhum.",
+  },
+
+  // ---- footer: track-payments column ----
+  "site.footerTrack": { en: "Track payments", es: "Registrar pagos", pt: "Registrar pagamentos" },
+  "site.trackVenmo": { en: "Venmo bookkeeping", es: "Contabilidad de Venmo", pt: "Contabilidade do Venmo" },
+  "site.trackCashApp": { en: "Cash App bookkeeping", es: "Contabilidad de Cash App", pt: "Contabilidade do Cash App" },
+  "site.trackZelle": { en: "Zelle tracking", es: "Registro de Zelle", pt: "Controle do Zelle" },
+  "site.trackCash": { en: "Cash income", es: "Ingresos en efectivo", pt: "Renda em dinheiro" },
+
+  // ---- /track/venmo ----
+  "site.chVenmoTitle": {
+    en: "Venmo bookkeeping, from the screenshots you already take.",
+    es: "Contabilidad de Venmo, con las capturas que ya tomas.",
+    pt: "Contabilidade do Venmo, com os prints que você já tira.",
+  },
+  "site.chVenmoSub": {
+    en: "Business and personal mixed in one Venmo feed? Screenshot your Transactions list and contado turns it into real books — sorted, totaled, tax-ready.",
+    es: "¿Negocio y personal mezclados en un solo Venmo? Toma captura de tu lista de Transacciones y contado la convierte en libros de verdad — separados, sumados, listos para impuestos.",
+    pt: "Negócio e pessoal misturados num só Venmo? Tire print da sua lista de Transações e o contado transforma tudo em livro-caixa de verdade — separado, somado, pronto para o imposto.",
+  },
+  "site.chVenmoPain1": {
+    en: "Rent from your cousin, $120.00 from Maria, gas money — one feed, three different stories.",
+    es: "La renta de tu primo, $120.00 de Maria, dinero de gasolina — un solo feed, tres historias distintas.",
+    pt: "O aluguel do seu primo, $120.00 da Maria, dinheiro da gasolina — um feed só, três histórias diferentes.",
+  },
+  "site.chVenmoPain2": {
+    en: "The social feed hides amounts, and tax season doesn't care.",
+    es: "El feed social oculta los montos, y la temporada de impuestos no perdona.",
+    pt: "O feed social esconde os valores, e a época do imposto não perdoa.",
+  },
+  "site.chVenmoPain3": {
+    en: "Scrolling January through December to add up a year, by hand.",
+    es: "Recorrer de enero a diciembre para sumar el año, a mano.",
+    pt: "Rolar de janeiro a dezembro para somar o ano, na mão.",
+  },
+  "site.chVenmoDoes1": {
+    en: "Screenshot the Transactions list — not the social feed — and contado reads every payment: who, how much, when.",
+    es: "Toma captura de la lista de Transacciones — no del feed social — y contado lee cada pago: quién, cuánto, cuándo.",
+    pt: "Tire print da lista de Transações — não do feed social — e o contado lê cada pagamento: quem, quanto, quando.",
+  },
+  "site.chVenmoDoes2": {
+    en: "Swipe right for business, left for personal. Your cousin's rent never touches your books.",
+    es: "Desliza a la derecha para negocio, a la izquierda para personal. La renta de tu primo nunca toca tus libros.",
+    pt: "Deslize para a direita para negócio, para a esquerda para pessoal. O aluguel do seu primo nunca entra no seu livro-caixa.",
+  },
+  "site.chVenmoDoes3": {
+    en: "Duplicates are caught across overlapping screenshots, so nothing counts twice — one payment, one entry.",
+    es: "Los duplicados se detectan entre capturas superpuestas, así nada se cuenta dos veces — un pago, una entrada.",
+    pt: "Duplicatas são detectadas entre prints sobrepostos, então nada conta duas vezes — um pagamento, um lançamento.",
+  },
+  "site.chVenmoFaq1Q": {
+    en: "Do I have to connect my Venmo account?",
+    es: "¿Tengo que conectar mi cuenta de Venmo?",
+    pt: "Preciso conectar minha conta do Venmo?",
+  },
+  "site.chVenmoFaq1A": {
+    en: "No. There is no Venmo login and no bank connection — you screenshot your own Transactions list and upload it. Screenshots are read by an AI service and discarded, never stored.",
+    es: "No. No hay acceso a Venmo ni conexión bancaria — tú tomas captura de tu propia lista de Transacciones y la subes. Las capturas se leen con un servicio de IA y se descartan, nunca se guardan.",
+    pt: "Não. Não há login do Venmo nem conexão bancária — você tira print da sua própria lista de Transações e envia. Os prints são lidos por um serviço de IA e descartados, nunca guardados.",
+  },
+  "site.chVenmoFaq2Q": {
+    en: "I use a Venmo business profile. Does it still work?",
+    es: "Uso un perfil de negocio en Venmo. ¿Igual funciona?",
+    pt: "Uso um perfil comercial no Venmo. Ainda funciona?",
+  },
+  "site.chVenmoFaq2A": {
+    en: "Yes — contado reads the payments your screenshots show, whichever profile they come from. Business or personal, you still confirm every row before it lands in your books.",
+    es: "Sí — contado lee los pagos que muestran tus capturas, vengan del perfil que vengan. Negocio o personal, tú confirmas cada fila antes de que entre en tus libros.",
+    pt: "Sim — o contado lê os pagamentos que seus prints mostram, venham do perfil que vierem. Comercial ou pessoal, você confirma cada linha antes de entrar no livro-caixa.",
+  },
+
+  // ---- /track/cash-app ----
+  "site.chCashAppTitle": {
+    en: "Cash App bookkeeping for people paid by the day.",
+    es: "Contabilidad de Cash App para quien cobra por día.",
+    pt: "Contabilidade do Cash App para quem recebe por dia.",
+  },
+  "site.chCashAppSub": {
+    en: "Cuts, cleans, side jobs — screenshot your Cash App activity at close and the day is booked in two minutes, one hand.",
+    es: "Cortes, limpiezas, trabajos extra — captura tu actividad de Cash App al cierre y el día queda registrado en dos minutos, con una mano.",
+    pt: "Cortes, faxinas, bicos — tire print da sua atividade do Cash App no fim do dia e tudo fica lançado em dois minutos, com uma mão.",
+  },
+  "site.chCashAppPain1": {
+    en: "Cash App says one number, the drawer says another.",
+    es: "Cash App dice un número, la caja dice otro.",
+    pt: "O Cash App diz um número, a gaveta diz outro.",
+  },
+  "site.chCashAppPain2": {
+    en: "Payments to your $cashtag pile up with no note of which job they were.",
+    es: "Los pagos a tu $cashtag se acumulan sin nota de qué trabajo eran.",
+    pt: "Os pagamentos no seu $cashtag se acumulam sem nota de qual serviço eram.",
+  },
+  "site.chCashAppPain3": {
+    en: "In January someone asks for your income and it lives in two apps and a pocket.",
+    es: "En enero alguien pide tus ingresos y viven en dos apps y un bolsillo.",
+    pt: "Em janeiro alguém pede sua renda e ela mora em dois apps e um bolso.",
+  },
+  "site.chCashAppDoes1": {
+    en: "Screenshot your Cash App activity; contado reads every payment and you confirm each row before it counts.",
+    es: "Toma captura de tu actividad de Cash App; contado lee cada pago y tú confirmas cada fila antes de que cuente.",
+    pt: "Tire print da sua atividade do Cash App; o contado lê cada pagamento e você confirma cada linha antes de contar.",
+  },
+  "site.chCashAppDoes2": {
+    en: "Log cash jobs in a few taps — the amount, then paid in cash. Cash days and Cash App days land in the same books.",
+    es: "Los trabajos en efectivo se registran en unos toques — el monto y pagado en efectivo. Los días de efectivo y los de Cash App llegan a los mismos libros.",
+    pt: "Serviços em dinheiro entram em poucos toques — o valor e pago em dinheiro. Os dias de dinheiro e os de Cash App caem no mesmo livro-caixa.",
+  },
+  "site.chCashAppDoes3": {
+    en: "Who still owes you waits in its own tab, grouped by client, aged — one tap when they pay.",
+    es: "Quién te debe espera en su propia pestaña, por cliente y con los días — un toque cuando pagan.",
+    pt: "Quem ainda te deve espera na própria aba, por cliente e com os dias — um toque quando pagam.",
+  },
+  "site.chCashAppFaq1Q": {
+    en: "Cash App takes a fee on some payments. Which amount gets recorded?",
+    es: "Cash App cobra comisión en algunos pagos. ¿Qué monto se registra?",
+    pt: "O Cash App cobra taxa em alguns pagamentos. Qual valor é registrado?",
+  },
+  "site.chCashAppFaq1A": {
+    en: "The amount your screenshot shows. If you want to log a fee, add it as an expense — contado never invents numbers you didn't confirm.",
+    es: "El monto que muestra tu captura. Si quieres registrar la comisión, agrégala como gasto — contado nunca inventa números que no confirmaste.",
+    pt: "O valor que o seu print mostra. Se quiser registrar a taxa, lance como despesa — o contado nunca inventa números que você não confirmou.",
+  },
+  "site.chCashAppFaq2Q": {
+    en: "Half my week is cash, not Cash App. Still worth it?",
+    es: "La mitad de mi semana es efectivo, no Cash App. ¿Aún vale la pena?",
+    pt: "Metade da minha semana é dinheiro vivo, não Cash App. Ainda vale a pena?",
+  },
+  "site.chCashAppFaq2A": {
+    en: "Yes — a cash job is a few taps: the amount, then paid in cash. Both halves of your week land in the same books.",
+    es: "Sí — un trabajo en efectivo son unos toques: el monto y pagado en efectivo. Las dos mitades de tu semana llegan a los mismos libros.",
+    pt: "Sim — um serviço em dinheiro são poucos toques: o valor e pago em dinheiro. As duas metades da sua semana caem no mesmo livro-caixa.",
+  },
+
+  // ---- /track/zelle ----
+  "site.chZelleTitle": {
+    en: "Zelle payment tracking without the bank login.",
+    es: "Registro de pagos Zelle sin la clave del banco.",
+    pt: "Controle de pagamentos Zelle sem a senha do banco.",
+  },
+  "site.chZelleSub": {
+    en: "Zelle lives inside your banking app and exports nothing. Screenshot your Zelle activity and contado builds the books your bank never gave you.",
+    es: "Zelle vive dentro de la app de tu banco y no exporta nada. Captura tu actividad de Zelle y contado arma los libros que tu banco nunca te dio.",
+    pt: "O Zelle mora dentro do app do seu banco e não exporta nada. Tire print da sua atividade do Zelle e o contado monta o livro-caixa que seu banco nunca te deu.",
+  },
+  "site.chZellePain1": {
+    en: "No feed, no export, no history page — just entries inside your bank app.",
+    es: "Sin feed, sin exportar, sin página de historial — solo movimientos dentro de la app del banco.",
+    pt: "Sem feed, sem exportação, sem página de histórico — só lançamentos dentro do app do banco.",
+  },
+  "site.chZellePain2": {
+    en: "Payments from clients and transfers from family, all in the same list.",
+    es: "Pagos de clientes y transferencias de la familia, todo en la misma lista.",
+    pt: "Pagamentos de clientes e transferências da família, tudo na mesma lista.",
+  },
+  "site.chZellePain3": {
+    en: "Come tax time, Zelle income is the number everyone forgets.",
+    es: "Al llegar los impuestos, el ingreso por Zelle es el número que todos olvidan.",
+    pt: "Na hora do imposto, a renda do Zelle é o número que todo mundo esquece.",
+  },
+  "site.chZelleDoes1": {
+    en: "Screenshot the Zelle activity in your banking app — contado reads names, amounts and dates from the picture.",
+    es: "Toma captura de la actividad de Zelle en la app de tu banco — contado lee nombres, montos y fechas de la imagen.",
+    pt: "Tire print da atividade do Zelle no app do seu banco — o contado lê nomes, valores e datas da imagem.",
+  },
+  "site.chZelleDoes2": {
+    en: "Swipe business from personal; only business lands in your totals and your tax CSV.",
+    es: "Desliza para separar negocio de personal; solo el negocio entra en tus totales y en tu CSV de impuestos.",
+    pt: "Deslize para separar negócio de pessoal; só o negócio entra nos seus totais e no CSV do imposto.",
+  },
+  "site.chZelleDoes3": {
+    en: "Log the job when you finish it; when the Zelle payment shows up in a screenshot, it matches and clears the owed entry on its own.",
+    es: "Registra el trabajo al terminarlo; cuando el pago por Zelle aparece en una captura, se empareja y cierra lo pendiente solo.",
+    pt: "Registre o serviço ao terminar; quando o pagamento do Zelle aparece num print, ele concilia e dá baixa no pendente sozinho.",
+  },
+  "site.chZelleFaq1Q": {
+    en: "Which banks work?",
+    es: "¿Con qué bancos funciona?",
+    pt: "Funciona com quais bancos?",
+  },
+  "site.chZelleFaq1A": {
+    en: "Any bank whose app shows your Zelle activity on screen — if you can screenshot it, contado can read it. You confirm every row before it counts.",
+    es: "Cualquier banco cuya app muestre tu actividad de Zelle en pantalla — si puedes tomarle captura, contado puede leerla. Tú confirmas cada fila antes de que cuente.",
+    pt: "Qualquer banco cujo app mostre sua atividade do Zelle na tela — se dá para tirar print, o contado consegue ler. Você confirma cada linha antes de contar.",
+  },
+  "site.chZelleFaq2Q": {
+    en: "Do I have to give contado my bank login?",
+    es: "¿Tengo que darle a contado la clave de mi banco?",
+    pt: "Preciso dar ao contado a senha do meu banco?",
+  },
+  "site.chZelleFaq2A": {
+    en: "No. You upload your own screenshots — there is no bank login in contado today, and screenshots will always be the default.",
+    es: "No. Tú subes tus propias capturas — hoy no hay acceso bancario en contado, y las capturas siempre serán lo principal.",
+    pt: "Não. Você envia seus próprios prints — hoje não existe login bancário no contado, e os prints sempre serão o padrão.",
+  },
+
+  // ---- /track/cash ----
+  "site.chCashTitle": {
+    en: "How to track cash income when you're self-employed.",
+    es: "Cómo llevar el ingreso en efectivo si trabajas por tu cuenta.",
+    pt: "Como controlar a renda em dinheiro de quem trabalha por conta própria.",
+  },
+  "site.chCashSub": {
+    en: "No receipt, no record, no proof — unless you log it. contado makes the log quick enough to actually happen: type the amount, mark it paid in cash, done.",
+    es: "Sin recibo, sin registro, sin comprobante — a menos que lo anotes. contado hace el registro tan rápido que de verdad sucede: escribes el monto, lo marcas pagado en efectivo, listo.",
+    pt: "Sem recibo, sem registro, sem comprovante — a não ser que você anote. O contado deixa o registro rápido o bastante para acontecer de verdade: você digita o valor, marca como pago em dinheiro, pronto.",
+  },
+  "site.chCashPain1": {
+    en: "The drawer knows your real number; your records don't.",
+    es: "La caja sabe tu número real; tus registros no.",
+    pt: "A gaveta sabe seu número real; seus registros não.",
+  },
+  "site.chCashPain2": {
+    en: "Apartments, loans and tax preparers all ask for proof of income that cash can't show.",
+    es: "Departamentos, préstamos y contadores piden un comprobante de ingresos que el efectivo no da.",
+    pt: "Aluguel, financiamento e contador pedem um comprovante de renda que o dinheiro vivo não dá.",
+  },
+  "site.chCashPain3": {
+    en: "A year of little jobs adds up to a number you can only guess.",
+    es: "Un año de trabajos pequeños suma un número que solo puedes adivinar.",
+    pt: "Um ano de servicinhos soma um número que você só consegue chutar.",
+  },
+  "site.chCashDoes1": {
+    en: "Log a cash job in a few taps — the amount, then paid in cash. Built for one hand, between jobs.",
+    es: "Registra un trabajo en efectivo en unos toques — el monto y pagado en efectivo. Hecho para una mano, entre trabajos.",
+    pt: "Registre um serviço em dinheiro em poucos toques — o valor e pago em dinheiro. Feito para uma mão, entre um serviço e outro.",
+  },
+  "site.chCashDoes2": {
+    en: "Cash sits next to your Venmo, Cash App and Zelle income — one ledger, every total real.",
+    es: "El efectivo queda junto a tus ingresos de Venmo, Cash App y Zelle — un solo libro, cada total real.",
+    pt: "O dinheiro fica ao lado da sua renda de Venmo, Cash App e Zelle — um livro só, cada total de verdade.",
+  },
+  "site.chCashDoes3": {
+    en: "Print a proof of income any time, and hand your preparer a CSV of actual income and expenses.",
+    es: "Imprime un comprobante de ingresos cuando quieras, y entrégale a tu contador un CSV de ingresos y gastos reales.",
+    pt: "Imprima um comprovante de renda quando quiser, e entregue ao seu contador um CSV de renda e despesas reais.",
+  },
+  "site.chCashFaq1Q": {
+    en: "Is logging cash income even worth it for taxes?",
+    es: "¿Vale la pena registrar el ingreso en efectivo para los impuestos?",
+    pt: "Vale a pena registrar a renda em dinheiro para o imposto?",
+  },
+  "site.chCashFaq1A": {
+    en: "What you report is between you and your preparer — contado's job is the record. Every cash entry is dated, totaled and exportable, so whatever you decide, you have the numbers.",
+    es: "Lo que declaras es entre tú y tu contador — el trabajo de contado es el registro. Cada entrada en efectivo queda con fecha, sumada y exportable, así que decidas lo que decidas, tienes los números.",
+    pt: "O que você declara é entre você e seu contador — o trabalho do contado é o registro. Cada lançamento em dinheiro fica com data, somado e exportável; decida o que decidir, os números estão com você.",
+  },
+  "site.chCashFaq2Q": {
+    en: "Can I log a cash job someone still owes me for?",
+    es: "¿Puedo registrar un trabajo en efectivo que todavía me deben?",
+    pt: "Posso registrar um serviço em dinheiro que ainda estão me devendo?",
+  },
+  "site.chCashFaq2A": {
+    en: "Yes — log the sale and answer “No — owes me.” It waits in Owed under their name until you tap “Got cash.”",
+    es: "Sí — registra la venta y responde “No — me debe”. Queda en Por cobrar a su nombre hasta que tocas “Recibí efectivo”.",
+    pt: "Sim — registre a venda e responda “Não — me deve”. Fica em A receber no nome da pessoa até você tocar “Recebi em dinheiro”.",
+  },
+
+  // ---- FAQ: long-tail additions ----
+  "site.faq11Q": {
+    en: "How do I keep track of who owes me money?",
+    es: "¿Cómo llevo el control de quién me debe dinero?",
+    pt: "Como faço para saber quem está me devendo?",
+  },
+  "site.faq11A": {
+    en: "Log the job when you do the work, even before the money arrives. It waits in Owed, grouped by client and aged, until you tap “Got cash” — or a payment in your next screenshots clears it automatically.",
+    es: "Registra el trabajo cuando lo haces, aun antes de que llegue el dinero. Queda en la pestaña Por cobrar, por cliente y con los días, hasta que tocas “Recibí efectivo” — o un pago en tus próximas capturas lo cierra solo.",
+    pt: "Registre o serviço quando fizer o trabalho, mesmo antes de o dinheiro chegar. Ele espera na aba A receber, por cliente e com os dias, até você tocar “Recebi em dinheiro” — ou um pagamento nos próximos prints dá baixa sozinho.",
+  },
+  "site.faq12Q": {
+    en: "How do I prove my income if I'm paid in cash?",
+    es: "¿Cómo compruebo mis ingresos si me pagan en efectivo?",
+    pt: "Como comprovo minha renda se recebo em dinheiro?",
+  },
+  "site.faq12A": {
+    en: "Log the cash as it comes in. contado builds a proof of income you can print or save as PDF, plus a CSV of actual income and expenses your tax preparer opens directly.",
+    es: "Registra el efectivo cuando llega. contado arma un comprobante de ingresos que puedes imprimir o guardar como PDF, más un CSV de ingresos y gastos reales que tu contador abre directo.",
+    pt: "Registre o dinheiro conforme ele entra. O contado monta um comprovante de renda que você pode imprimir ou salvar em PDF, mais um CSV de renda e despesas reais que seu contador abre direto.",
+  },
+  "site.faq13Q": {
+    en: "Can it separate business and personal Venmo payments?",
+    es: "¿Puede separar los pagos personales y de negocio en Venmo?",
+    pt: "Dá para separar pagamentos pessoais e do negócio no Venmo?",
+  },
+  "site.faq13A": {
+    en: "Yes — that's the swipe. Every payment read from your screenshots becomes a card: right is business, left is personal. Personal never touches your books or your taxes.",
+    es: "Sí — para eso es el deslizamiento. Cada pago leído de tus capturas se vuelve una tarjeta: derecha es negocio, izquierda es personal. Lo personal nunca toca tus libros ni tus impuestos.",
+    pt: "Sim — é para isso que serve o deslize. Cada pagamento lido dos seus prints vira um cartão: direita é negócio, esquerda é pessoal. O pessoal nunca entra no seu livro-caixa nem nos seus impostos.",
   },
 } as const;

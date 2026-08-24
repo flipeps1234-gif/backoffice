@@ -36,13 +36,18 @@ export const pageMetadata = ({
   title,
   description,
   path,
+  keywords,
 }: {
   title: string;
   description: string;
   path: string;
+  /** The keyword cluster this page owns — one page per cluster, so
+   *  pages never compete with each other for the same query. */
+  keywords?: readonly string[];
 }): Metadata => ({
   title,
   description,
+  ...(keywords ? { keywords: [...keywords] } : {}),
   alternates: { canonical: path },
   openGraph: {
     ...OG_BASE,
@@ -69,28 +74,43 @@ export const breadcrumbs = (
   ),
 });
 
-/** The organization, once, for the pages that describe the company. */
+/** The organization, once, for the pages that describe the company.
+ *  alternateName carries the domain-shaped brand query ("getcontado"). */
 export const organization = (): Record<string, unknown> => ({
   "@context": "https://schema.org",
   "@type": "Organization",
   name: SITE_NAME,
+  alternateName: ["getcontado", "contado app"],
   url: absolute("/"),
   logo: absolute("/icon.svg"),
 });
 
-/** The product itself. Free — and the price says so in the markup. */
+/** The product itself. Free — and the price says so in the markup.
+ *  featureList states, in query-shaped words, only what ships. */
 export const softwareApplication = (
   description: string,
 ): Record<string, unknown> => ({
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   name: SITE_NAME,
+  alternateName: "getcontado",
   applicationCategory: "FinanceApplication",
   operatingSystem: "Web",
   url: absolute("/"),
   description,
   inLanguage: ["en", "es", "pt-BR"],
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  featureList: [
+    "Read Venmo, Cash App and Zelle payment screenshots into a ledger",
+    "Log cash income in a few taps, built for one hand",
+    "Separate business from personal payments with a swipe",
+    "Track who owes you, grouped by client and aged",
+    "Schedule C expense categories on receipts",
+    "Mileage estimate from client distances — no GPS",
+    "Proof of income as print or PDF",
+    "CSV export for your tax preparer, free forever",
+    "English, Spanish and Portuguese",
+  ],
 });
 
 /** FAQPage from plain question/answer pairs (English, the prerender). */

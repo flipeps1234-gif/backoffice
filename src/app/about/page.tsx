@@ -8,6 +8,7 @@ export const metadata: Metadata = pageMetadata({
   description:
     "Why contado exists: real books for people who clean, mow and cut for a living and get paid through apps and cash. No bank login, no invoicing, no ads.",
   path: "/about",
+  keywords: ["about contado", "contado app", "getcontado", "why contado exists"],
 });
 
 export default function AboutPage() {

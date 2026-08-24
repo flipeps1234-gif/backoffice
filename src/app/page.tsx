@@ -14,10 +14,22 @@ import { SITE_NAME, absolute } from "@/lib/site";
  * suffix on the home page itself); everything else is set here.
  */
 const DESCRIPTION =
-  "Turn Venmo, Cash App, Zelle and cash into real books, automatically. Built for cleaners, landscapers and barbers. Free.";
+  "The bookkeeping app for cleaners, landscapers and barbers: turn Venmo, Cash App, Zelle and cash into real books, see who owes you, and be Schedule-C-ready in January. No bank login. Free.";
 
 export const metadata: Metadata = {
   description: DESCRIPTION,
+  // Brand + generic head terms only. The channel and trade phrases are
+  // deliberately absent: each of those clusters is owned by exactly one
+  // /track or /for page (one page per cluster — lib/seo.ts).
+  keywords: [
+    "contado",
+    "getcontado",
+    "bookkeeping app",
+    "ledger app",
+    "no bank login bookkeeping",
+    "who owes me money",
+    "self-employed taxes",
+  ],
   alternates: { canonical: "/" },
   openGraph: {
     ...OG_BASE,

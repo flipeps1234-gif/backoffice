@@ -16,21 +16,48 @@ import TradeContent from "./trade-content";
 export const generateStaticParams = () => TRADES.map((trade) => ({ trade }));
 export const dynamicParams = false;
 
-const META: Record<Trade, { title: string; description: string }> = {
+const META: Record<
+  Trade,
+  { title: string; description: string; keywords: readonly string[] }
+> = {
   cleaners: {
     title: "Bookkeeping for house cleaners",
     description:
       "Turn Venmo, Cash App, Zelle and cash into real books from the driveway. Track who owes you, tag supplies for Schedule C, export for your tax preparer. Free.",
+    keywords: [
+      "bookkeeping for house cleaners",
+      "house cleaner income tracker",
+      "cleaning business bookkeeping app",
+      "self-employed housekeeper taxes",
+      "cleaning clients who owe money",
+      "Venmo bookkeeping for cleaners",
+    ],
   },
   landscapers: {
     title: "Bookkeeping for landscapers",
     description:
       "Payments from the truck, one hand: Venmo, Cash App, Zelle and cash into real books. Recurring monthly accounts, who owes you, a mileage estimate, Schedule C. Free.",
+    keywords: [
+      "landscaping bookkeeping app",
+      "lawn care income tracker",
+      "self-employed landscaper taxes",
+      "recurring lawn accounts",
+      "mileage log lawn care no GPS",
+      "Venmo bookkeeping for landscapers",
+    ],
   },
   barbers: {
     title: "Bookkeeping for barbers",
     description:
       "Cash App and cash days in the same books, two minutes at close. Who still owes you, chair rent and product tagged for Schedule C. Free.",
+    keywords: [
+      "barber bookkeeping app",
+      "barber income tracker",
+      "Cash App taxes for barbers",
+      "chair rent expense tracking",
+      "barber cash income log",
+      "self-employed barber Schedule C",
+    ],
   },
 };
 

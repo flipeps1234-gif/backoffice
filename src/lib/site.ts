@@ -31,6 +31,13 @@ export type Trade = (typeof TRADES)[number];
 export const isTrade = (value: string): value is Trade =>
   (TRADES as readonly string[]).includes(value);
 
+/** The payment channels people search by — each gets a public page
+ *  (/track/<channel>). Same rule: slugs are URLs, add don't rename. */
+export const CHANNELS = ["venmo", "cash-app", "zelle", "cash"] as const;
+export type Channel = (typeof CHANNELS)[number];
+export const isChannel = (value: string): value is Channel =>
+  (CHANNELS as readonly string[]).includes(value);
+
 /** Every public page that belongs in the sitemap, with crawl hints.
  *  /help/[slug] is appended by sitemap.ts from HELP_SLUGS. The app
  *  (/app) is deliberately absent — it is a sign-in gate, not content,
@@ -45,6 +52,11 @@ export const PUBLIC_PAGES: readonly {
   { path: "/pricing", changeFrequency: "monthly", priority: 0.9 },
   ...TRADES.map((trade) => ({
     path: `/for/${trade}`,
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  })),
+  ...CHANNELS.map((channel) => ({
+    path: `/track/${channel}`,
     changeFrequency: "monthly" as const,
     priority: 0.8,
   })),

@@ -8,8 +8,18 @@ import FaqContent from "./faq-content";
 export const metadata: Metadata = pageMetadata({
   title: "FAQ",
   description:
-    "Plain answers: is contado free, which payment apps work, no bank login, what happens to screenshots, taxes, export and delete.",
+    "Plain answers: is contado free, which payment apps work, no bank login, what happens to screenshots, how to track who owes you, proof of cash income, taxes, export and delete.",
   path: "/faq",
+  // Branded/question intent only — the answer-shaped clusters (owed
+  // tracker, cash proof of income, Venmo separation) belong to the
+  // /track pages that own them.
+  keywords: [
+    "contado faq",
+    "is contado free",
+    "contado questions",
+    "contado demo account",
+    "bookkeeping app faq",
+  ],
 });
 
 export default function FaqPage() {

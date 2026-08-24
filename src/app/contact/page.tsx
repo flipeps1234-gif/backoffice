@@ -7,6 +7,7 @@ export const metadata: Metadata = pageMetadata({
   title: "Contact",
   description: "Talk to contado — text us, email us, or find the answer in the help center.",
   path: "/contact",
+  keywords: ["contact contado", "contado support", "getcontado help"],
 });
 
 export default function ContactPage() {

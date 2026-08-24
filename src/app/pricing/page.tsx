@@ -10,6 +10,13 @@ export const metadata: Metadata = pageMetadata({
   title: "Pricing",
   description: DESCRIPTION,
   path: "/pricing",
+  keywords: [
+    "contado pricing",
+    "free bookkeeping app",
+    "free ledger app for self-employed",
+    "founding hundred",
+    "bookkeeping app cost",
+  ],
 });
 
 export default function PricingPage() {

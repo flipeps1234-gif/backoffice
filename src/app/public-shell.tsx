@@ -39,6 +39,13 @@ const PRODUCT_LINKS: readonly { href: string; key: MessageKey }[] = [
   { href: "/for/barbers", key: "site.forBarbers" },
 ];
 
+const TRACK_LINKS: readonly { href: string; key: MessageKey }[] = [
+  { href: "/track/venmo", key: "site.trackVenmo" },
+  { href: "/track/cash-app", key: "site.trackCashApp" },
+  { href: "/track/zelle", key: "site.trackZelle" },
+  { href: "/track/cash", key: "site.trackCash" },
+];
+
 const COMPANY_LINKS: readonly { href: string; key: MessageKey }[] = [
   { href: "/about", key: "site.navAbout" },
   { href: "/contact", key: "site.navContact" },
@@ -193,8 +200,9 @@ export function PublicFooter() {
   const { t } = useLocale();
   return (
     <footer className="mt-14 space-y-6 border-t border-neutral-200 pt-8 dark:border-neutral-800">
-      <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
         <FooterColumn title="site.footerProduct" links={PRODUCT_LINKS} />
+        <FooterColumn title="site.footerTrack" links={TRACK_LINKS} />
         <FooterColumn title="site.footerCompany" links={COMPANY_LINKS} />
         <FooterColumn title="site.footerLegal" links={LEGAL_LINKS} />
       </div>
