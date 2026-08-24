@@ -264,10 +264,12 @@ conversion; fires on form success, never the email), open_app_click
 (beacon transport — full-page nav), language_switch ({language}).
 Wiring proven locally with a throwaway ID: dataLayer showed js →
 config → event language_switch {language:"es"} on a real ES click
-(temp ID removed from .env.local after). DEPLOY.md has the 5-minute
-GA connection steps + the full event table; still dark in prod until
-NEXT_PUBLIC_GA_MEASUREMENT_ID is set. founding_signup should be
-marked a key event in GA4 Admin once it first fires.
+(temp ID removed from .env.local after). DEPLOY.md has the GA
+connection notes + the full event table. LIVE since 2026-08-24: the
+owner's property G-JEM7B09P0L is the committed default (measurement
+IDs are public; env var still overrides, empty string disables).
+founding_signup should be marked a key event in GA4 Admin once it
+first fires.
 
 Desktop site (2026-08-23): the marketing pages gained real desktop
 layouts — additive lg: classes ONLY, mobile markup untouched. At lg

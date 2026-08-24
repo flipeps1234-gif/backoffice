@@ -30,7 +30,12 @@ import Script from "next/script";
  * already exists (boring wins).
  */
 
-const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+/** The GA4 measurement ID. Not a secret — it ships in the public HTML
+ *  of every site that uses GA — so the real property's ID is the
+ *  committed default (same posture as SITE_URL). The env var still
+ *  overrides: set a different ID to repoint, or set it to an EMPTY
+ *  string to turn analytics off entirely (empty is falsy below). */
+const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "G-JEM7B09P0L";
 
 const isPublicPath = (path: string): boolean =>
   !path.startsWith("/app") && !path.startsWith("/api");

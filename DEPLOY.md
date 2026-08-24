@@ -105,9 +105,10 @@ give it an ID. To turn it on:
    `https://getcontado.com`. Leave **Enhanced measurement ON** — the
    site sends no manual page_view and counts client-side navigation
    through it (see `src/app/analytics.tsx`).
-3. Copy the **Measurement ID** (`G-XXXXXXXXXX`) → Vercel → Settings →
-   Environment Variables → `NEXT_PUBLIC_GA_MEASUREMENT_ID` → redeploy
-   (build-time inlined).
+3. DONE for the current property: `G-JEM7B09P0L` is the committed
+   default in `src/app/analytics.tsx`. Only touch
+   `NEXT_PUBLIC_GA_MEASUREMENT_ID` to repoint to a different property
+   (new ID) or to disable (empty string) — then redeploy.
 4. After the first `founding_signup` event arrives (Admin → Events),
    toggle it as a **key event** — that is the site's one conversion.
 
@@ -152,7 +153,7 @@ built against a Supabase host that no longer exists in DNS.
 | `NEXT_PUBLIC_SUPPORT_WHATSAPP` | Vercel, optional | Settings shows "Support line — coming soon" instead of the WhatsApp link. Digits only, country code first (e.g. `15551234567`); build-time inlined, so set it and redeploy |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | Vercel, optional | The contact page and footer show no email link. Build-time inlined |
 | `NEXT_PUBLIC_SITE_URL` | Vercel, optional | Unset = `https://getcontado.com`, the real domain (primary on Vercel since 2026-08-22; the `*.vercel.app` origin 307s to it). Only set this if the domain ever changes — then redeploy, since every absolute URL on the site (canonicals, sitemap, robots, share cards, JSON-LD) reads it from `src/lib/site.ts` |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Vercel, optional | No analytics at all — the default build loads no third-party tag. Set the GA4 measurement ID (`G-XXXXXXXXXX`) to count visits on the PUBLIC pages only: `/app` and `/api` never send a hit (the opt-out flag is set there and the two ways into the app are full-page navigations), and a browser sending Do Not Track gets nothing (see `src/app/analytics.tsx`). Leave GA4's **Enhanced measurement** ON (the default) — it counts client-side navigations; the app sends no manual page_view, so turning it off would undercount, and adding a manual one would double-count. Build-time inlined |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Vercel, optional | Unset = the real property `G-JEM7B09P0L` (a measurement ID is public by nature, so it is the committed default). Set to an EMPTY string to turn analytics off, or to another ID to repoint. Set the GA4 measurement ID (`G-XXXXXXXXXX`) to count visits on the PUBLIC pages only: `/app` and `/api` never send a hit (the opt-out flag is set there and the two ways into the app are full-page navigations), and a browser sending Do Not Track gets nothing (see `src/app/analytics.tsx`). Leave GA4's **Enhanced measurement** ON (the default) — it counts client-side navigations; the app sends no manual page_view, so turning it off would undercount, and adding a manual one would double-count. Build-time inlined |
 
 ---
 
