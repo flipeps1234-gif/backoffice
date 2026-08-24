@@ -236,6 +236,27 @@ NEXT_PUBLIC_GA_MEASUREMENT_ID when a GA4 property exists, and the
 pg_cron purge check (now a BLOCKING item in DEPLOY.md because the
 site promises it).
 
+Keyword build-out (2026-08-23, same day): every keyword cluster the
+brand can own now maps to exactly ONE page — documented in lib/seo.ts
+("one page per cluster") and enforced by review. NEW: /track/{venmo,
+cash-app,zelle,cash} own the payment-channel clusters ("Venmo
+bookkeeping", "Cash App bookkeeping", "Zelle payment tracking", "how
+to track cash income"), trilingual, real-component demos, FAQPage +
+breadcrumbs markup, in the sitemap and a fourth footer column. /faq
+gained three long-tail questions (who owes me / prove cash income /
+separate Venmo). JSON-LD: Organization alternateName "getcontado",
+SoftwareApplication featureList. Home keeps brand + head terms only.
+The 8-agent adversarial pass on this copy confirmed and FIXED a HIGH
+truth defect: the cash-income copy (new AND two pre-existing trade
+FAQ keys) claimed the amount-first numpad, which has been EXPENSE-
+ONLY since v0.5 — income copy now describes the real sale flow. Also
+fixed: PT quoted a nonexistent button ("Não — está devendo" → "Não —
+me deve"), home/faq keyword cannibalization, SERP-length
+descriptions. KNOWN LIMIT, unchanged: the prerender is English —
+ES/PT copy hydrates client-side on the same URLs, so Spanish and
+Portuguese queries can't rank separately without path-based locales
+(a real i18n-routing project, deliberately not started).
+
 Desktop site (2026-08-23): the marketing pages gained real desktop
 layouts — additive lg: classes ONLY, mobile markup untouched. At lg
 the frame widens to max-w-5xl (the app's own desktop width) and
