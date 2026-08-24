@@ -2,6 +2,7 @@
 
 import { LOCALES, type Locale } from "@/lib/i18n";
 import { setLocale } from "@/lib/locale";
+import { trackEvent } from "./analytics";
 import { useLocale } from "./use-locale";
 
 /**
@@ -33,7 +34,13 @@ export default function LocalePicker({ compact }: { compact?: boolean }) {
               ? "bg-foreground text-background"
               : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900"
           }`}
-          onClick={() => setLocale(option)}
+          onClick={() => {
+            setLocale(option);
+            // No-op inside /app and without GA armed (analytics.tsx) —
+            // on the public site it answers "which language do
+            // visitors actually read?"
+            trackEvent("language_switch", { language: option });
+          }}
         >
           {compact ? option.toUpperCase() : LABELS[option]}
         </button>

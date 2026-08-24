@@ -44,6 +44,26 @@ type GaWindow = Window & {
 
 const noSubscribe = () => () => {};
 
+/**
+ * Fire a GA4 event from anywhere on the public site. Every guard the
+ * page-view path has applies here too, by construction: if the ID is
+ * unset, the browser sent Do Not Track, or GA was never armed on this
+ * page, `window.gtag` does not exist and this is a no-op. The path
+ * check is belt-and-braces for the shared components (the language
+ * picker also renders inside /app). Events carry NO personal data —
+ * names and coarse params only, never an email or an amount.
+ */
+export function trackEvent(
+  name: "founding_signup" | "open_app_click" | "language_switch",
+  params?: Record<string, string | number | boolean>,
+) {
+  if (typeof window === "undefined" || !GA_ID) return;
+  if (!isPublicPath(window.location.pathname)) return;
+  const w = window as unknown as GaWindow;
+  if (!w.gtag) return;
+  w.gtag("event", name, { ...params });
+}
+
 /** True only on a hydrated client that has NOT asked for Do Not Track.
  *  The server snapshot is false, so the server renders nothing and the
  *  client decides after hydration — no mismatch, no flash of a script. */

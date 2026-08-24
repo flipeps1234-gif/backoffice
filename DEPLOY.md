@@ -92,6 +92,39 @@ Anyone who views source can spend against your $50 cap.
 
 Setting this flips tester to the free mock with no code change.
 
+### Connecting Google Analytics (one time, ~5 minutes)
+
+The site ships with GA4 wiring that stays completely dark until you
+give it an ID. To turn it on:
+
+1. [analytics.google.com](https://analytics.google.com) → Admin →
+   **Create property** (name it "contado", timezone/currency US).
+   Decline the optional data-sharing extras if you want the minimal
+   setup — contado's own posture.
+2. In the property: **Data streams → Add stream → Web**, URL
+   `https://getcontado.com`. Leave **Enhanced measurement ON** — the
+   site sends no manual page_view and counts client-side navigation
+   through it (see `src/app/analytics.tsx`).
+3. Copy the **Measurement ID** (`G-XXXXXXXXXX`) → Vercel → Settings →
+   Environment Variables → `NEXT_PUBLIC_GA_MEASUREMENT_ID` → redeploy
+   (build-time inlined).
+4. After the first `founding_signup` event arrives (Admin → Events),
+   toggle it as a **key event** — that is the site's one conversion.
+
+What the site sends, and nothing else:
+
+| Event | Fires when | Params |
+|---|---|---|
+| `page_view` | GA's own (config + Enhanced Measurement) | GA defaults |
+| `founding_signup` | the founding-hundred form succeeds | none — never the email |
+| `open_app_click` | the header "Open the app" link | beacon transport |
+| `language_switch` | EN/ES/PT picker on public pages | `language` |
+
+Nothing fires on /app or /api, a Do-Not-Track browser sends nothing,
+and no event ever carries personal data. To sanity-check a live
+deploy: GA Admin → **DebugView** shows the events above within
+seconds of the actions.
+
 ### Changing an env var is not enough — you must redeploy
 
 `NEXT_PUBLIC_*` values are **inlined into the client bundle at build time**,

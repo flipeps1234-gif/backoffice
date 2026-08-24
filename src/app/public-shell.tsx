@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { trackEvent } from "./analytics";
 import LocalePicker from "./locale-picker";
 import Mark from "./mark";
 import { useLocale } from "./use-locale";
@@ -124,6 +125,9 @@ export function PublicHeader() {
               button, not a shrunken one. */}
           <a
             href="/app"
+            // beacon transport: this is a full-document navigation, so a
+            // plain event could be lost as the page unloads.
+            onClick={() => trackEvent("open_app_click", { transport_type: "beacon" })}
             className="inline-flex h-11 items-center rounded-lg border border-neutral-300 px-4 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-900"
           >
             {t("landing.openApp")}

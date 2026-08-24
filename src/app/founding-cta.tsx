@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { trackEvent } from "./analytics";
 import { useLocale } from "./use-locale";
 
 /**
@@ -29,6 +30,9 @@ export function FoundingForm() {
         body: JSON.stringify({ email: normalized }),
       });
       setState(response.ok ? "done" : "error");
+      // The site's one conversion. The event carries no email — GA
+      // counts the signup; the address lives only in founding_list.
+      if (response.ok) trackEvent("founding_signup");
     } catch {
       setState("error");
     }

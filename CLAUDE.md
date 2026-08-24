@@ -257,6 +257,18 @@ ES/PT copy hydrates client-side on the same URLs, so Spanish and
 Portuguese queries can't rank separately without path-based locales
 (a real i18n-routing project, deliberately not started).
 
+GA4 events (2026-08-24): analytics.tsx exports trackEvent — no-op
+without an ID, off /app, silent under Do Not Track, never carries
+personal data. Three events wired: founding_signup (the ONE
+conversion; fires on form success, never the email), open_app_click
+(beacon transport — full-page nav), language_switch ({language}).
+Wiring proven locally with a throwaway ID: dataLayer showed js →
+config → event language_switch {language:"es"} on a real ES click
+(temp ID removed from .env.local after). DEPLOY.md has the 5-minute
+GA connection steps + the full event table; still dark in prod until
+NEXT_PUBLIC_GA_MEASUREMENT_ID is set. founding_signup should be
+marked a key event in GA4 Admin once it first fires.
+
 Desktop site (2026-08-23): the marketing pages gained real desktop
 layouts — additive lg: classes ONLY, mobile markup untouched. At lg
 the frame widens to max-w-5xl (the app's own desktop width) and
