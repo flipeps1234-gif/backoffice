@@ -41,14 +41,16 @@ function Step({
 }) {
   const { t } = useLocale();
   return (
-    <li className="space-y-3">
-      <h2 className="text-base font-semibold">
-        <span className="mr-2 tabular-nums text-neutral-500">{n}</span>
-        {t(title)}
-      </h2>
-      <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
-        {t(detail)}
-      </p>
+    <li className="space-y-3 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:space-y-0">
+      <div className="space-y-3">
+        <h2 className="text-base font-semibold">
+          <span className="mr-2 tabular-nums text-neutral-500">{n}</span>
+          {t(title)}
+        </h2>
+        <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+          {t(detail)}
+        </p>
+      </div>
       <DemoFrame label={t("landing.demoData")}>{children}</DemoFrame>
     </li>
   );
@@ -60,13 +62,13 @@ export default function HowItWorksContent() {
   const owed = mounted ? owedDemo() : null;
 
   return (
-    <main className="mx-auto w-full max-w-[40rem] px-4 py-8">
+    <main className="mx-auto w-full max-w-[40rem] px-4 py-8 lg:max-w-5xl">
       <PublicHeader />
 
-      <h1 className="text-4xl font-semibold tracking-tight">{t("site.howTitle")}</h1>
+      <h1 className="max-w-3xl text-4xl font-semibold tracking-tight">{t("site.howTitle")}</h1>
       <p className="mt-3 text-sm text-neutral-500">{t("site.howIntro")}</p>
 
-      <ol className="mt-10 space-y-10">
+      <ol className="mt-10 space-y-10 lg:space-y-12">
         <Step n={1} title="landing.step1Title" detail="site.how1Detail">
           <DropZone busy={false} onFiles={noop} />
         </Step>
@@ -94,14 +96,16 @@ export default function HowItWorksContent() {
             />
           )}
         </Step>
-        <li className="space-y-3">
-          <h2 className="text-base font-semibold">
-            <span className="mr-2 tabular-nums text-neutral-500">5</span>
-            {t("landing.owedTitle")}
-          </h2>
-          <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
-            {t("site.how5Detail")}
-          </p>
+        <li className="space-y-3 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:space-y-0">
+          <div className="space-y-3">
+            <h2 className="text-base font-semibold">
+              <span className="mr-2 tabular-nums text-neutral-500">5</span>
+              {t("landing.owedTitle")}
+            </h2>
+            <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+              {t("site.how5Detail")}
+            </p>
+          </div>
           {owed && (
             <DemoFrame label={t("landing.demoData")}>
               <OwedTab
@@ -115,7 +119,7 @@ export default function HowItWorksContent() {
             </DemoFrame>
           )}
         </li>
-        <li className="space-y-3">
+        <li className="space-y-3 lg:max-w-3xl">
           <h2 className="text-base font-semibold">
             <span className="mr-2 tabular-nums text-neutral-500">6</span>
             {t("landing.taxTitle")}
@@ -130,7 +134,7 @@ export default function HowItWorksContent() {
 
       <section className="mt-14 space-y-3">
         <h2 className="text-base font-semibold">{t("site.whatNot")}</h2>
-        <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
+        <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400 lg:grid lg:grid-cols-2 lg:gap-x-12 lg:gap-y-2 lg:space-y-0">
           <li>{t("site.not1")}</li>
           <li>{t("site.not2")}</li>
           <li>{t("site.not3")}</li>
@@ -138,7 +142,7 @@ export default function HowItWorksContent() {
         </ul>
       </section>
 
-      <div className="mt-14">
+      <div className="mt-14 lg:mx-auto lg:w-full lg:max-w-[40rem]">
         <Cta />
       </div>
 

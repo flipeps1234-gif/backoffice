@@ -127,36 +127,43 @@ export default function TradeContent({ trade }: { trade: Trade }) {
   const others = TRADES.filter((other) => other !== trade);
 
   return (
-    <main className="mx-auto w-full max-w-[40rem] px-4 py-8">
+    <main className="mx-auto w-full max-w-[40rem] px-4 py-8 lg:max-w-5xl">
       <PublicHeader />
 
-      <h1 className="text-4xl font-semibold tracking-tight">{t(keys.title)}</h1>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-500">{t(keys.sub)}</p>
+      <h1 className="max-w-3xl text-4xl font-semibold tracking-tight">{t(keys.title)}</h1>
+      <p className="mt-3 max-w-3xl text-sm leading-relaxed text-neutral-500">{t(keys.sub)}</p>
 
-      <div className="mt-8">
+      <div className="mt-8 lg:max-w-[40rem]">
         <Cta />
       </div>
 
-      <section className="mt-14 space-y-3">
-        <h2 className="text-base font-semibold">{t("site.tradeSoundFamiliar")}</h2>
-        <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
-          {keys.pains.map((key) => (
-            <li key={key}>{t(key)}</li>
-          ))}
-        </ul>
-      </section>
+      {/* Desktop: the pain and the answer side by side; the screen below,
+          centered. Mobile order is unchanged. */}
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-12">
+        <section className="mt-14 space-y-3 lg:mt-12">
+          <h2 className="text-base font-semibold">{t("site.tradeSoundFamiliar")}</h2>
+          <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
+            {keys.pains.map((key) => (
+              <li key={key}>{t(key)}</li>
+            ))}
+          </ul>
+        </section>
 
-      <section className="mt-10 space-y-4">
-        <h2 className="text-base font-semibold">{t("site.tradeWhatItDoes")}</h2>
-        <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
-          {keys.does.map((key) => (
-            <li key={key}>{t(key)}</li>
-          ))}
-        </ul>
+        <section className="mt-10 space-y-4 lg:mt-12">
+          <h2 className="text-base font-semibold">{t("site.tradeWhatItDoes")}</h2>
+          <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
+            {keys.does.map((key) => (
+              <li key={key}>{t(key)}</li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      <div className="mt-8">
         <TradeDemo trade={trade} />
-      </section>
+      </div>
 
-      <section className="mt-14 space-y-3">
+      <section className="mt-14 space-y-3 lg:max-w-3xl">
         <h2 className="text-base font-semibold">{t("landing.taxTitle")}</h2>
         <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{t("landing.taxBody")}</p>
         <p className="text-sm text-neutral-500">{t("site.tradeLang")}</p>
@@ -164,7 +171,7 @@ export default function TradeContent({ trade }: { trade: Trade }) {
 
       <section className="mt-14 space-y-4">
         <h2 className="text-base font-semibold">{t("site.commonQuestions")}</h2>
-        <dl className="space-y-4">
+        <dl className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-x-12 lg:gap-y-4 lg:space-y-0">
           {keys.faq.map((pair) => (
             <div key={pair.q}>
               <dt className="text-sm font-medium">{t(pair.q)}</dt>
@@ -186,7 +193,7 @@ export default function TradeContent({ trade }: { trade: Trade }) {
         ))}
       </p>
 
-      <div className="mt-10">
+      <div className="mt-10 lg:mx-auto lg:w-full lg:max-w-[40rem]">
         <Cta />
       </div>
 

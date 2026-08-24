@@ -21,13 +21,13 @@ export default function ContactContent() {
   const { t } = useLocale();
   const hasChannel = Boolean(SUPPORT_WHATSAPP || SUPPORT_EMAIL);
   return (
-    <main className="mx-auto w-full max-w-[40rem] px-4 py-8">
+    <main className="mx-auto w-full max-w-[40rem] px-4 py-8 lg:max-w-5xl">
       <PublicHeader />
 
       <h1 className="text-4xl font-semibold tracking-tight">{t("site.contactTitle")}</h1>
-      <p className="mt-3 text-sm leading-relaxed text-neutral-500">{t("site.contactIntro")}</p>
+      <p className="mt-3 max-w-3xl text-sm leading-relaxed text-neutral-500">{t("site.contactIntro")}</p>
 
-      <div className="mt-8 space-y-3">
+      <div className="mt-8 space-y-3 lg:max-w-[40rem]">
         <Link href="/help" className={option}>
           {t("site.contactHelp")}
         </Link>
@@ -64,7 +64,7 @@ export default function ContactContent() {
         </p>
       </section>
 
-      <div className="mt-12">
+      <div className="mt-12 lg:max-w-[40rem]">
         <Cta />
       </div>
 

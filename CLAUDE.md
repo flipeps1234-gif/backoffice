@@ -236,6 +236,24 @@ NEXT_PUBLIC_GA_MEASUREMENT_ID when a GA4 property exists, and the
 pg_cron purge check (now a BLOCKING item in DEPLOY.md because the
 site promises it).
 
+Desktop site (2026-08-23): the marketing pages gained real desktop
+layouts — additive lg: classes ONLY, mobile markup untouched. At lg
+the frame widens to max-w-5xl (the app's own desktop width) and
+sections go two-column (text beside the real-component demo — the
+same grammar as the app's desktop rail): landing hero beside the
+sheet with the CTA under the words, the three steps and the Owed
+section as text|screen pairs, tax+trust side by side; pricing is a
+2×2 (free-forever | founding CTA / future modules | the rule we
+charge by); trade pages pair pains|does with the demo centered
+below and a two-column FAQ; about pairs beliefs|what-it-is-not;
+/faq flows its 11 answers in two columns. The header nav sits
+inline in the header row at lg (two nav elements, only one ever
+displayed). Running text holds max-w-3xl. Reading pages (help,
+privacy, terms) deliberately stay at 40rem. Browser-verified at
+1280 (/, /pricing, /for/cleaners, /how-it-works, /about, /contact,
+/faq) and regression-checked at 390 — mobile unchanged, zero
+console errors. design-tokens.md records the desktop frame rule.
+
 MISSING / KNOWN GAPS (deliberate, or pre-existing and documented):
 - API route error bodies surface in English (server doesn't know the
   device language; needs error codes in the contract — noted in

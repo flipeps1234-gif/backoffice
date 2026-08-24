@@ -61,20 +61,54 @@ function useLangSync() {
   }, [locale]);
 }
 
-export function PublicHeader() {
+function NavLinks() {
   const { t } = useLocale();
   const pathname = usePathname();
+  return (
+    <>
+      {NAV.map((item) => {
+        const current =
+          pathname === item.href || pathname?.startsWith(`${item.href}/`);
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={current ? "page" : undefined}
+            className={
+              current ? "font-medium" : "text-neutral-500 hover:underline"
+            }
+          >
+            {t(item.key)}
+          </Link>
+        );
+      })}
+    </>
+  );
+}
+
+export function PublicHeader() {
+  const { t } = useLocale();
   useLangSync();
   return (
-    <header className="mb-10 space-y-4">
-      <div className="flex items-center justify-between">
-        <Link
-          href="/"
-          className="flex items-center gap-2 text-lg font-semibold tracking-tight"
-        >
-          <Mark />
-          contado
-        </Link>
+    <header className="mb-10 space-y-4 lg:space-y-0">
+      <div className="flex items-center justify-between gap-6">
+        <div className="flex items-center gap-10">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-lg font-semibold tracking-tight"
+          >
+            <Mark />
+            contado
+          </Link>
+          {/* Desktop: the nav sits in the header row. Only one of the two
+              nav landmarks is ever displayed (the other is display:none). */}
+          <nav
+            aria-label={t("site.siteNav")}
+            className="hidden gap-x-5 text-sm lg:flex"
+          >
+            <NavLinks />
+          </nav>
+        </div>
         <div className="flex items-center gap-3">
           <LocalePicker compact />
           {/* A full-document navigation on purpose (not <Link>): the
@@ -89,25 +123,11 @@ export function PublicHeader() {
           </a>
         </div>
       </div>
-      <nav aria-label={t("site.siteNav")} className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        {NAV.map((item) => {
-          const current =
-            pathname === item.href || pathname?.startsWith(`${item.href}/`);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={current ? "page" : undefined}
-              className={
-                current
-                  ? "font-medium"
-                  : "text-neutral-500 hover:underline"
-              }
-            >
-              {t(item.key)}
-            </Link>
-          );
-        })}
+      <nav
+        aria-label={t("site.siteNav")}
+        className="flex flex-wrap gap-x-4 gap-y-1 text-sm lg:hidden"
+      >
+        <NavLinks />
       </nav>
     </header>
   );

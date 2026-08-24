@@ -86,8 +86,13 @@ Tailwind default scale, used narrowly:
 - Card padding `p-3` (sheet rows) / `p-4` (product cards).
 - Stack rhythm `space-y-3|4|5`; section gap `mb-6`.
 - Page frame: `mx-auto w-full max-w-lg px-4 py-8` (app main column).
-  Public pages may widen to ~640px (`max-w-[40rem]`) per spec but
-  keep `px-4` gutters.
+  Public pages: ~640px (`max-w-[40rem]`) with `px-4` gutters. At `lg:`
+  the MARKETING pages widen to `lg:max-w-5xl` — the app's own desktop
+  width — with two-column `lg:grid-cols-2 gap-12` sections (text
+  beside the real-component demo, the same grammar as the app's
+  desktop rail); running text holds `max-w-3xl`. Reading pages (help,
+  privacy, terms) stay at 40rem on every screen. Mobile markup is
+  untouched: desktop is additive `lg:` classes only.
 - Tap targets: `h-11` (44px) minimum on real buttons (product-card
   steppers, sale flow).
 
