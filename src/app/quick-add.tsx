@@ -748,7 +748,9 @@ export default function QuickAdd({
           <input
             id="quick-date"
             type="date"
-            className={fieldClass}
+            // iOS date inputs ignore the w-40 box without these (see
+            // confirmation-sheet.tsx — same overflow, same fix).
+            className={`${fieldClass} min-w-0 appearance-none`}
             value={date}
             onChange={(event) => setDate(event.target.value)}
           />

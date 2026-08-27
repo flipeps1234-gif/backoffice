@@ -431,7 +431,9 @@ export default function NewSale({
           <input
             id="sale-date"
             type="date"
-            className={fieldClass}
+            // iOS date inputs size to their own content without these
+            // (see confirmation-sheet.tsx — same overflow, same fix).
+            className={`${fieldClass} min-w-0 appearance-none`}
             value={date}
             onChange={(e) => setDate(e.target.value)}
           />

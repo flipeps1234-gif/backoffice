@@ -194,9 +194,9 @@ export const messages = {
     pt: "Os pagamentos chegam em três apps e num bolso com dinheiro.",
   },
   "site.cleanersPain2": {
-    en: "Maria pays every two weeks — except the week she forgets.",
-    es: "Maria paga cada dos semanas — menos la semana que se le olvida.",
-    pt: "A Maria paga a cada duas semanas — menos na semana em que esquece.",
+    en: "Sarah pays every two weeks — except the week she forgets.",
+    es: "Sarah paga cada dos semanas — menos la semana que se le olvida.",
+    pt: "A Sarah paga a cada duas semanas — menos na semana em que esquece.",
   },
   "site.cleanersPain3": {
     en: "In January, someone asks for your numbers and you have a phone full of screenshots.",
@@ -209,9 +209,9 @@ export const messages = {
     pt: "Tire print do seu Venmo, Cash App e Zelle — o contado lê cada pagamento e separa negócio de pessoal com um deslize.",
   },
   "site.cleanersDoes2": {
-    en: "Log the clean before the money arrives; it waits in Owed under Maria's name until her payment shows up — then clears itself.",
-    es: "Registra la limpieza antes de que llegue el dinero; queda en la pestaña Por cobrar bajo el nombre de Maria hasta que aparece su pago — y se cierra solo.",
-    pt: "Registre a limpeza antes de o dinheiro chegar; ela espera na aba A receber no nome da Maria até o pagamento aparecer — e dá baixa sozinha.",
+    en: "Log the clean before the money arrives; it waits in Owed under Sarah's name until her payment shows up — then clears itself.",
+    es: "Registra la limpieza antes de que llegue el dinero; queda en la pestaña Por cobrar bajo el nombre de Sarah hasta que aparece su pago — y se cierra solo.",
+    pt: "Registre a limpeza antes de o dinheiro chegar; ela espera na aba A receber no nome da Sarah até o pagamento aparecer — e dá baixa sozinha.",
   },
   "site.cleanersDoes3": {
     en: "Supplies go in with a photo of the receipt, tagged for Schedule C. Mileage is estimated from each client's distance — no GPS.",
@@ -500,9 +500,9 @@ export const messages = {
     pt: "Negócio e pessoal misturados num só Venmo? Tire print da sua lista de Transações e o contado transforma tudo em livro-caixa de verdade — separado, somado, pronto para o imposto.",
   },
   "site.chVenmoPain1": {
-    en: "Rent from your cousin, $120.00 from Maria, gas money — one feed, three different stories.",
-    es: "La renta de tu primo, $120.00 de Maria, dinero de gasolina — un solo feed, tres historias distintas.",
-    pt: "O aluguel do seu primo, $120.00 da Maria, dinheiro da gasolina — um feed só, três histórias diferentes.",
+    en: "Rent from your cousin, $120.00 from Sarah, gas money — one feed, three different stories.",
+    es: "La renta de tu primo, $120.00 de Sarah, dinero de gasolina — un solo feed, tres historias distintas.",
+    pt: "O aluguel do seu primo, $120.00 da Sarah, dinheiro da gasolina — um feed só, três histórias diferentes.",
   },
   "site.chVenmoPain2": {
     en: "The social feed hides amounts, and tax season doesn't care.",

@@ -7,9 +7,9 @@ import type { Transaction } from "@/lib/transaction";
 /**
  * Demo data and the frame the public pages show REAL components in.
  * One module, so the landing, how-it-works and the trade pages draw the
- * same Maria, the same $120.00, the same limpeza — and so no page can
- * quietly invent chrome: these fixtures feed the shipped components,
- * nothing else is drawn.
+ * same Sarah, the same $120.00, the same cleaning job — and so no page
+ * can quietly invent chrome: these fixtures feed the shipped
+ * components, nothing else is drawn.
  */
 
 export const demoTxn = (patch: Partial<Transaction>): Transaction => ({
@@ -29,15 +29,15 @@ export const demoTxn = (patch: Partial<Transaction>): Transaction => ({
   ...patch,
 });
 
-/** The sheet / deck batch: Maria's limpeza with one flagged field (the
- *  amber "check this" ring is the honest version of the pitch) and a
- *  Home Depot receipt. */
+/** The sheet / deck batch: Sarah's house clean with one flagged field
+ *  (the amber "check this" ring is the honest version of the pitch) and
+ *  a Home Depot receipt. */
 export const SHEET_DEMO: Transaction[] = [
   demoTxn({
     id: "demo-sheet-1",
-    payer: "Maria Lopez",
+    payer: "Sarah Johnson",
     amountCents: 12000,
-    memo: "Limpeza — casa completa",
+    memo: "Cleaning — full house",
     confidence: { amountCents: 0.55 },
   }),
   demoTxn({
@@ -52,7 +52,7 @@ export const SHEET_DEMO: Transaction[] = [
 
 /** The books after the batch was swiped: two business rows, one personal. */
 export const TOTALS_DEMO: Transaction[] = [
-  demoTxn({ id: "demo-tot-1", payer: "Maria Lopez", amountCents: 12000, business: true }),
+  demoTxn({ id: "demo-tot-1", payer: "Sarah Johnson", amountCents: 12000, business: true }),
   demoTxn({
     id: "demo-tot-2",
     payer: "Home Depot",
@@ -83,7 +83,7 @@ export const owedDemo = (): { sales: Sale[]; clients: DemoClient[] } => ({
       id: "demo-sale-1",
       clientId: "demo-maria",
       lineItems: [
-        { serviceId: null, name: "Limpeza — casa completa", quantity: 1, unitCents: 12000, unitCostCents: null },
+        { serviceId: null, name: "Cleaning — full house", quantity: 1, unitCents: 12000, unitCostCents: null },
       ],
       date: iso(34),
       state: "open",
@@ -111,7 +111,7 @@ export const owedDemo = (): { sales: Sale[]; clients: DemoClient[] } => ({
       id: "demo-sale-3",
       clientId: "demo-ana",
       lineItems: [
-        { serviceId: null, name: "Limpeza", quantity: 1, unitCents: 6000, unitCostCents: null },
+        { serviceId: null, name: "Cleaning", quantity: 1, unitCents: 6000, unitCostCents: null },
       ],
       date: iso(3),
       state: "open",
@@ -123,7 +123,7 @@ export const owedDemo = (): { sales: Sale[]; clients: DemoClient[] } => ({
     },
   ],
   clients: [
-    { id: "demo-maria", name: "Maria Lopez", notes: "", distanceTenths: null },
+    { id: "demo-maria", name: "Sarah Johnson", notes: "", distanceTenths: null },
     { id: "demo-whitaker", name: "J. Whitaker", notes: "", distanceTenths: null },
     { id: "demo-ana", name: "Ana Reyes", notes: "", distanceTenths: null },
   ],

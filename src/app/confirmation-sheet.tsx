@@ -151,7 +151,10 @@ export default function ConfirmationSheet({
                 <input
                   id={`${tx.id}-date`}
                   type="date"
-                  className={inputClass(isUncertain(tx, "date"))}
+                  // min-w-0 + appearance-none: iOS gives date inputs an
+                  // intrinsic width that ignores the w-40 box, bleeding
+                  // the control over the note field beside it.
+                  className={`${inputClass(isUncertain(tx, "date"))} min-w-0 appearance-none`}
                   value={tx.date}
                   onChange={(event) =>
                     onChange(tx.id, { date: event.target.value })
