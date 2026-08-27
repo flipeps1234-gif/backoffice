@@ -64,7 +64,9 @@ export async function POST(request: Request) {
   // 23505 = unique violation: already on the list. That's a success —
   // never an error a caller can use to probe who signed up.
   if (error && error.code !== "23505") {
-    console.error("founding insert failed:", error.message);
+    // The code makes Vercel logs diagnosable at a glance — e.g.
+    // PGRST205 = the table doesn't exist (migration never ran).
+    console.error("founding insert failed:", error.code, error.message);
     return Response.json({ error: "Try again." }, { status: 500 });
   }
   return Response.json({ ok: true });

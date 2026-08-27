@@ -271,6 +271,27 @@ IDs are public; env var still overrides, empty string disables).
 founding_signup should be marked a key event in GA4 Admin once it
 first fires.
 
+Founding capture (2026-08-26): CONFIRMED BROKEN in production and
+diagnosed — POST /api/founding returns 500 on the live site because
+migration 0016 (founding_list) never ran there; a real form submit
+shows the red error, no fake success, and founding_signup correctly
+does not fire. The fix is owner-side: run 0016 in the Supabase SQL
+editor (idempotent; also inside the combined 0001–0016 file). A
+6-agent adversarial pass over the chain found the DB contract SOUND
+(insert uses return=minimal so the deliberately-missing SELECT
+policy is fine; 23505 duplicate-as-success is the code PostgREST
+actually returns) and confirmed three form defects, all FIXED and
+dev-browser-verified in EN + ES: the form lacked noValidate, so the
+browser's native bubble (in the BROWSER'S language) preempted the
+translated invalid message for common typos like "maria"; a
+>320-char address passed the client and looped forever on the
+generic retry copy (now client-capped, maxLength + check); a 429
+rate-limit response told the user to "try again" — the inverted
+advice (now a distinct amber landing.ctaSlow state, EN/ES/PT). The
+route now logs error.code so the NEXT such outage is diagnosable
+from Vercel logs at a glance (PGRST205 = table missing). Re-test
+against production the moment 0016 has run.
+
 Desktop site (2026-08-23): the marketing pages gained real desktop
 layouts — additive lg: classes ONLY, mobile markup untouched. At lg
 the frame widens to max-w-5xl (the app's own desktop width) and

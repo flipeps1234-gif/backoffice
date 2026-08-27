@@ -13,12 +13,17 @@ import { useLocale } from "./use-locale";
 export function FoundingForm() {
   const { t } = useLocale();
   const [email, setEmail] = useState("");
-  const [state, setState] = useState<"idle" | "busy" | "done" | "invalid" | "error">("idle");
+  const [state, setState] = useState<"idle" | "busy" | "done" | "invalid" | "error" | "slow">("idle");
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     const normalized = email.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    // Mirrors the server's checks exactly (route.ts) — anything that
+    // passes here can only fail server-side for a reason retrying fixes.
+    if (
+      normalized.length > 320 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
+    ) {
       setState("invalid");
       return;
     }
@@ -29,7 +34,9 @@ export function FoundingForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: normalized }),
       });
-      setState(response.ok ? "done" : "error");
+      // 429 means "wait", not "retry now" — the generic error message
+      // would tell a rate-limited visitor to do exactly the wrong thing.
+      setState(response.ok ? "done" : response.status === 429 ? "slow" : "error");
       // The site's one conversion. The event carries no email — GA
       // counts the signup; the address lives only in founding_list.
       if (response.ok) trackEvent("founding_signup");
@@ -47,7 +54,11 @@ export function FoundingForm() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-2">
+    // noValidate: without it the browser's native bubble (in the
+    // BROWSER'S language) preempts onSubmit for common typos, so the
+    // translated invalid message below never showed for "maria" or
+    // "foo@". The regex covers everything the native check did.
+    <form onSubmit={submit} noValidate className="space-y-2">
       <div className="flex gap-2">
         <input
           type="email"
@@ -56,9 +67,10 @@ export function FoundingForm() {
           value={email}
           placeholder={t("landing.ctaPlaceholder")}
           aria-label={t("landing.ctaPlaceholder")}
+          maxLength={320}
           onChange={(event) => {
             setEmail(event.target.value);
-            if (state === "invalid" || state === "error") setState("idle");
+            if (state !== "busy") setState("idle");
           }}
           className="h-11 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none"
         />
@@ -75,6 +87,9 @@ export function FoundingForm() {
       )}
       {state === "error" && (
         <p className="text-sm text-red-700 dark:text-red-400">{t("landing.ctaError")}</p>
+      )}
+      {state === "slow" && (
+        <p className="text-sm text-amber-700 dark:text-amber-400">{t("landing.ctaSlow")}</p>
       )}
     </form>
   );

@@ -150,6 +150,11 @@ export const messages = {
     es: "No se pudo guardar — inténtalo de nuevo.",
     pt: "Não deu para salvar — tente de novo.",
   },
+  "landing.ctaSlow": {
+    en: "Too many tries — give it a minute.",
+    es: "Demasiados intentos — espera un minuto.",
+    pt: "Muitas tentativas — espere um minuto.",
+  },
   "landing.footerHelp": {
     en: "Help",
     es: "Ayuda",
