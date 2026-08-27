@@ -143,16 +143,33 @@ export const useMounted = (): boolean =>
   );
 
 /** A real component shown as an illustration: inert and out of the
- *  accessibility tree, framed in the app's own card style. */
+ *  accessibility tree, framed in the app's own card style.
+ *
+ *  inert + pointer-events-none SHOULD make the demo untouchable, but a
+ *  visitor on an iPhone got the keyboard open inside one and typed real
+ *  client data into what they believed was the app. So the frame no
+ *  longer trusts the browser: a transparent cover sits ABOVE the demo
+ *  and swallows every tap before it can reach an input (isolate caps
+ *  the demo's own z-indexes under it), and a focus-capture backstop
+ *  blurs anything that somehow gets focus anyway. */
 export function DemoFrame({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <figure className="mx-auto w-full max-w-sm">
       <div
-        aria-hidden="true"
-        inert
-        className="pointer-events-none select-none overflow-hidden rounded-xl border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900"
+        className="relative"
+        onFocusCapture={(event) => {
+          const target = event.target as HTMLElement;
+          if (typeof target.blur === "function") target.blur();
+        }}
       >
-        {children}
+        <div
+          aria-hidden="true"
+          inert
+          className="isolate pointer-events-none select-none overflow-hidden rounded-xl border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900"
+        >
+          {children}
+        </div>
+        <div aria-hidden="true" className="absolute inset-0 z-10" />
       </div>
       <figcaption className="mt-2 text-center text-xs text-neutral-500">
         {label}

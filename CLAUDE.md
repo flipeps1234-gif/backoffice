@@ -292,6 +292,24 @@ route now logs error.code so the NEXT such outage is diagnosable
 from Vercel logs at a glance (PGRST205 = table missing). Re-test
 against production the moment 0016 has run.
 
+App persistence re-verified LIVE 2026-08-26 (the owner suspected
+saving was broken): on production, signed in as tester via the demo
+word, a $0.42 expense (with Schedule-C category), a $1.07 cash sale
+and its NEW client all survived hard reloads — transactions, sales,
+clients and the cash mirror all round-tripped. Saving works. What
+the owner actually hit: they were TYPING INTO THE LANDING PAGE'S
+DEMO on an iPhone — the ConfirmationSheet hero with the Maria
+Lopez fixtures — where the keyboard opened despite DemoFrame's
+inert + pointer-events-none (fine in desktop Chromium, where
+focus() is refused; iOS Safari let a tap through). DemoFrame no
+longer trusts the browser: a transparent absolute cover with z-10
+sits above the demo (the inert wrapper gets `isolate` so no demo
+z-index can climb over it) and swallows every tap, plus an
+onFocusCapture blur backstop. Verified by hit-test: elementFromPoint
+at the demo input's center returns the cover; the founding CTA
+outside the frames still focuses. All public demos share this one
+frame, so the fix covers /, /how-it-works, /for/*, /track/*.
+
 Desktop site (2026-08-23): the marketing pages gained real desktop
 layouts — additive lg: classes ONLY, mobile markup untouched. At lg
 the frame widens to max-w-5xl (the app's own desktop width) and
