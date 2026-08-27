@@ -289,8 +289,13 @@ generic retry copy (now client-capped, maxLength + check); a 429
 rate-limit response told the user to "try again" — the inverted
 advice (now a distinct amber landing.ctaSlow state, EN/ES/PT). The
 route now logs error.code so the NEXT such outage is diagnosable
-from Vercel logs at a glance (PGRST205 = table missing). Re-test
-against production the moment 0016 has run.
+from Vercel logs at a glance (PGRST205 = table missing). RESOLVED
+2026-08-26: the owner ran 0016 and the full loop verified live on
+production — POST returns ok, a real form submit renders the green
+"You're on the list." and founding_signup fires into the GA4
+dataLayer. Two synthetic rows from the verification sit in
+founding_list (founding-e2e-check@ / founding-browser-check@
+example.com) — harmless, deletable in the Table Editor.
 
 App persistence re-verified LIVE 2026-08-26 (the owner suspected
 saving was broken): on production, signed in as tester via the demo
