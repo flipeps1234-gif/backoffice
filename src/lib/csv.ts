@@ -143,6 +143,10 @@ export const everythingCsv = (
   sales: Sale[] = [],
   clients: Client[] = [],
   templates: RecurringTemplate[] = [],
+  /** Sales whose photo exists on the server but wasn't loaded — photo
+   *  bytes stay out of the boot payload, so the yes/no column needs the
+   *  id set to stay truthful. */
+  photoSaleIds?: ReadonlySet<string>,
 ): string => {
   const clientName = (id: string | null): string =>
     id ? (clients.find((c) => c.id === id)?.name ?? "") : "";
@@ -205,7 +209,7 @@ export const everythingCsv = (
           field(itemsLabel(sale.lineItems)),
           dollars(saleTotalCents(sale)),
           field(sale.notes),
-          sale.photo ? "yes" : "",
+          sale.photo || photoSaleIds?.has(sale.id) ? "yes" : "",
         ].join(","),
       );
     }

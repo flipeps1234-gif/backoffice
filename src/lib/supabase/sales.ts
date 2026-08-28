@@ -20,7 +20,8 @@ type Row = {
   matched_txn_id: string | null;
   recurring_template_id: string | null;
   notes: string | null;
-  photo: string | null;
+  /** Absent from the list load on purpose — see loadSales. */
+  photo?: string | null;
 };
 
 const asState = (raw: string): SaleState =>
@@ -62,17 +63,106 @@ export const loadSales = async (): Promise<Sale[]> => {
   const supabase = getSupabase();
   if (!supabase) return [];
 
+  // photo is deliberately NOT selected: a photo is ~400KB of base64 text
+  // per row, and this list is re-downloaded on every app open — with
+  // photos included, one user with 25 photos pulls ~10MB per boot, and a
+  // handful of such users exhausts the whole project's free-tier egress.
+  // loadPhotoIds tells the UI which sales HAVE one; loadClientPhotos
+  // fetches the bytes when a client's history actually shows them.
   const rows = await loadAllPages<Row>((from, to) =>
     supabase
       .from("sales")
       .select(
-        "id, client_id, occurred_on, line_items, state, method, matched_txn_id, recurring_template_id, notes, photo",
+        "id, client_id, occurred_on, line_items, state, method, matched_txn_id, recurring_template_id, notes",
       )
       .order("occurred_on", { ascending: false })
       .order("id", { ascending: false })
       .range(from, to),
   );
   return rows.map(toSale);
+};
+
+/** Ids of every sale that has a photo — bytes stay on the server. */
+export const loadPhotoIds = async (): Promise<string[]> => {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+
+  const rows = await loadAllPages<{ id: string }>((from, to) =>
+    supabase
+      .from("sales")
+      .select("id")
+      .not("photo", "is", null)
+      .order("id", { ascending: false })
+      .range(from, to),
+  );
+  return rows.map((row) => row.id);
+};
+
+/** The photo bytes for ONE client's sales — fetched when their history
+ *  opens, which is the only place the app renders them. */
+export const loadClientPhotos = async (
+  clientId: string,
+): Promise<{ id: string; photo: string }[]> => {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("sales")
+    .select("id, photo")
+    .eq("client_id", clientId)
+    .not("photo", "is", null);
+  if (error) throw new Error(error.message);
+  return (data ?? []).flatMap((row) =>
+    typeof row.photo === "string" && row.photo.startsWith("data:image/")
+      ? [{ id: row.id, photo: row.photo }]
+      : [],
+  );
+};
+
+/** One sale's settlement pointer, straight from the database — the
+ *  authoritative answer to "whose payment row won?". */
+export const loadSaleLink = async (
+  id: string,
+): Promise<{ state: SaleState; matchedTxnId: string | null } | null> => {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("sales")
+    .select("state, matched_txn_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  return { state: asState(data.state), matchedTxnId: data.matched_txn_id };
+};
+
+/**
+ * Settle a sale ONLY if it is still open/expected — the WHERE clause
+ * makes the paid transition atomic, so a stale second device can't
+ * re-settle an already-settled sale (doubled revenue, the exact race
+ * 0008 closed for recurring instances). Returns whether this caller won.
+ */
+export const settleSale = async (
+  id: string,
+  patch: Partial<Sale>,
+): Promise<boolean> => {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+
+  const row: Record<string, unknown> = {};
+  if (patch.state !== undefined) row.state = patch.state;
+  if (patch.method !== undefined) row.method = patch.method;
+  if (patch.matchedTxnId !== undefined) row.matched_txn_id = patch.matchedTxnId;
+
+  const { data, error } = await supabase
+    .from("sales")
+    .update(row)
+    .eq("id", id)
+    .in("state", ["open", "expected"])
+    .select("id");
+  if (error) throw new Error(error.message);
+  return (data?.length ?? 0) > 0;
 };
 
 export const insertSales = async (

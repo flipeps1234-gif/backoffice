@@ -94,6 +94,83 @@ export const insertTransactions = async (
     .from("transactions")
     .insert(transactions.map((tx) => toRow(tx, accountId)));
 
+  // The code rides along so callers can tell a unique-index rejection
+  // (23505 — another device already linked this sale, see 0017) apart
+  // from a real failure.
+  if (error) throw Object.assign(new Error(error.message), { code: error.code });
+};
+
+/** True for the unique-violation errors insertTransactions raises. */
+export const isUniqueViolation = (cause: unknown): boolean =>
+  typeof cause === "object" &&
+  cause !== null &&
+  (cause as { code?: unknown }).code === "23505";
+
+/**
+ * The transaction already linked to a sale, straight from the DATABASE —
+ * settlement decisions must not trust the in-memory ledger, which can be
+ * hours stale on a second device. One row or null.
+ */
+export const findLinkedTxn = async (
+  saleId: string,
+): Promise<Transaction | null> => {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .select(
+      "id, payer, amount_cents, occurred_on, memo, source, direction, service_id, quantity, business, matched_sale_id, category",
+    )
+    .eq("matched_sale_id", saleId)
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return data && data.length > 0 ? toTransaction(data[0] as Row) : null;
+};
+
+/**
+ * Link a payment to a sale ONLY if it is still unspent — the WHERE makes
+ * the claim atomic, so two devices racing over one payment can't both
+ * win. Returns whether this caller won.
+ */
+export const claimTxnForSale = async (
+  id: string,
+  patch: Partial<Transaction>,
+): Promise<boolean> => {
+  const supabase = getSupabase();
+  if (!supabase) return false;
+
+  const row: Record<string, unknown> = {};
+  if (patch.serviceId !== undefined) row.service_id = patch.serviceId;
+  if (patch.quantity !== undefined) row.quantity = patch.quantity;
+  if (patch.business !== undefined) row.business = patch.business;
+  if (patch.matchedSaleId !== undefined) row.matched_sale_id = patch.matchedSaleId;
+
+  const { data, error } = await supabase
+    .from("transactions")
+    .update(row)
+    .eq("id", id)
+    .is("matched_sale_id", null)
+    .select("id");
+  // Once 0017's unique index exists, claiming a sale another row already
+  // holds fails with 23505 on the UPDATE itself. That IS "you lost the
+  // race" — the graceful answer, not an error to surface as a lost batch.
+  if (error?.code === "23505") return false;
+  if (error) throw new Error(error.message);
+  return (data?.length ?? 0) > 0;
+};
+
+/**
+ * Remove ONE row this same queue item just inserted and then lost the
+ * settlement race for — queue hygiene, not a user-facing delete (the
+ * product still has none). Leaving the row would double the revenue the
+ * conditional update just protected.
+ */
+export const deleteOwnTransaction = async (id: string): Promise<void> => {
+  const supabase = getSupabase();
+  if (!supabase) return;
+
+  const { error } = await supabase.from("transactions").delete().eq("id", id);
   if (error) throw new Error(error.message);
 };
 

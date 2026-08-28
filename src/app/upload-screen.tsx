@@ -82,7 +82,11 @@ import {
 import {
   insertGeneratedSales,
   insertSales,
+  loadClientPhotos,
+  loadPhotoIds,
+  loadSaleLink,
   loadSales,
+  settleSale,
   updateSale as saveSale,
 } from "@/lib/supabase/sales";
 import {
@@ -91,7 +95,11 @@ import {
   updateService as saveService,
 } from "@/lib/supabase/services";
 import {
+  claimTxnForSale,
+  deleteOwnTransaction,
+  findLinkedTxn,
   insertTransactions,
+  isUniqueViolation,
   loadTransactions,
   updateTransaction as saveTransaction,
 } from "@/lib/supabase/transactions";
@@ -264,6 +272,10 @@ function Ledger({
 
   // ---- v0.5: sales, clients, recurring (see FLOW.md) ----
   const [sales, setSales] = useState<Sale[]>([]);
+  /** Which sales HAVE a photo — the bytes load per client on demand. */
+  const [photoSaleIds, setPhotoSaleIds] = useState<Set<string>>(new Set());
+  /** Clients whose photo bytes were already pulled this session. */
+  const photoFetched = useRef<Set<string>>(new Set());
   const [clients, setClients] = useState<Client[]>([]);
   const [templates, setTemplates] = useState<RecurringTemplate[]>([]);
   const [showNewSale, setShowNewSale] = useState(false);
@@ -302,11 +314,18 @@ function Ledger({
   function openClientFromSearch(id: string) {
     // A half-typed expense or sale must not be vaporized by a search tap
     // (the takeover chain would unmount it, losing the entry). Money in
-    // flight beats navigation; the notice says why nothing moved.
-    if (quickAdd || logAgain || showNewSale) {
+    // flight beats navigation; the notice says why nothing moved. The
+    // Products and Settings takeovers hold unsaved forms too (a new
+    // service, business-profile edits), so they block the same way.
+    if (quickAdd || logAgain || showNewSale || showProducts || showSettings) {
       setSaleNotice(t("home.finishEntryFirst"));
       return;
     }
+    // Owed/RecentSales hold no typed state — close them explicitly, or
+    // (outranking Clients in the takeover chain) they mask this open and
+    // the client page pops up later when the user closes them.
+    setShowOwed(false);
+    setShowRecentSales(false);
     setClientsFocus(id);
     setClientsFocusSeq((n) => n + 1);
     setShowClients(true);
@@ -378,7 +397,15 @@ function Ledger({
     loadTransactions()
       .then((rows) => {
         if (cancelled) return;
-        setTransactions(rows);
+        // MERGE, never replace: on a slow connection the user can log an
+        // expense in the seconds before this snapshot lands, and the
+        // snapshot predates that insert — assignment would vanish the
+        // entry from every total and invite a re-enter (a permanent
+        // duplicate money row). Same rule for sales/services/clients.
+        setTransactions((current) => {
+          const seen = new Set(rows.map((r) => r.id));
+          return [...current.filter((tx) => !seen.has(tx.id)), ...rows];
+        });
         // Un-triaged rows go back to the sheet, not straight to the deck —
         // if you closed the tab mid-confirm, you still get to check them.
         if (rows.some((tx) => tx.business === null)) setStage("confirm");
@@ -392,7 +419,11 @@ function Ledger({
 
     loadServices()
       .then((rows) => {
-        if (!cancelled) setServices(rows);
+        if (cancelled) return;
+        setServices((current) => {
+          const seen = new Set(rows.map((r) => r.id));
+          return [...current.filter((svc) => !seen.has(svc.id)), ...rows];
+        });
       })
       .catch((cause) => {
         // The numpad still works without chips; don't block the app on this.
@@ -401,9 +432,21 @@ function Ledger({
 
     loadClients()
       .then((rows) => {
-        if (!cancelled) setClients(rows);
+        if (cancelled) return;
+        setClients((current) => {
+          const seen = new Set(rows.map((r) => r.id));
+          return [...current.filter((c) => !seen.has(c.id)), ...rows];
+        });
       })
       .catch((cause) => console.error("Clients load failed:", cause));
+
+    // Ids only — the bytes stay on the server until a client's history
+    // actually renders them (see loadSales for the egress arithmetic).
+    loadPhotoIds()
+      .then((ids) => {
+        if (!cancelled) setPhotoSaleIds(new Set(ids));
+      })
+      .catch((cause) => console.error("Photo ids load failed:", cause));
 
     loadProfile()
       .then((row) => {
@@ -455,8 +498,14 @@ function Ledger({
           if (result.justPaused) pausedNames.push(template.clientId);
         }
 
-        setSales(allSales);
-        setTemplates(nextTemplates);
+        setSales((current) => {
+          const seen = new Set(allSales.map((s) => s.id));
+          return [...current.filter((s) => !seen.has(s.id)), ...allSales];
+        });
+        setTemplates((current) => {
+          const seen = new Set(nextTemplates.map((tpl) => tpl.id));
+          return [...current.filter((tpl) => !seen.has(tpl.id)), ...nextTemplates];
+        });
         if (accountId) {
           const changed = nextTemplates.filter((next, i) => {
             const before = templateRows[i];
@@ -929,13 +978,16 @@ function Ledger({
       });
       resetTemplateMisses(sale);
       if (accountId) {
-        void persist(() =>
-          saveSale(sale.id, {
+        // settleSale, not a blind update: only an open/expected sale takes
+        // the transition, so a heal replayed against an already-settled
+        // sale (another device won meanwhile) is a no-op, not an overwrite.
+        void persist(async () => {
+          await settleSale(sale.id, {
             state: "paid",
             method: "digital",
             matchedTxnId: existing.id,
-          }),
-        );
+          });
+        });
       }
       return;
     }
@@ -947,13 +999,13 @@ function Ledger({
       });
       resetTemplateMisses(sale);
       if (accountId) {
-        void persist(() =>
-          saveSale(sale.id, {
+        void persist(async () => {
+          await settleSale(sale.id, {
             state: "paid",
             method: "cash",
             matchedTxnId: existing.id,
-          }),
-        );
+          });
+        });
       }
       return;
     }
@@ -984,14 +1036,74 @@ function Ledger({
       // the sale update run after a failed insert (paid sale, no money row),
       // and a tab kill between items strands whichever landed first. Txn
       // first: its orphan keeps totals right and the guard above heals it.
+      //
+      // The in-memory guard above cannot see what ANOTHER device did since
+      // this tab loaded, so the queue item re-checks against the DATABASE:
+      // a sale the phone already auto-matched must not gain a second money
+      // row from a stale desktop's "Got cash" (doubled revenue, forever).
       const acct = accountId;
       void persist(async () => {
-        await insertTransactions([txn], acct);
-        await saveSale(sale.id, {
+        const linked = await findLinkedTxn(sale.id);
+        if (linked) {
+          // Settled (or half-settled) elsewhere — adopt that payment
+          // instead of minting one. settleSale no-ops if already paid.
+          const method = linked.source === "manual" ? "cash" : "digital";
+          await settleSale(sale.id, {
+            state: "paid",
+            method,
+            matchedTxnId: linked.id,
+          });
+          patchSale(sale.id, { state: "paid", method, matchedTxnId: linked.id });
+          setTransactions((current) => [
+            linked,
+            ...current.filter((t) => t.id !== txn.id && t.id !== linked.id),
+          ]);
+          return;
+        }
+        // Adopt whatever payment the sale ended up settled on — heals this
+        // tab after any lost race below, so memory never shows a paid sale
+        // whose money row is gone.
+        const adoptWinner = async () => {
+          setTransactions((current) => current.filter((t) => t.id !== txn.id));
+          const winner = await findLinkedTxn(sale.id);
+          if (winner) {
+            const method = winner.source === "manual" ? "cash" : "digital";
+            patchSale(sale.id, { state: "paid", method, matchedTxnId: winner.id });
+            setTransactions((current) => [
+              winner,
+              ...current.filter((t) => t.id !== winner.id),
+            ]);
+          }
+        };
+        try {
+          await insertTransactions([txn], acct);
+        } catch (cause) {
+          if (isUniqueViolation(cause)) {
+            // The 0017 index beat us to it — another device linked this
+            // sale between the check above and now. Nothing was written.
+            await adoptWinner();
+            return;
+          }
+          throw cause;
+        }
+        const won = await settleSale(sale.id, {
           state: "paid",
           method: "cash",
           matchedTxnId: txn.id,
         });
+        if (!won) {
+          // Lost the paid transition by milliseconds. Two ways to lose:
+          // the winner adopted OUR just-inserted mirror (its settle points
+          // at txn.id — keep the row, everything is already right), or it
+          // settled on its own payment (our mirror is a true double —
+          // remove it: queue hygiene, not a user-facing delete). Deleting
+          // without this check destroyed the very row the winner adopted:
+          // paid sale, dangling pointer, cash gone from every total.
+          const link = await loadSaleLink(sale.id);
+          if (link?.matchedTxnId === txn.id) return;
+          await deleteOwnTransaction(txn.id);
+          await adoptWinner();
+        }
       });
     }
   }
@@ -1062,13 +1174,50 @@ function Ledger({
     updateTransaction(txn.id, patch);
     // ONE queue item: with two, the per-item catch let the txn update run
     // after a failed sale update (payment spent against an unpaid sale).
+    //
+    // Both writes are CONDITIONAL — the in-memory guard above can't see a
+    // second device. claimTxnForSale only links a still-unspent payment;
+    // settleSale only settles a still-open sale. Losing either race rolls
+    // this tab back instead of double-counting.
+    const prevTxn = {
+      matchedSaleId: txn.matchedSaleId,
+      business: txn.business,
+      serviceId: txn.serviceId,
+      quantity: txn.quantity,
+    };
+    const prevSale = { state: sale.state, method: sale.method };
     void persist(async () => {
-      await saveSale(sale.id, {
+      const rollBack = () => {
+        patchSale(sale.id, { ...prevSale, matchedTxnId: null });
+        updateTransaction(txn.id, prevTxn);
+        setMatchUndo((current) =>
+          current.filter((u) => !(u.saleId === sale.id && u.txnId === txn.id)),
+        );
+        setSaleNotice(translate(currentLocale(), "home.alreadySettled"));
+      };
+      const claimed = await claimTxnForSale(txn.id, patch);
+      if (!claimed) {
+        // This payment was spent on another device since this tab loaded.
+        rollBack();
+        return;
+      }
+      const won = await settleSale(sale.id, {
         state: "paid",
         method: "digital",
         matchedTxnId: txn.id,
       });
-      await saveTransaction(txn.id, patch);
+      if (!won) {
+        // Sale settled elsewhere between the two writes. If the winner
+        // settled onto the very payment we just claimed (its adopt path
+        // found our claim), everything is already right — releasing the
+        // claim here would leave a paid sale pointing at an "unspent"
+        // payment, free to clear a second sale. Only a settle onto a
+        // DIFFERENT payment makes our claim wrong.
+        const link = await loadSaleLink(sale.id);
+        if (link?.matchedTxnId === txn.id) return;
+        await saveTransaction(txn.id, prevTxn);
+        rollBack();
+      }
     });
   }
 
@@ -1142,6 +1291,9 @@ function Ledger({
     let digitalMatch: {
       txnId: string;
       patch: Partial<Transaction>;
+      /** What the payment row held BEFORE the optimistic link — the
+       *  rollback target if another device claimed it first. */
+      prev: Partial<Transaction>;
     } | null = null;
 
     if (paid && method === "cash") {
@@ -1201,7 +1353,16 @@ function Ledger({
           }
         }
         updateTransaction(txn.id, patch);
-        digitalMatch = { txnId: txn.id, patch };
+        digitalMatch = {
+          txnId: txn.id,
+          patch,
+          prev: {
+            matchedSaleId: txn.matchedSaleId,
+            business: txn.business,
+            serviceId: txn.serviceId,
+            quantity: txn.quantity,
+          },
+        };
         setSaleNotice(
           t("home.matchedTo", {
             payer: txn.payer || t("home.aPayment"),
@@ -1246,7 +1407,31 @@ function Ledger({
       void persist(async () => {
         if (savedCash) await insertTransactions([savedCash], acct);
         await insertSales([savedSale], acct);
-        if (savedMatch) await saveTransaction(savedMatch.txnId, savedMatch.patch);
+        if (!savedMatch) return;
+        // The sale row lands BEFORE the payment is claimed — the file's
+        // residue law (comment above): a crash after a claim would strand
+        // a payment marked for a sale that never landed, unusable forever
+        // and invisible to every rescan. The candidate came from the
+        // IN-MEMORY ledger, which a second device can have outrun, so the
+        // claim is atomic (see linkSaleToTxn); losing it demotes OUR
+        // fresh sale to EXPECTED — the rescan-on-every-batch path owns it.
+        const claimed = await claimTxnForSale(savedMatch.txnId, savedMatch.patch);
+        if (claimed) return;
+        await saveSale(savedSale.id, {
+          state: "expected",
+          method: "digital",
+          matchedTxnId: null,
+        });
+        patchSale(savedSale.id, {
+          state: "expected",
+          method: "digital",
+          matchedTxnId: null,
+        });
+        updateTransaction(savedMatch.txnId, savedMatch.prev);
+        setMatchUndo((current) =>
+          current.filter((u) => u.saleId !== savedSale.id),
+        );
+        setSaleNotice(translate(currentLocale(), "home.markedPaid"));
       });
     }
 
@@ -1269,6 +1454,15 @@ function Ledger({
    * path is gone on purpose: sales own money in now.
    */
   function routeLogAgain(prefill: LogAgainPrefill) {
+    // Same guard as openClientFromSearch: on desktop the rail stays
+    // interactive while a takeover holds a half-typed entry, and this
+    // path would remount or evict it — vaporizing the entry (or arming
+    // a numpad that pops up later out of nowhere). Products and Settings
+    // hold unsaved forms too.
+    if (quickAdd || logAgain || showNewSale || showProducts || showSettings) {
+      setSaleNotice(t("home.finishEntryFirst"));
+      return;
+    }
     if (prefill.direction === "out") {
       pickLogAgain(prefill);
       return;
@@ -1295,8 +1489,41 @@ function Ledger({
     setShowNewSale(true);
   }
 
+  /**
+   * A client's history is the one place photos render, so their bytes
+   * load HERE, not on boot — see loadSales for the egress arithmetic.
+   * Once per client per session; a failed fetch just leaves the photos
+   * off (they never block anything) and allows a retry on reopen.
+   */
+  function fetchClientPhotos(clientId: string) {
+    if (photoFetched.current.has(clientId)) return;
+    photoFetched.current.add(clientId);
+    loadClientPhotos(clientId)
+      .then((rows) => {
+        if (rows.length === 0) return;
+        setSales((current) =>
+          current.map((s) => {
+            const hit = rows.find((r) => r.id === s.id);
+            return hit && !s.photo ? { ...s, photo: hit.photo } : s;
+          }),
+        );
+      })
+      .catch((cause) => {
+        photoFetched.current.delete(clientId);
+        console.error("Photo load failed:", cause);
+      });
+  }
+
   /** "Log again" for a sale: prefill, jump straight to PAID?. */
   function pickSaleAgain(sale: Sale) {
+    // The desktop rail can fire this while NewSale/QuickAdd hold typed
+    // input — the seq bump below would remount NewSale and discard it.
+    // Products and Settings hold unsaved forms too (same set as
+    // openClientFromSearch).
+    if (quickAdd || logAgain || showNewSale || showProducts || showSettings) {
+      setSaleNotice(t("home.finishEntryFirst"));
+      return;
+    }
     setSalePrefill({
       lineItems: sale.lineItems.map((item) => ({ ...item })),
       clientName: clientNameOf(sale.clientId),
@@ -1405,6 +1632,7 @@ function Ledger({
           void persist(() => saveTemplate(id, patch));
         }}
         onLogAgain={pickSaleAgain}
+        onOpenClient={fetchClientPhotos}
         onClose={() => {
           setShowClients(false);
           setClientsFocus(null);
@@ -1472,6 +1700,7 @@ function Ledger({
         sales={sales}
         clients={clients}
         templates={templates}
+        photoSaleIds={photoSaleIds}
         profile={profile}
         exportsBlocked={loadFailed}
         onClose={() => setShowDashboard(false)}
@@ -1554,7 +1783,7 @@ function Ledger({
             return;
           }
           downloadCsv(
-            everythingCsv(transactions, services, sales, clients, templates),
+            everythingCsv(transactions, services, sales, clients, templates, photoSaleIds),
             "contado-everything.csv",
           );
         }}
@@ -1658,7 +1887,15 @@ function Ledger({
           <button
             type="button"
             className="hover:underline"
-            onClick={() => getSupabase()?.auth.signOut()}
+            onClick={async () => {
+              // Drain the write queue BEFORE revoking the session: signOut
+              // removes the local JWT immediately, so a queued-but-unstarted
+              // write (the sale you just settled) would run unauthenticated,
+              // fail RLS, and be dropped with its error banner unmounted —
+              // silent loss at the exact moment no UI remains to report it.
+              await writeChain.current;
+              await getSupabase()?.auth.signOut();
+            }}
           >
             {t("home.signOut")}
           </button>
@@ -2137,6 +2374,7 @@ function Ledger({
             sales={sales}
             clients={clients}
             templates={templates}
+            photoSaleIds={photoSaleIds}
             profile={profile}
             exportsBlocked={loadFailed}
           />

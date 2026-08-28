@@ -48,6 +48,7 @@ export default function Dashboard({
   sales,
   clients,
   templates,
+  photoSaleIds,
   profile,
   onClose,
   exportsBlocked,
@@ -59,6 +60,10 @@ export default function Dashboard({
   /** For the everything-export only — the file is the user's pre-delete
    *  copy, so it carries the whole data model, templates included. */
   templates: RecurringTemplate[];
+  /** Sales with a server-side photo (bytes load per client on demand) —
+   *  keeps the export's yes/no photo column truthful. Optional: the
+   *  public demos render this component with fixtures and no set. */
+  photoSaleIds?: ReadonlySet<string>;
   /** Business name/owner/state — tops the tax CSV and the proof title. */
   profile: BusinessProfile;
   /** Omitted when embedded in the desktop rail — no takeover, no Close. */
@@ -194,7 +199,7 @@ export default function Dashboard({
 
   const downloadEverythingCsv = () =>
     downloadCsv(
-      everythingCsv(transactions, services, sales, clients, templates),
+      everythingCsv(transactions, services, sales, clients, templates, photoSaleIds),
       "contado-everything.csv",
     );
 

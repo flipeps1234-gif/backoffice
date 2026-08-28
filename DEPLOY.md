@@ -56,6 +56,19 @@ order by column_name;
 You need `direction` and `quantity` in that list. If either is missing,
 stop and run the migration.
 
+Current high-water mark: **0017** (`0017_settlement_idempotency.sql` — the
+unique index that makes "one payment, one sale" a database guarantee
+instead of a client guard; until it runs, the app's server-truth checks
+narrow the two-device double-settlement race but cannot close it). The
+combined file `~/Desktop/contado-combined-0001-0017.sql` holds everything
+in order and every migration is idempotent. Verify with:
+
+```sql
+select indexname from pg_indexes
+where tablename = 'transactions'
+  and indexname = 'transactions_matched_sale_key';
+```
+
 ### 1b. Verify the account-purge cron exists — BLOCKING for the deletion promise
 
 The public pages and the in-app terms promise that a deleted account is
@@ -236,5 +249,7 @@ that were written while the bad version was live. The app has no delete.
 | OpenAI $50/month | Uploads start failing; set `DEMO_EXTRACTION=mock` first |
 | Vercel 4.5MB request body | Handled client-side by compression + chunking at 4 files |
 | Vercel function duration | A large batch is sequential model calls — long uploads |
-| Supabase 500MB | Thousands of rows away; not a near-term concern |
+| Supabase 500MB database | **Photos.** Each sale photo is ~400KB of base64 IN the row (migration 0010), so 500MB is roughly **1,200–1,500 photos project-wide**, not "thousands of rows away". Text-only rows barely register. When photo volume becomes real, move bytes to Supabase Storage (1GB free, separate meter) — an architecture change to do deliberately |
+| Supabase egress (~5GB/month free) | Was the nearest cliff: the app re-downloaded every photo on every boot. Since the 2026-08-27 fix the boot pulls ids only and photo bytes load per client on demand, so egress now scales with photos actually viewed |
+| Supabase Auth /token per-IP rate limit (~30 per 5 min) | All demo sign-ins leave Vercel's shared egress IPs, so ~30 demo starts per 5 min site-wide trips it. The route now answers 429 "give it a minute" instead of a fake outage |
 | Supabase pausing after ~7 idle days | **Has already happened once (2026-08-12), with the cron in place.** Treat the ping as risk reduction, not a guarantee |

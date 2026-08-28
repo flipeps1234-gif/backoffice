@@ -297,6 +297,91 @@ dataLayer. Two synthetic rows from the verification sit in
 founding_list (founding-e2e-check@ / founding-browser-check@
 example.com) — harmless, deletable in the Table Editor.
 
+Find-and-fix pass (2026-08-27, seven NEVER-RUN lenses: newcode,
+capacity/quotas, state-machine, concurrency, deploy-headers,
+performance/bundle, persisted-state migration — newcode and migration
+came back CLEAN, zero findings). 10 raw findings, 2 HIGH confirmed by
+adversarial verifiers, 8 verified by the coordinator, 0 refuted. All
+fixed this session:
+- HIGH capacity: photos (~400KB base64 IN sale rows) were re-downloaded
+  for the whole ledger on EVERY app open — a handful of photo-using
+  users would exhaust the project's free-tier egress, and 500MB of DB
+  is only ~1,200-1,500 photos project-wide. loadSales no longer selects
+  photo; loadPhotoIds ships ids only; bytes load per client on demand
+  (fetchClientPhotos ← ClientsPage onOpenClient); the everything-CSV
+  photo column stays truthful via the id set. DEPLOY.md ceilings table
+  rewritten (it claimed "thousands of rows away"). The bytes-in-rows
+  design itself stands until a deliberate Supabase Storage move.
+- HIGH concurrency: a STALE second device settling an already-settled
+  sale minted a second linked payment row — permanent doubled revenue
+  in totals and the tax CSV, invited by its own stale Owed tab. Every
+  settlement write is now conditional at the database: settleSale
+  updates only open/expected rows, claimTxnForSale links only unspent
+  payments, paySaleCash's queue item rechecks DB truth (findLinkedTxn)
+  and adopts the other device's payment instead of minting, losing
+  racers roll back in-memory + remove their own residue. Migration
+  0017 (unique index on transactions.matched_sale_id, NULLs distinct)
+  makes it a hard guarantee — OWNER MUST RUN (combined file regenerated
+  ~/Desktop/contado-combined-0001-0017.sql); code is correct both
+  before (window narrowed to ms) and after (closed).
+- Sign-out now drains the write queue first (queued writes ran
+  unauthenticated after token revocation, failed RLS, vanished with
+  the error banner unmounted).
+- Initial loads MERGE by id instead of replacing state — an entry
+  logged during a slow first load no longer vanishes (and no longer
+  invites a permanent duplicate re-entry). All five stores.
+- Desktop rail "Log again" (sales + history rows) now respects the
+  finish-entry-first guard instead of vaporizing a half-typed
+  sale/expense; openClientFromSearch also blocks over Products/
+  Settings (unsaved forms) and closes Owed/RecentSales instead of
+  latching a ghost ClientsPage behind them.
+- Security headers: CSP frame-ancestors 'none' + X-Frame-Options DENY
+  site-wide (next.config.ts headers()) — the app was frameable for
+  clickjacking; nothing in the product frames itself.
+- Landing no longer ships @supabase/supabase-js (60KB gz) to every
+  anonymous visitor: the signed-in bounce probes localStorage for the
+  sb-*-auth-token key and only then dynamically imports the client.
+  Verified in the build: landing HTML has zero references to the SDK
+  chunk; /app still has them (positive control).
+- /api/demo-session surfaces Supabase's per-IP /token rate limit as an
+  honest 429 "give it a minute" (~30 demo starts per 5 min site-wide
+  trips it — Vercel's shared egress IPs) instead of a fake outage 502.
+- Step-0 tooling: nanoid bumped to 3.3.18 (in-range advisory fix);
+  postcss + sharp HIGH advisories REJECTED with path evidence (build-
+  time own-CSS only; no next/image usage so the optimizer never sees
+  attacker bytes) — the real fix for both is the next@16.3.3 upgrade,
+  deliberately an owner decision, not an audit side effect.
+DEFERRED with evidence (LOW, documented): the monolithic i18n MESSAGES
+merge ships every app screen's trilingual dictionary (~40KB gz chunk)
+to all public routes and the site's copy into /app — the split into
+PUBLIC_MESSAGES/MESSAGES along the existing route boundary is a typed
+refactor across every useLocale consumer; do it deliberately.
+
+The pass's own diff was then adversarially reviewed BEFORE commit
+(the newcode slot the skill demands) and it caught 5 defects in the
+fixes above, 2 HIGH — all fixed and re-gated in the same commit:
+- HIGH: paySaleCash's lost-race compensation deleted its own mirror
+  without checking WHOSE row the winner settled on — when the other
+  device's adopt path adopted OUR mirror, the delete destroyed the
+  very payment row the sale now points at (paid sale, dangling
+  pointer, cash gone from every total). Both loss branches now read
+  loadSaleLink first: winner-adopted-ours → keep; true double →
+  delete ours AND adopt the winner in memory (which also fixed the
+  in-memory "paid sale, no money row" LOW). linkSaleToTxn's loser
+  path had the mirror-image bug (releasing a claim the winner had
+  settled on, making the payment spendable twice) — same guard.
+- HIGH: handleSaleDone's digital path claimed the payment BEFORE
+  inserting the sale, reversing the file's own residue law — a
+  network blip between the two awaits stranded a payment marked for
+  a sale that never landed (permanently unmatchable). Insert-first
+  restored; a lost claim now demotes the fresh sale to EXPECTED.
+- MED: post-0017, claimTxnForSale's UPDATE hits the unique index and
+  threw a fake "save failed — batch may be lost" banner instead of
+  the graceful rollback; 23505 on the claim now returns lost-race.
+- MED: the new rail guards blocked only the money takeovers while
+  openClientFromSearch (same diff) had learned Products/Settings
+  hold unsaved forms too — guards unified.
+
 App persistence re-verified LIVE 2026-08-26 (the owner suspected
 saving was broken): on production, signed in as tester via the demo
 word, a $0.42 expense (with Schedule-C category), a $1.07 cash sale

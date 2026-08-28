@@ -56,6 +56,17 @@ export async function POST(request: Request) {
   });
 
   if (error || !data.session) {
+    // Supabase Auth rate-limits /token PER IP, and every visitor's
+    // sign-in leaves Vercel through a small shared egress pool — a
+    // landing-page burst of ~30 demo starts in 5 minutes trips it for
+    // everyone at once. That's load, not breakage: say so, or a traffic
+    // spike reads as the product being down.
+    if (error?.status === 429) {
+      return Response.json(
+        { error: "Lots of people are trying the demo right now — give it a minute." },
+        { status: 429 },
+      );
+    }
     console.error("Demo sign-in failed:", error?.message);
     return Response.json(
       { error: "The test account couldn't sign in right now." },

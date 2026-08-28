@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Client } from "@/lib/client";
 import { formatMiles, parseMilesToTenths } from "@/lib/mileage";
 import {
@@ -63,6 +63,7 @@ export default function ClientsPage({
   onUpdateClient,
   onUpdateTemplate,
   onLogAgain,
+  onOpenClient,
   onClose,
 }: {
   clients: Client[];
@@ -77,10 +78,18 @@ export default function ClientsPage({
   ) => void;
   onUpdateTemplate: (id: string, patch: Partial<RecurringTemplate>) => void;
   onLogAgain: (sale: Sale) => void;
+  /** Fires when a client's detail opens — how photo bytes get fetched
+   *  on demand instead of riding the boot payload. */
+  onOpenClient?: (id: string) => void;
   onClose: () => void;
 }) {
   const { t } = useLocale();
   const [openId, setOpenId] = useState<string | null>(initialOpenId ?? null);
+
+  // Covers both entrances: initialOpenId (search) and a list tap.
+  useEffect(() => {
+    if (openId) onOpenClient?.(openId);
+  }, [openId, onOpenClient]);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");

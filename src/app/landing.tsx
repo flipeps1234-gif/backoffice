@@ -20,7 +20,6 @@ import { PublicFooter, PublicHeader } from "./public-shell";
 import RunningTotals from "./running-totals";
 import SwipeDeck from "./swipe-deck";
 import { useLocale } from "./use-locale";
-import { useSession } from "@/lib/supabase/use-session";
 import { EMPTY_PROFILE } from "@/lib/profile";
 
 /**
@@ -39,15 +38,40 @@ import { EMPTY_PROFILE } from "@/lib/profile";
  */
 export default function Landing() {
   const { t } = useLocale();
-  const { user } = useSession();
   const mounted = useMounted();
 
   // Signed in already? This page is a poster on the door — go inside.
   // A full-document navigation, not router.replace: the public site's
   // analytics tag must not ride along into the app.
+  //
+  // NOT useSession: that hook statically pulls the whole supabase-js SDK
+  // (~60KB gz — auth, realtime, websockets) into the landing bundle,
+  // which every anonymous visitor pays on the page whose Core Web Vitals
+  // decide search ranking. Auth is device-local (the session lives in
+  // localStorage under sb-<ref>-auth-token), so the common case — no
+  // session — is answerable from localStorage alone; only a visitor who
+  // has actually signed in loads the SDK, after hydration, to confirm.
   useEffect(() => {
-    if (user) window.location.replace("/app");
-  }, [user]);
+    let hasToken = false;
+    try {
+      for (let i = 0; i < localStorage.length; i += 1) {
+        const key = localStorage.key(i);
+        if (key && /^sb-.*-auth-token$/.test(key)) {
+          hasToken = true;
+          break;
+        }
+      }
+    } catch {
+      return; // storage blocked — treat as signed out
+    }
+    if (!hasToken) return;
+    void import("@/lib/supabase/client").then(async ({ getSupabase }) => {
+      const supabase = getSupabase();
+      if (!supabase) return;
+      const { data } = await supabase.auth.getSession();
+      if (data.session) window.location.replace("/app");
+    });
+  }, []);
 
   const owed = mounted ? owedDemo() : null;
 
