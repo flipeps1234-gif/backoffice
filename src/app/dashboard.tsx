@@ -7,6 +7,7 @@ import { everythingCsv, mileageCsv, taxCsv } from "@/lib/csv";
 import { downloadCsv } from "./download";
 import type { BusinessProfile } from "@/lib/profile";
 import { formatMiles, mileageLog, totalTenths } from "@/lib/mileage";
+import type { NotificationPrefs } from "@/lib/notify/types";
 import type { RecurringTemplate } from "@/lib/recurring";
 import type { Sale } from "@/lib/sale";
 import { quarterIncomeCents, quarterOf, setAsideCents } from "@/lib/setaside";
@@ -50,6 +51,7 @@ export default function Dashboard({
   templates,
   photoSaleIds,
   profile,
+  notifyPrefs,
   onClose,
   exportsBlocked,
 }: {
@@ -66,6 +68,9 @@ export default function Dashboard({
   photoSaleIds?: ReadonlySet<string>;
   /** Business name/owner/state — tops the tax CSV and the proof title. */
   profile: BusinessProfile;
+  /** Phone + consent timestamps — the everything-export carries them so
+   *  the pre-delete copy is actually complete. Optional: public demos. */
+  notifyPrefs?: NotificationPrefs | null;
   /** Omitted when embedded in the desktop rail — no takeover, no Close. */
   onClose?: () => void;
   /** True after a FAILED transactions load: the in-memory ledger is
@@ -199,7 +204,7 @@ export default function Dashboard({
 
   const downloadEverythingCsv = () =>
     downloadCsv(
-      everythingCsv(transactions, services, sales, clients, templates, photoSaleIds),
+      everythingCsv(transactions, services, sales, clients, templates, photoSaleIds, profile, notifyPrefs),
       "contado-everything.csv",
     );
 

@@ -125,6 +125,13 @@ give it an ID. To turn it on:
 4. After the first `founding_signup` event arrives (Admin → Events),
    toggle it as a **key event** — that is the site's one conversion.
 
+Founding-list removal requests (the /privacy page promises this): the
+list is write-only from the API by design, so removal is a dashboard
+action — Supabase → Table Editor → `founding_list`, find the row (the
+unique index is on `lower(email)`, so search lowercase) and delete it.
+There is no in-product path on purpose; the address arrives via the
+contact page.
+
 What the site sends, and nothing else:
 
 | Event | Fires when | Params |

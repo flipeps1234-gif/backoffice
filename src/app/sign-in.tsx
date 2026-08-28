@@ -42,7 +42,12 @@ export const humanAuthError = (
   raw: string,
   t: (key: MessageKey) => string,
 ): string => {
+  // "{}" is what auth-js produces for a REACHABLE server answering
+  // 5xx: its _getErrorMessage finds no message field on the Response
+  // object and JSON.stringify's it. Same meaning as an unreachable
+  // server — the outage copy, not two braces in a red box.
   const unreachable =
+    raw === "{}" ||
     /failed to fetch|load failed|networkerror|fetch failed|network request failed/i.test(
       raw,
     );

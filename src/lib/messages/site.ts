@@ -480,6 +480,11 @@ export const messages = {
     es: "El sitio público (estas páginas, no la app) puede usar Google Analytics para contar visitas. La app nunca envía datos de análisis, y un navegador que envía Do Not Track no recibe ninguno.",
     pt: "O site público (estas páginas, não o app) pode usar o Google Analytics para contar visitas. O app em si nunca envia dados de análise, e um navegador que envia Do Not Track não recebe nenhum.",
   },
+  "site.privacyFounding": {
+    en: "The founding-hundred form stores your email address for one purpose: telling you when the founding price goes live. It is never sold or shared. To come off the list, send us a message from the contact page and we delete the address.",
+    es: "El formulario de los cien fundadores guarda tu correo para una sola cosa: avisarte cuando el precio fundador esté disponible. Nunca se vende ni se comparte. Para salir de la lista, envíanos un mensaje desde la página de contacto y borramos tu dirección.",
+    pt: "O formulário dos cem fundadores guarda seu e-mail para uma coisa só: avisar quando o preço de fundador estiver disponível. Nunca é vendido nem compartilhado. Para sair da lista, mande uma mensagem pela página de contato e apagamos seu endereço.",
+  },
 
   // ---- footer: track-payments column ----
   "site.footerTrack": { en: "Track payments", es: "Registrar pagos", pt: "Registrar pagamentos" },

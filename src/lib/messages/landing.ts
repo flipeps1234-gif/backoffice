@@ -155,6 +155,11 @@ export const messages = {
     es: "Demasiados intentos — espera un minuto.",
     pt: "Muitas tentativas — espere um minuto.",
   },
+  "landing.ctaNoScript": {
+    en: "This form needs JavaScript. To join without it, send us a message from the contact page.",
+    es: "Este formulario necesita JavaScript. Para unirte sin él, envíanos un mensaje desde la página de contacto.",
+    pt: "Este formulário precisa de JavaScript. Para entrar sem ele, mande uma mensagem pela página de contato.",
+  },
   "landing.footerHelp": {
     en: "Help",
     es: "Ayuda",

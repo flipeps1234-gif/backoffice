@@ -120,21 +120,33 @@ export const loadClientPhotos = async (
 };
 
 /** One sale's settlement pointer, straight from the database — the
- *  authoritative answer to "whose payment row won?". */
+ *  authoritative answer to "whose payment row won?", and with WHICH
+ *  method (a txn's source is provenance, not payment method — a
+ *  hand-typed income row can be a digital payment, so method must
+ *  come from the sale row, never be derived from source). */
 export const loadSaleLink = async (
   id: string,
-): Promise<{ state: SaleState; matchedTxnId: string | null } | null> => {
+): Promise<{
+  state: SaleState;
+  method: "cash" | "digital" | null;
+  matchedTxnId: string | null;
+} | null> => {
   const supabase = getSupabase();
   if (!supabase) return null;
 
   const { data, error } = await supabase
     .from("sales")
-    .select("state, matched_txn_id")
+    .select("state, method, matched_txn_id")
     .eq("id", id)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
-  return { state: asState(data.state), matchedTxnId: data.matched_txn_id };
+  return {
+    state: asState(data.state),
+    method:
+      data.method === "cash" || data.method === "digital" ? data.method : null,
+    matchedTxnId: data.matched_txn_id,
+  };
 };
 
 /**
@@ -205,6 +217,33 @@ export const updateSale = async (
 
   const { error } = await supabase.from("sales").update(row).eq("id", id);
   if (error) throw new Error(error.message);
+};
+
+/**
+ * The ids the database ACTUALLY holds for a set of templates' instances,
+ * keyed by (template, date) at the caller. The readback that must follow
+ * insertGeneratedSales: when a concurrent boot won 0008's unique index,
+ * ON CONFLICT DO NOTHING silently dropped THIS device's row, and the
+ * freshly minted in-memory id points at nothing — a phantom whose later
+ * settlement corrupts (no sale row to settle; the live twin stays open
+ * and gets settled again). See the load effect's remap.
+ */
+export const loadInstanceIds = async (
+  templateIds: string[],
+): Promise<{ id: string; recurringTemplateId: string; date: string }[]> => {
+  const supabase = getSupabase();
+  if (!supabase || templateIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from("sales")
+    .select("id, recurring_template_id, occurred_on")
+    .in("recurring_template_id", templateIds);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => ({
+    id: String(row.id),
+    recurringTemplateId: String(row.recurring_template_id),
+    date: String(row.occurred_on),
+  }));
 };
 
 /**

@@ -1,6 +1,7 @@
 import { scheduleCLabel } from "./category";
 import type { Client } from "./client";
 import { formatMiles, type MileageEntry } from "./mileage";
+import type { NotificationPrefs } from "./notify/types";
 import { hasProfile, type BusinessProfile } from "./profile";
 import { cadenceLabel, type RecurringTemplate } from "./recurring";
 import { saleTotalCents, type Sale } from "./sale";
@@ -147,6 +148,11 @@ export const everythingCsv = (
    *  bytes stay out of the boot payload, so the yes/no column needs the
    *  id set to stay truthful. */
   photoSaleIds?: ReadonlySet<string>,
+  /** The two account-level records the user typed by hand. "Everything"
+   *  must include them: the pre-deletion copy is the last place the
+   *  consent timestamps — the user's own proof of opt-in — exist. */
+  profile?: BusinessProfile | null,
+  notify?: NotificationPrefs | null,
 ): string => {
   const clientName = (id: string | null): string =>
     id ? (clients.find((c) => c.id === id)?.name ?? "") : "";
@@ -246,6 +252,41 @@ export const everythingCsv = (
         ].join(","),
       );
     }
+  }
+
+  if (profile && hasProfile(profile)) {
+    lines.push(
+      "",
+      "profile",
+      ["business", "owner", "us_state"].join(","),
+      [field(profile.businessName), field(profile.ownerName), field(profile.usState)].join(","),
+    );
+  }
+
+  // Timestamps can outlive both the phone and the channel (a save with
+  // channel off keeps carried consent stamps) — and they are the very
+  // opt-in/STOP proof this section exists to preserve, so they open the
+  // gate on their own.
+  if (
+    notify &&
+    (notify.phone ||
+      notify.channel !== "off" ||
+      notify.whatsappConsentAt ||
+      notify.smsConsentAt ||
+      notify.optedOutAt)
+  ) {
+    lines.push(
+      "",
+      "notifications",
+      ["channel", "phone", "whatsapp_consent_at", "sms_consent_at", "opted_out_at"].join(","),
+      [
+        notify.channel,
+        field(notify.phone),
+        notify.whatsappConsentAt ?? "",
+        notify.smsConsentAt ?? "",
+        notify.optedOutAt ?? "",
+      ].join(","),
+    );
   }
 
   return document_(lines);

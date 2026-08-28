@@ -83,6 +83,7 @@ import {
   insertGeneratedSales,
   insertSales,
   loadClientPhotos,
+  loadInstanceIds,
   loadPhotoIds,
   loadSaleLink,
   loadSales,
@@ -525,6 +526,47 @@ function Ledger({
             // open racing this one no-ops instead of duplicating.
             void persist(async () => {
               await insertGeneratedSales(createdAll, accountId);
+              // Read back the WINNING ids: when a concurrent boot on
+              // another device inserted the same (template, date)
+              // instance first, ignoreDuplicates silently dropped our
+              // row — this tab would hold a phantom id all session, and
+              // settling a phantom double-counts the job (no sale row to
+              // settle; the live twin stays open and gets settled too).
+              // Remap memory to the rows the database actually kept.
+              if (createdAll.length > 0) {
+                const templateIds = [
+                  ...new Set(
+                    createdAll.flatMap((s) =>
+                      s.recurringTemplateId ? [s.recurringTemplateId] : [],
+                    ),
+                  ),
+                ];
+                const canonical = await loadInstanceIds(templateIds);
+                const byKey = new Map(
+                  canonical.map((c) => [
+                    `${c.recurringTemplateId}|${c.date}`,
+                    c.id,
+                  ]),
+                );
+                const phantomToReal = new Map<string, string>();
+                for (const created of createdAll) {
+                  const real = byKey.get(
+                    `${created.recurringTemplateId}|${created.date}`,
+                  );
+                  if (real && real !== created.id) {
+                    phantomToReal.set(created.id, real);
+                  }
+                }
+                if (phantomToReal.size > 0) {
+                  setSales((current) => {
+                    const have = new Set(current.map((s) => s.id));
+                    return current.map((s) => {
+                      const real = phantomToReal.get(s.id);
+                      return real && !have.has(real) ? { ...s, id: real } : s;
+                    });
+                  });
+                }
+              }
               for (const next of changed) {
                 await saveTemplate(next.id, {
                   nextDue: next.nextDue,
@@ -1047,12 +1089,27 @@ function Ledger({
         if (linked) {
           // Settled (or half-settled) elsewhere — adopt that payment
           // instead of minting one. settleSale no-ops if already paid.
-          const method = linked.source === "manual" ? "cash" : "digital";
-          await settleSale(sale.id, {
+          // source is provenance, not payment method (a hand-typed income
+          // row can be a digital payment): the derivation is only the
+          // default for a half-settlement WE complete; when the sale was
+          // already settled, its own row knows the real method.
+          const derived = linked.source === "manual" ? "cash" : "digital";
+          const won = await settleSale(sale.id, {
             state: "paid",
-            method,
+            method: derived,
             matchedTxnId: linked.id,
           });
+          let method: "cash" | "digital" = derived;
+          if (!won) {
+            try {
+              method = (await loadSaleLink(sale.id))?.method ?? derived;
+            } catch {
+              // Label-only lookup — the settle already stands. Throwing
+              // out of the item here would abort mid-reconciliation and
+              // raise a lost-data banner over a method label; the derived
+              // label heals on reload.
+            }
+          }
           patchSale(sale.id, { state: "paid", method, matchedTxnId: linked.id });
           setTransactions((current) => [
             linked,
@@ -1067,7 +1124,18 @@ function Ledger({
           setTransactions((current) => current.filter((t) => t.id !== txn.id));
           const winner = await findLinkedTxn(sale.id);
           if (winner) {
-            const method = winner.source === "manual" ? "cash" : "digital";
+            // The sale row's method is authoritative — source is only
+            // provenance (see the adopt branch above). Label-only, so a
+            // thrown lookup falls back to derived rather than aborting
+            // the reconciliation this helper exists to finish.
+            let method: "cash" | "digital" =
+              winner.source === "manual" ? "cash" : "digital";
+            try {
+              const link = await loadSaleLink(sale.id);
+              method = link?.method ?? method;
+            } catch {
+              // derived label heals on reload
+            }
             patchSale(sale.id, { state: "paid", method, matchedTxnId: winner.id });
             setTransactions((current) => [
               winner,
@@ -1092,15 +1160,32 @@ function Ledger({
           matchedTxnId: txn.id,
         });
         if (!won) {
-          // Lost the paid transition by milliseconds. Two ways to lose:
-          // the winner adopted OUR just-inserted mirror (its settle points
-          // at txn.id — keep the row, everything is already right), or it
-          // settled on its own payment (our mirror is a true double —
-          // remove it: queue hygiene, not a user-facing delete). Deleting
-          // without this check destroyed the very row the winner adopted:
-          // paid sale, dangling pointer, cash gone from every total.
-          const link = await loadSaleLink(sale.id);
-          if (link?.matchedTxnId === txn.id) return;
+          // Lost the paid transition — but THREE states produce won=false,
+          // and only one of them earns a delete:
+          //   link null        → the sale ROW never landed (its insert
+          //                      failed earlier). No race was lost; keep
+          //                      the mirror — it remains a standalone
+          //                      income row, so the cash stays counted
+          //                      exactly once even after reload.
+          //   link → txn.id    → the winner adopted OUR just-inserted
+          //                      mirror. Keep the row; all is right.
+          //   link → other id  → true double; remove ours (queue hygiene,
+          //                      not a user-facing delete) and adopt the
+          //                      winner. Deleting in the first two states
+          //                      destroyed the only money record.
+          // (Phantom recurring-instance ids — the fourth way to reach
+          // link null — are remapped away at generation readback in the
+          // load effect, so they cannot arrive here.)
+          let link: Awaited<ReturnType<typeof loadSaleLink>> = null;
+          try {
+            link = await loadSaleLink(sale.id);
+          } catch {
+            // Can't tell which loss state this is. Keep the row: deleting
+            // money on uncertainty is the one unrecoverable choice, and a
+            // reload reconciles whichever state it really was.
+            return;
+          }
+          if (!link || link.matchedTxnId === txn.id) return;
           await deleteOwnTransaction(txn.id);
           await adoptWinner();
         }
@@ -1212,9 +1297,12 @@ function Ledger({
         // found our claim), everything is already right — releasing the
         // claim here would leave a paid sale pointing at an "unspent"
         // payment, free to clear a second sale. Only a settle onto a
-        // DIFFERENT payment makes our claim wrong.
+        // DIFFERENT payment makes our claim wrong. A null link (the sale
+        // row never landed — its insert failed earlier) takes the same
+        // release path ON PURPOSE: a claim pointing at a nonexistent sale
+        // would strand the payment forever (see handleSaleDone's law).
         const link = await loadSaleLink(sale.id);
-        if (link?.matchedTxnId === txn.id) return;
+        if (link && link.matchedTxnId === txn.id) return;
         await saveTransaction(txn.id, prevTxn);
         rollBack();
       }
@@ -1702,6 +1790,7 @@ function Ledger({
         templates={templates}
         photoSaleIds={photoSaleIds}
         profile={profile}
+        notifyPrefs={notifyPrefs}
         exportsBlocked={loadFailed}
         onClose={() => setShowDashboard(false)}
       />
@@ -1783,7 +1872,7 @@ function Ledger({
             return;
           }
           downloadCsv(
-            everythingCsv(transactions, services, sales, clients, templates, photoSaleIds),
+            everythingCsv(transactions, services, sales, clients, templates, photoSaleIds, profile, notifyPrefs),
             "contado-everything.csv",
           );
         }}
@@ -2376,6 +2465,7 @@ function Ledger({
             templates={templates}
             photoSaleIds={photoSaleIds}
             profile={profile}
+            notifyPrefs={notifyPrefs}
             exportsBlocked={loadFailed}
           />
           <HistoryList

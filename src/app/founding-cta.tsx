@@ -91,6 +91,16 @@ export function FoundingForm() {
       {state === "slow" && (
         <p className="text-sm text-amber-700 dark:text-amber-400">{t("landing.ctaSlow")}</p>
       )}
+      {/* Without JS (or with hydration killed by a content filter), the
+          submit is HTML's default GET-to-self: the page reloads with the
+          field cleared — reads as success, signup silently lost. The
+          noscript names a path that works. Prerendered English, like the
+          rest of the no-JS page. */}
+      <noscript>
+        <p className="text-sm text-amber-700 dark:text-amber-400">
+          {t("landing.ctaNoScript")}
+        </p>
+      </noscript>
     </form>
   );
 }

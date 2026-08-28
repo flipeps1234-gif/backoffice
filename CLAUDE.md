@@ -382,6 +382,56 @@ fixes above, 2 HIGH — all fixed and re-gated in the same commit:
   openClientFromSearch (same diff) had learned Products/Settings
   hold unsaved forms too — guards unified.
 
+Find-and-fix pass 2 (2026-08-27, three lenses: newcode over the
+UNREVIEWED post-review fixes in c993498, privacy/data-lifecycle
+[never run], resilience over the public surface [never run]). 6 raw,
+1 HIGH confirmed, 0 refuted; all fixed, then the fix diff was itself
+reviewed (3 more findings, 1 MED) and those fixed too — all in one
+gated commit:
+- HIGH newcode: paySaleCash's !won compensation assumed a WINNER
+  exists whenever the conditional settle loses — but a sale whose
+  INSERT failed earlier produces the same won=false with loadSaleLink
+  null, and the branch deleted the just-minted mirror: the user's
+  confirmed cash erased from DB entirely (pre-c993498 the orphan
+  survived as correct income). Null link now KEEPS the mirror; only
+  a link to a DIFFERENT payment row earns the delete. linkSaleToTxn's
+  null case releases the claim on purpose (stranded-payment law).
+- MED (review of the fix): the keep path re-exposed the recurring
+  phantom-id race — two devices booting together both generate the
+  same instance, 0008's ignoreDuplicates silently drops one row, and
+  that device holds a PHANTOM sale id all session whose settlement
+  double-counts (mirror kept + live twin settled again). Root fix:
+  insertGeneratedSales is now followed by a readback (loadInstanceIds)
+  that remaps phantom ids to the rows the database actually kept.
+- MED resilience: Supabase answering 5xx put the literal string "{}"
+  in the sign-in error box (auth-js JSON.stringify's the Response);
+  "{}" now maps to the translated outage copy. Verified against
+  auth-js's _getErrorMessage source.
+- Adopt/heal paths no longer derive payment method from txn.source
+  (provenance, not method — a hand-typed income row can be digital):
+  the sale row's own method wins when the settle was lost; label
+  lookups are try/caught so a thrown label fetch can't abort
+  reconciliation or cry data loss.
+- everythingCsv now carries the business profile and notification
+  phone/consent/STOP timestamps (the pre-delete copy was missing
+  exactly the records the user typed by hand; consent stamps open
+  the section on their own since they outlive phone+channel).
+- /privacy now discloses the founding-email capture (the one datum
+  the public SITE collects) with the removal path, EN/ES/PT;
+  DEPLOY.md documents the owner-side removal (Table Editor,
+  lower(email) lookup). The list survives account deletion BY DESIGN
+  (separate consent) — now stated.
+- The founding form gained a noscript fallback: without JS/hydration
+  the native submit was a GET-to-self that cleared the field and
+  read as success, silently losing the signup.
+Verified clean by the reviewer with evidence: linkSaleToTxn null
+release, method-from-sale-row fallbacks, CSV quoting + both call
+sites + demo renders, MessageKey derivation, noscript present in
+prerendered HTML (React never hydrates noscript children), ES/PT
+register. Trend: P1 10 raw (2 HIGH) → P2 6 raw (1 HIGH) → fix-review
+3 (1 MED); severity falling, both never-run lenses came back with
+only copy/lifecycle lows.
+
 App persistence re-verified LIVE 2026-08-26 (the owner suspected
 saving was broken): on production, signed in as tester via the demo
 word, a $0.42 expense (with Schedule-C category), a $1.07 cash sale
