@@ -96,6 +96,17 @@ created — sign-in appears to work and then silently does nothing.
 to make preview deploys work: any Vercel subdomain would then be a valid
 redirect target for a magic-link token, which is an account-takeover path.
 
+**For the NATIVE iOS app (v0.7)** also add exactly:
+
+    contado://auth-callback
+
+That is the custom URL scheme the iPhone app registers; the emailed
+magic link redirects there so the session lands in the app instead of
+dying in Safari. Same exact-match rule — the scheme plus that exact
+path, nothing wildcarded. Until this is added, native email sign-in
+sends the link but tapping it opens the website instead of the app;
+the demo word works regardless.
+
 ### 3. Set `DEMO_EXTRACTION=mock` in Vercel — costs you nothing
 
 The shared tester account otherwise uses the real OpenAI provider, and the

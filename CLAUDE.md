@@ -560,6 +560,41 @@ FLOW.md is the spec of record and matches the build: the
 `photo/notes (opt.)` line shipped the same day it was drawn, so the
 chart has NO spec-ahead-of-build entries left.
 
+v0.7 NATIVE iOS (2026-08-28, IN PROGRESS, owner-ordered — the "no
+native mobile" boundary was explicitly flipped by the owner; the
+roadmap's Expo idea became native SwiftUI at their direction): the
+app lives in ~/Desktop/"contado native app" (Xcode 26.6, iOS 26.5,
+synchronized folder groups — files dropped in build automatically).
+Architecture: a SECOND CLIENT of the same backend — same Supabase
+project via plain URLSession against auth+PostgREST (no SDK; RLS is
+the boundary exactly as in the browser), same Vercel API routes
+(/api/extract multipart with Bearer, /api/demo-session for the demo
+word, NEW /api/config serving the public Supabase URL+anon key so
+nothing is hardcoded in the binary). Magic link deep-links to
+contado://auth-callback (DEPLOY.md documents the Redirect URLs
+entry, owner-side). Tokens in Keychain; 401 retried once through a
+token refresh (the JWT-skew transient becomes invisible). All pure
+logic ported 1:1 (money incl. comma-decimal + the 0.125 guard,
+matching, recurring incl. the jsonb cadence object, insights,
+dashboard, CSVs, search fold, recommend, mileage, set-aside, recap,
+customer-memory, photo budget); messages.json GENERATED from the web
+fragments (714 keys x3, never hand-copied). Every screen ported to
+SwiftUI phone-first (no desktop rail, no RecentSales takeover — its
+function reachable via History/Owed/Clients). The store carries the
+web's laws: serial write queue, sticky saveFailed, loadFailed gates,
+merge-not-replace, conditional settlement + server-truth rechecks +
+the c993498/a778f60 loss-state handling, generation readback remap,
+photo-bytes-lazy egress law, account-keyed state reset, sign-out
+queue drain. An 8-agent parity audit (webapp as spec) checked 335
+features: 285 parity at first pass, 49 findings, ALL 7 HIGH + the
+consequential MEDIUMs fixed (worst: recurring cadence was being
+written flat-string vs the web's jsonb object — weekly templates
+would silently degrade to monthly cross-client). Whole-project
+swiftc typecheck clean. NOT yet done: xcodebuild + simulator run
+(blocked on the iOS runtime download re-registering), behavioral
+E2E against production on the tester account, and the LOW-severity
+parity list (26 items, documented in the session log).
+
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →
   confirmation sheet → swipe → running totals. In-memory is fine.
