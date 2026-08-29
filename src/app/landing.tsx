@@ -88,6 +88,32 @@ export default function Landing() {
             {t("landing.heroTitle")}
           </h1>
           <p className="text-sm text-neutral-500">{t("landing.heroSub")}</p>
+          {/* Desktop only: the tall sheet demo beside two lines of text
+              left the hero's left column mostly air. These are real
+              links to the four channel pages — substance, not filler.
+              Mobile stays untouched (the lg: law). */}
+          <div className="hidden lg:block lg:pt-4">
+            <p className="text-sm text-neutral-500">{t("landing.heroChannels")}</p>
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {(
+                [
+                  ["/track/venmo", "site.trackVenmo"],
+                  ["/track/cash-app", "site.trackCashApp"],
+                  ["/track/zelle", "site.trackZelle"],
+                  ["/track/cash", "site.trackCash"],
+                ] as const
+              ).map(([href, key]) => (
+                <li key={href}>
+                  <Link
+                    href={href}
+                    className="inline-flex h-11 items-center rounded-lg border border-neutral-300 bg-white px-4 text-sm font-medium text-neutral-900 hover:bg-neutral-100 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
+                  >
+                    {t(key)}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
         <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <DemoFrame label={t("landing.demoData")}>
@@ -126,12 +152,23 @@ export default function Landing() {
                 {t("landing.step2Title")}
               </p>
               <p className="text-sm text-neutral-500">{t("landing.step2Body")}</p>
+              {/* Desktop: "What we found" moves under the words so the
+                  stacked demo doesn't tower over two lines of text —
+                  the tallest void on the page before this. */}
+              <div className="hidden lg:block lg:pt-2">
+                <DemoFrame label={t("landing.demoData")}>
+                  <Insights transactions={SHEET_DEMO} />
+                </DemoFrame>
+              </div>
             </div>
             {/* The sorting stage exactly as it ships: "What we found" on
-                top, then the deck — one card, Personal / Business below. */}
+                top, then the deck — one card, Personal / Business below.
+                On desktop the insights render in the left column instead. */}
             <DemoFrame label={t("landing.demoData")}>
               <div className="space-y-4">
-                <Insights transactions={SHEET_DEMO} />
+                <div className="lg:hidden">
+                  <Insights transactions={SHEET_DEMO} />
+                </div>
                 <SwipeDeck
                   pending={SHEET_DEMO}
                   onDecide={noop}
@@ -148,6 +185,13 @@ export default function Landing() {
                 {t("landing.step3Title")}
               </p>
               <p className="text-sm text-neutral-500">{t("landing.step3Body")}</p>
+              {/* Desktop: the totals + dashboard demo is the tallest on
+                  the page — these carry what the books actually hold. */}
+              <ul className="hidden space-y-2 text-sm text-neutral-500 lg:block lg:pt-2">
+                <li>{t("landing.step3a")}</li>
+                <li>{t("landing.step3b")}</li>
+                <li>{t("landing.step3c")}</li>
+              </ul>
             </div>
             {/* The totals bar and the Dashboard as the desktop rail shows
                 them. Dashboard reads today's date for the quarter, so it
@@ -180,6 +224,11 @@ export default function Landing() {
         <div className="space-y-3">
           <h2 className="text-base font-semibold">{t("landing.owedTitle")}</h2>
           <p className="text-sm text-neutral-500">{t("landing.owedBody")}</p>
+          <ul className="hidden space-y-2 text-sm text-neutral-500 lg:block lg:pt-2">
+            <li>{t("landing.owed1")}</li>
+            <li>{t("landing.owed2")}</li>
+            <li>{t("landing.owed3")}</li>
+          </ul>
         </div>
         {owed && (
           <DemoFrame label={t("landing.demoData")}>

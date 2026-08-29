@@ -65,6 +65,45 @@ export const messages = {
     es: "Totales, datos e historial — cada registro guardado al instante, para siempre, gratis.",
     pt: "Totais, insights e histórico — cada registro salvo na hora, para sempre, grátis.",
   },
+  // Desktop-only detail lines (lg:) — the two-column pairs put two lines
+  // of text against tall real-component demos; these carry the columns'
+  // weight with substance, not decoration. Same laws as everything else:
+  // short, declarative, real labels quoted exactly.
+  "landing.heroChannels": {
+    en: "Works with the apps you already get paid on:",
+    es: "Funciona con las apps donde ya te pagan:",
+    pt: "Funciona com os apps onde você já recebe:",
+  },
+  "landing.step3a": {
+    en: "Business and personal — always two numbers, never blended.",
+    es: "Negocio y personal — siempre dos números, nunca mezclados.",
+    pt: "Negócio e pessoal — sempre dois números, nunca misturados.",
+  },
+  "landing.step3b": {
+    en: "Revenue by service, month by month.",
+    es: "Ingresos por servicio, mes a mes.",
+    pt: "Receita por serviço, mês a mês.",
+  },
+  "landing.step3c": {
+    en: "A quarterly set-aside nudge — information, never tax advice.",
+    es: "Un recordatorio trimestral de apartado — información, nunca asesoría fiscal.",
+    pt: "Um lembrete trimestral de reserva — informação, nunca consultoria fiscal.",
+  },
+  "landing.owed1": {
+    en: "Every open job, grouped by client and aged.",
+    es: "Cada trabajo abierto, agrupado por cliente y con su antigüedad.",
+    pt: "Cada trabalho em aberto, agrupado por cliente e com a idade.",
+  },
+  "landing.owed2": {
+    en: "“Got cash” is one tap — the money entry writes itself.",
+    es: "“Recibí efectivo” es un toque — el registro se escribe solo.",
+    pt: "“Recebi em dinheiro” é um toque — o registro se escreve sozinho.",
+  },
+  "landing.owed3": {
+    en: "Two weeks unpaid gets a gentle flag — never a nag.",
+    es: "Dos semanas sin pago recibe una marca sutil — nunca un regaño.",
+    pt: "Duas semanas sem pagamento ganha uma marca sutil — nunca uma cobrança.",
+  },
   "landing.owedTitle": {
     en: "Know who owes you",
     es: "Siempre sabes quién te debe",
