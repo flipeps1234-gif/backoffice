@@ -612,8 +612,10 @@ SUPABASE DASHBOARD — never regenerate or overwrite them from here. So
 they can localize, `user_metadata.lang` now carries the reader's
 language and nothing else: signInWithOtp stamps `data.lang` at ACCOUNT
 CREATION (web sign-in.tsx / native sendMagicLink), and afterwards a
-signed-in device pushes changes through auth.updateUser when the
-language picker moves (web upload-screen effect, native
+signed-in device re-stamps it through auth.updateUser whenever THIS
+device's language differs from the stored value — the picker moving,
+but equally a plain sign-in or cold launch on a device set to another
+language, so the last device in wins (web upload-screen effect, native
 AppStore.pushEmailLanguage — both skip the shared tester account, both
 fire-and-forget). Always "en" | "es" | "pt"; MISSING READS AS "en"
 everywhere, template side included. The UI language itself stays

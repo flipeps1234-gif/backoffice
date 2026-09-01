@@ -14,10 +14,15 @@ import { useLocale } from "./use-locale";
  * browser and so can never sign in an installed home-screen app. It was
  * reverted: the email body is decided by Supabase's template, not by this
  * code — signInWithOtp sends whatever the template renders. Emitting a code
- * needs {{ .Token }} in the Magic Link AND Confirm signup templates, and
- * editing those needs a custom SMTP provider. Until that exists, asking the
- * user to type a code that never arrives is worse than a link that works.
- * The home-screen-app caveat below is the price, and it is real.
+ * needs {{ .Token }} in the Magic Link AND Confirm signup templates, and at
+ * the time, editing those needed a custom SMTP provider we did not have —
+ * so asking the user to type a code that never arrives was worse than a
+ * link that works. That blocker is GONE as of 2026-09-01 (Google Workspace
+ * SMTP; the templates are customized and owned in the Supabase dashboard,
+ * see CLAUDE.md "AUTH EMAIL LANGUAGE"), so reviving the code is now an
+ * owner-side template edit rather than a repo change. It stays reverted
+ * until someone decides to make it. The home-screen-app caveat below is
+ * the price of the link, and it is real.
  *
  * Typing the demo word instead signs into the shared TESTER account — a
  * real Supabase account with real saved data, no inbox round-trip.

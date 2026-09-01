@@ -190,9 +190,20 @@ export default function UploadScreen() {
     const stamp = `${user.id}:${locale}`;
     if (stored === locale || pushedLang.current === stamp) return;
     pushedLang.current = stamp;
-    // Fire-and-forget: a failed metadata write must never block the app —
-    // the next locale change or sign-in retries it.
-    void getSupabase()?.auth.updateUser({ data: { lang: locale } });
+    // Fire-and-forget: a failed metadata write must never block the app.
+    // Releasing the stamp on failure is what makes the retry real — the
+    // guard exists to stop a write storm, not to remember a write that
+    // never landed. auth-js RESOLVES a network failure as an error value
+    // rather than rejecting, so it arrives in `error`, not in `catch`.
+    // Re-check the stamp before clearing: a newer language has priority.
+    void getSupabase()
+      ?.auth.updateUser({ data: { lang: locale } })
+      .then(({ error }) => {
+        if (error && pushedLang.current === stamp) pushedLang.current = null;
+      })
+      .catch(() => {
+        if (pushedLang.current === stamp) pushedLang.current = null;
+      });
   }, [user, locale]);
 
   // Don't flash the sign-in form at someone who is already signed in, and
