@@ -3,8 +3,11 @@
 Four discrepancies between what `src/lib` documents and what it does.
 **Nothing was fixed.** Each one has a test that states the intended
 behavior; the two that are defects in shipped code are marked
-`it.fails(...)` so `npm run test:engine` stays green, and will turn green
-for real the moment someone deletes the `.fails`.
+`it.fails(...)` so `npm run test:engine` stays green. When a fix lands,
+the marked test starts passing — which makes `it.fails` itself fail,
+pointing straight at the `.fails` to delete. Fix, delete the marker, and
+the law is enforced for real from then on. (Both fixtures were checked
+against their own prescribed fixes to confirm they actually flip.)
 
 Severity is the brief's scale: **money-wrong** (a figure the owner acts on
 is wrong), **state-wrong** (stored or displayed state disagrees with what

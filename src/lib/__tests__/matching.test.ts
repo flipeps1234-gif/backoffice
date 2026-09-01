@@ -1,6 +1,9 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
+import { saleTotalCents, type Sale } from "../sale";
+import type { Client } from "../client";
+import type { Transaction } from "../transaction";
 import {
   MATCH_WINDOW_DAYS,
   matchBatch,
@@ -12,8 +15,8 @@ import {
   client,
   item,
   sale,
-  salesArb,
-  transactionsArb,
+  saleArb,
+  transactionArb,
   txn,
 } from "./arbitraries";
 
@@ -25,116 +28,180 @@ import {
  * two payments to one sale hides money. Neither may happen for ANY input,
  * in ANY order, which is why the first block here is a property and not an
  * example.
+ *
+ * The world generator below is CORRELATED on purpose. Independent
+ * generators draw sale clientIds and client ids as unrelated uuids, so no
+ * sale ever resolves to a name and matchBatch links nothing — the
+ * invariants hold vacuously over an engine that never fires (a review
+ * probe measured exactly zero links in 61,500 independent-world runs).
+ * Here the sales point at the generated clients, some transactions "echo"
+ * a sale (its exact total, its client's name, its date), and some sales
+ * are cloned so ambiguity happens too. A sentinel test at the end of the
+ * block asserts the world really produces links AND suggestions, so this
+ * can never quietly go vacuous again.
  */
 
 const RUNS = { numRuns: 500 };
 
 const rosa = client({ id: "c1", name: "Rosa Delgado" });
 
+type World = { clients: Client[]; sales: Sale[]; batch: Transaction[] };
+
+const worldArb: fc.Arbitrary<World> = fc
+  .array(clientArb, { minLength: 1, maxLength: 4 })
+  .chain((clients) =>
+    fc.tuple(
+      fc.constant(clients),
+      fc.array(
+        saleArb({
+          clientId: fc.oneof(
+            { weight: 4, arbitrary: fc.constantFrom(...clients.map((c) => c.id)) },
+            { weight: 1, arbitrary: fc.constant(null) },
+          ),
+        }),
+        { maxLength: 5 },
+      ),
+      fc.boolean(),
+    ),
+  )
+  .chain(([clients, baseSales, cloneFirst]) => {
+    // A cloned sale (same client, same items, fresh id) is how two $60
+    // jobs to the same person on the same day happen — the ambiguity the
+    // suggestions queue exists for.
+    const sales =
+      cloneFirst && baseSales.length > 0
+        ? [...baseSales, { ...baseSales[0], id: `clone-${baseSales[0].id}` }]
+        : baseSales;
+    const echoArb =
+      sales.length > 0
+        ? fc
+            .tuple(fc.nat({ max: sales.length - 1 }), transactionArb())
+            .map(([at, tx]): Transaction => {
+              const target = sales[at];
+              const name =
+                clients.find((c) => c.id === target.clientId)?.name ?? "";
+              return {
+                ...tx,
+                direction: "in",
+                matchedSaleId: null,
+                business: null,
+                amountCents: saleTotalCents(target),
+                payer: name,
+                date: target.date,
+              };
+            })
+        : transactionArb();
+    return fc.record({
+      clients: fc.constant(clients),
+      sales: fc.constant(sales),
+      batch: fc.array(
+        fc.oneof(
+          { weight: 1, arbitrary: transactionArb() },
+          { weight: 2, arbitrary: echoArb },
+        ),
+        { maxLength: 8 },
+      ),
+    });
+  });
+
 describe("no double-matching, whatever the batch contains", () => {
   it("never links one payment to more than one sale", () => {
     fc.assert(
-      fc.property(
-        transactionsArb(),
-        salesArb(),
-        fc.array(clientArb, { maxLength: 4 }),
-        (batch, sales, clients) => {
-          const { links } = matchBatch(batch, sales, clients);
-          const txnIds = links.map((l) => l.txnId);
-          expect(new Set(txnIds).size).toBe(txnIds.length);
-        },
-      ),
+      fc.property(worldArb, ({ clients, sales, batch }) => {
+        const { links } = matchBatch(batch, sales, clients);
+        const txnIds = links.map((l) => l.txnId);
+        expect(new Set(txnIds).size).toBe(txnIds.length);
+      }),
       RUNS,
     );
   });
 
   it("never links one sale to more than one payment", () => {
     fc.assert(
-      fc.property(
-        transactionsArb(),
-        salesArb(),
-        fc.array(clientArb, { maxLength: 4 }),
-        (batch, sales, clients) => {
-          const { links } = matchBatch(batch, sales, clients);
-          const saleIds = links.map((l) => l.saleId);
-          expect(new Set(saleIds).size).toBe(saleIds.length);
-        },
-      ),
+      fc.property(worldArb, ({ clients, sales, batch }) => {
+        const { links } = matchBatch(batch, sales, clients);
+        const saleIds = links.map((l) => l.saleId);
+        expect(new Set(saleIds).size).toBe(saleIds.length);
+      }),
       RUNS,
     );
   });
 
   it("puts a payment in exactly one place — linked, or suggested, or neither", () => {
     fc.assert(
-      fc.property(
-        transactionsArb(),
-        salesArb(),
-        fc.array(clientArb, { maxLength: 4 }),
-        (batch, sales, clients) => {
-          const { links, suggestions } = matchBatch(batch, sales, clients);
-          const linked = new Set(links.map((l) => l.txnId));
-          for (const suggestion of suggestions) {
-            expect(linked.has(suggestion.txnId)).toBe(false);
-          }
-          const suggested = suggestions.map((s) => s.txnId);
-          expect(new Set(suggested).size).toBe(suggested.length);
-        },
-      ),
+      fc.property(worldArb, ({ clients, sales, batch }) => {
+        const { links, suggestions } = matchBatch(batch, sales, clients);
+        const linked = new Set(links.map((l) => l.txnId));
+        for (const suggestion of suggestions) {
+          expect(linked.has(suggestion.txnId)).toBe(false);
+        }
+        const suggested = suggestions.map((s) => s.txnId);
+        expect(new Set(suggested).size).toBe(suggested.length);
+      }),
       RUNS,
     );
   });
 
   it("only ever links sales that were outstanding and payments that were free to be claimed", () => {
     fc.assert(
-      fc.property(
-        transactionsArb(),
-        salesArb(),
-        fc.array(clientArb, { maxLength: 4 }),
-        (batch, sales, clients) => {
-          const { links } = matchBatch(batch, sales, clients);
-          for (const link of links) {
-            const s = sales.find((candidate) => candidate.id === link.saleId)!;
-            const t = batch.find((candidate) => candidate.id === link.txnId)!;
-            expect(["open", "expected"]).toContain(s.state);
-            expect(s.clientId).not.toBeNull();
-            expect(t.direction).toBe("in");
-            expect(t.matchedSaleId).toBeNull();
-            expect(t.business).not.toBe(false);
-          }
-        },
-      ),
+      fc.property(worldArb, ({ clients, sales, batch }) => {
+        const { links } = matchBatch(batch, sales, clients);
+        for (const link of links) {
+          const s = sales.find((candidate) => candidate.id === link.saleId)!;
+          const t = batch.find((candidate) => candidate.id === link.txnId)!;
+          expect(["open", "expected"]).toContain(s.state);
+          expect(s.clientId).not.toBeNull();
+          expect(t.direction).toBe("in");
+          expect(t.matchedSaleId).toBeNull();
+          expect(t.business).not.toBe(false);
+        }
+      }),
       RUNS,
     );
   });
 
   it("holds the same invariants for every permutation of the same batch", () => {
     fc.assert(
-      fc.property(
-        transactionsArb(6),
-        salesArb(6),
-        fc.array(clientArb, { maxLength: 3 }),
-        (batch, sales, clients) =>
-          fc.assert(
-            fc.property(
-              fc.shuffledSubarray(batch, {
-                minLength: batch.length,
-                maxLength: batch.length,
-              }),
-              (mixed) => {
-                const { links } = matchBatch(mixed, sales, clients);
-                expect(new Set(links.map((l) => l.saleId)).size).toBe(
-                  links.length,
-                );
-                expect(new Set(links.map((l) => l.txnId)).size).toBe(
-                  links.length,
-                );
-              },
-            ),
-            { numRuns: 8 },
+      fc.property(worldArb, ({ clients, sales, batch }) =>
+        fc.assert(
+          fc.property(
+            fc.shuffledSubarray(batch, {
+              minLength: batch.length,
+              maxLength: batch.length,
+            }),
+            (mixed) => {
+              const { links } = matchBatch(mixed, sales, clients);
+              expect(new Set(links.map((l) => l.saleId)).size).toBe(
+                links.length,
+              );
+              expect(new Set(links.map((l) => l.txnId)).size).toBe(
+                links.length,
+              );
+            },
           ),
+          { numRuns: 8 },
+        ),
       ),
       { numRuns: 200 },
     );
+  });
+
+  it("actually exercises the engine — the generated worlds produce links AND suggestions", () => {
+    // The vacuity sentinel. If a refactor of the generators ever breaks
+    // the correlation again, this fails loudly instead of letting the
+    // properties above go back to proving nothing.
+    let links = 0;
+    let suggestions = 0;
+    fc.assert(
+      fc.property(worldArb, ({ clients, sales, batch }) => {
+        const out = matchBatch(batch, sales, clients);
+        links += out.links.length;
+        suggestions += out.suggestions.length;
+      }),
+      RUNS,
+    );
+    expect(links).toBeGreaterThan(0);
+    expect(suggestions).toBeGreaterThan(0);
   });
 });
 

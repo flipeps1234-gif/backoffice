@@ -21,6 +21,13 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/lib/__tests__/**/*.test.ts"],
+    // The property tests run 500–1,000 fast-check cases each and normally
+    // finish in well under two seconds — but 17 files run in parallel, and
+    // on a busy machine any of them can cross Vitest's 5s default and fail
+    // as a timeout that looks like a red suite. Verified: single-file runs
+    // never approach this; only whole-suite CPU contention does. A wide
+    // ceiling costs nothing when healthy and keeps green meaning green.
+    testTimeout: 30_000,
     coverage: {
       provider: "v8",
       include: ["src/lib/**/*.ts"],

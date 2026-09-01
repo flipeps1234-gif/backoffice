@@ -141,14 +141,22 @@ describe("revenue by service", () => {
   // because the sort has no final tie-break. Every other ranking in this
   // codebase ends with one (insights and recommend both fall back to the
   // name), so the same books can render this list two ways on two devices.
-  // Marked failing; delete the .fails when a tie-break lands.
+  // Marked failing; delete the .fails when a tie-break lands. The two
+  // services carry DISTINCT catalog names on purpose: with an empty
+  // catalog both would fall back to "Deleted service" and a name
+  // tie-break could never separate them — this fixture must turn green
+  // the moment the prescribed fix exists, not stay red past it.
   it.fails("ranks two equal earners the same way whatever order the rows arrived in", () => {
+    const catalog = [
+      service({ id: "svc-1", name: "Lawn mowing" }),
+      service({ id: "svc-2", name: "Deep clean" }),
+    ];
     const rows = [
       txn({ id: "a", business: true, serviceId: "svc-1", amountCents: 5_000 }),
       txn({ id: "b", business: true, serviceId: "svc-2", amountCents: 5_000 }),
     ];
-    const forwards = revenueByService(rows, []).map((r) => r.serviceId);
-    const backwards = revenueByService([...rows].reverse(), []).map((r) => r.serviceId);
+    const forwards = revenueByService(rows, catalog).map((r) => r.serviceId);
+    const backwards = revenueByService([...rows].reverse(), catalog).map((r) => r.serviceId);
     expect(backwards).toEqual(forwards);
   });
 

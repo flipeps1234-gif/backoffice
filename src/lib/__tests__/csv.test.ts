@@ -59,19 +59,34 @@ describe("text that came off a screenshot cannot execute in a spreadsheet", () =
     expect(cell('Rosa "Rose" Delgado')).toBe('"Rosa ""Rose"" Delgado"');
     const commaRow = lines(taxCsv([txn({ business: true, payer: "Delgado, Rosa" })], []))[1];
     expect(commaRow).toContain('"Delgado, Rosa"');
+    // The newline case, asserted and not just named: unquoted, a payer
+    // with a line break would split the record and shift every column
+    // after it. Quoted, the file still parses as one header + one row
+    // (rows are separated by CRLF; a bare \n or \r stays inside the
+    // quotes and never makes a new record).
+    const newlineCsv = taxCsv([txn({ business: true, payer: "Rosa\nDelgado" })], []);
+    expect(newlineCsv).toContain('"Rosa\nDelgado"');
+    expect(lines(newlineCsv)).toHaveLength(2);
+    const crCsv = taxCsv([txn({ business: true, memo: "line one\rline two" })], []);
+    expect(crCsv).toContain('"line one\rline two"');
+    expect(lines(crCsv)).toHaveLength(2);
   });
 
   it("never lets a payer or memo break the row count, whatever it contains", () => {
+    // fc.string()'s default unit never emits \n or \r, so a plain string
+    // generator cannot exercise the one case this law exists for. This
+    // unit forces the dangerous characters in, and the assertion strips
+    // quoted fields FIRST — outside the quotes, the only line breaks left
+    // must be the two CRLF row separators (header row, data row).
+    const hostile = fc.string({
+      unit: fc.constantFrom("a", "é", " ", '"', ",", "\n", "\r", "=", "'"),
+    });
     fc.assert(
-      fc.property(fc.string(), fc.string(), (payer, memo) => {
-        const csv = taxCsv([txn({ business: true, payer, memo })], []);
-        // One header and one row: a raw newline in the data would make three.
-        const rows = lines(csv);
-        const quoted = (rows[1].match(/"/g) ?? []).length;
-        expect(quoted % 2).toBe(0);
-        if (!/[\n\r]/.test(payer) && !/[\n\r]/.test(memo)) {
-          expect(rows).toHaveLength(2);
-        }
+      fc.property(hostile, hostile, (payer, memo) => {
+        const csv = taxCsv([txn({ business: true, payer, memo })], []).replace(/^﻿/, "");
+        const structure = csv.replace(/"(?:[^"]|"")*"/g, "");
+        expect(structure.match(/\r\n/g)).toHaveLength(2);
+        expect(structure.replace(/\r\n/g, "")).not.toMatch(/[\n\r]/);
       }),
       RUNS,
     );

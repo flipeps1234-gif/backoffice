@@ -342,10 +342,11 @@ describe("miss counting and the pause at exactly three", () => {
 });
 
 describe("the one-way doors", () => {
-  it("generates nothing for a paused template", () => {
-    const result = generateDue(template({ active: false }), [], "2026-08-14", ids());
+  it("generates nothing for a paused template, and hands the very same template back", () => {
+    const paused = template({ active: false });
+    const result = generateDue(paused, [], "2026-08-14", ids());
     expect(result.created).toEqual([]);
-    expect(result.template).toBe(result.template);
+    expect(result.template).toBe(paused);
     expect(result.justPaused).toBe(false);
   });
 

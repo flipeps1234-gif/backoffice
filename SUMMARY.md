@@ -4,7 +4,7 @@ Branch: `overnight/engine-tests`, cut from `main` at `7fb9a29`. `main` was
 never checked out for writing, never committed to, and never pushed. No
 file under `src/lib` — or any other production source — was modified.
 
-**Result: 455 tests, all green (453 passing + 2 marked `it.fails`), 99.01%
+**Result: 458 tests, all green (456 passing + 2 marked `it.fails`), 99.19%
 statement coverage of `src/lib`, and no money-wrong defect found.**
 
 ## Run it
@@ -78,7 +78,8 @@ it enforces:
 | `device-storage.test.ts` | Locale/terms/settings against a fake `window`, including the private-browsing path where storage throws |
 | `providers-and-notify.test.ts` | The provider seam, the offline mock extractor, the frequency cap, the parked invoice prototype |
 
-Committed in four batches so a crash would have cost minutes.
+Committed in batches as sections completed, so a crash would have cost
+minutes, not hours.
 
 ## What I found
 
@@ -153,8 +154,30 @@ exactly three misses.
 7. **Property-test iteration counts.** 1,000 runs for the money laws, 500
    for the engines, 100–300 where a single case costs an `Intl` format
    (the history day labels). One test was reduced from 500 to 100 runs
-   because it timed out at 5s under parallel file execution — noted inline
-   at the test.
+   because a single `Intl.DateTimeFormat` call costs ~100× a comparison —
+   noted inline at the test.
+8. **The timeout ceiling.** A pre-commit seed sweep (the suite run
+   repeatedly on a deliberately busy machine) showed that with 17 files in
+   parallel, *any* of the heavier property tests can cross Vitest's 5s
+   default timeout under CPU contention — a red suite that has nothing to
+   do with the code. Single-file runs never come near it. The config sets
+   `testTimeout: 30_000`: free when healthy, and it keeps green meaning
+   green on a loaded laptop. Verified with six consecutive full-suite runs
+   under contention, all green.
+9. **The suite was itself reviewed adversarially before the final commit**,
+   and the worst finding was in the flagship block: the five
+   one-payment-one-sale properties generated sale `clientId`s and client
+   ids as unrelated uuids, so no sale ever resolved to a client name and
+   `matchBatch` linked nothing — the invariants held vacuously over an
+   engine that never fired. They now run over a correlated world (sales
+   point at generated clients; some transactions echo a sale's exact
+   total, name and date; some sales are cloned so ambiguity occurs), and a
+   sentinel test asserts the world really produces links AND suggestions,
+   so the block can never quietly go vacuous again. The same pass caught a
+   tautological assertion, a sum test that never touched `src/lib`, a CSV
+   newline law that was named but never asserted (a mutation deleting the
+   newline-quoting survived the whole suite — it doesn't now), and an
+   `it.fails` fixture whose prescribed fix would not have flipped it.
 
 ## Two things worth an hour tomorrow
 

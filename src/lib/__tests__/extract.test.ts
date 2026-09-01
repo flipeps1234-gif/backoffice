@@ -172,6 +172,17 @@ describe("overlapping screenshots collapse into one payment", () => {
     expect(dedupe([a, b])).toHaveLength(2);
   });
 
+  it("treats a payer that is all punctuation as nameless, never as everyone's duplicate", () => {
+    // normalizePayer("!!!") is the empty string; empty must fail the
+    // comparison against a real name, not fuzzy-match it.
+    expect(isDuplicate(txn({ payer: "!!!" }), txn({ payer: "abc" }))).toBe(false);
+    expect(isDuplicate(txn({ payer: "abc" }), txn({ payer: "!!!" }))).toBe(false);
+  });
+
+  it("gives up early on names of wildly different lengths instead of computing a distance", () => {
+    expect(isDuplicate(txn({ payer: "Jo" }), txn({ payer: "Jonathan Smithers" }))).toBe(false);
+  });
+
   it("keeps money in and money out apart even when everything else matches", () => {
     const a = txn({ id: "a", direction: "in" });
     const b = txn({ id: "b", direction: "out" });

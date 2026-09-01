@@ -18,8 +18,8 @@ import {
   lineItemArb,
   saleArb,
   serviceArb,
-  smallCentsArb,
   transactionsArb,
+  txn,
 } from "./arbitraries";
 
 /**
@@ -57,7 +57,8 @@ describe("dollarsToCents — the only door money enters through", () => {
 
   // The module's own worked example says "1.234.567" → 123456700, which is
   // above MAX_CENTS and so cannot come out of this function. The clamp wins.
-  // Stale comment, not a money bug — BUGS.md #2.
+  // Stale comment, not a money bug — BUGS.md, "Documentation that no
+  // longer matches the code".
   it("clamps the multi-group example its own documentation gives", () => {
     expect(dollarsToCents("1.234.567")).toBe(MAX_CENTS);
   });
@@ -301,7 +302,7 @@ describe("distance is integer tenths, the same philosophy as cents", () => {
     expect(parseMilesToTenths("abc")).toBeNull();
   });
 
-  // CURRENT BEHAVIOR, and a discrepancy — see BUGS.md #1. The minus sign is
+  // CURRENT BEHAVIOR, and a discrepancy — see BUGS.md #1b. The minus sign is
   // stripped before parsing, so the module's own `miles <= 0` rejection can
   // only ever fire on a literal zero. A typed "-4" becomes 4.0 miles.
   it("strips a minus sign instead of rejecting it, so a negative distance reads as positive", () => {
@@ -316,13 +317,19 @@ describe("distance is integer tenths, the same philosophy as cents", () => {
 });
 
 describe("large amounts stay exact", () => {
-  it("adds thousands of maximum-sized amounts without a float artifact", () => {
+  it("totals hundreds of maximum-sized rows without a float artifact", () => {
     fc.assert(
       fc.property(
-        fc.array(smallCentsArb, { minLength: 100, maxLength: 400 }),
+        fc.array(centsArb, { minLength: 100, maxLength: 400 }),
         (amounts) => {
-          const sum = amounts.reduce((a, b) => a + b, 0);
+          // Through the ledger's own totalling, not a test-local reduce —
+          // this is a claim about totalCents, so totalCents must do the sum.
+          const rows = amounts.map((amountCents, index) =>
+            txn({ id: `t${index}`, amountCents }),
+          );
+          const sum = totalCents(rows);
           expect(Number.isSafeInteger(sum)).toBe(true);
+          expect(sum).toBe(amounts.reduce((a, b) => a + b, 0));
         },
       ),
       { numRuns: 200 },
