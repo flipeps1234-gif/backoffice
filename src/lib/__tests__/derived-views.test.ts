@@ -164,6 +164,71 @@ describe("who this sale is probably for", () => {
   it("suggests nobody when nothing has ever been sold", () => {
     expect(rankClientsForProducts([rosa, mike], [], ["svc-1"])).toEqual([]);
   });
+
+  it("puts the more recent buyer of the picked product ahead of the older one", () => {
+    const sales = [
+      sale({ id: "s1", clientId: "c1", date: "2026-06-01", lineItems: [item({ serviceId: "svc-1" })] }),
+      sale({ id: "s2", clientId: "c2", date: "2026-08-01", lineItems: [item({ serviceId: "svc-1" })] }),
+    ];
+    expect(rankClientsForProducts([rosa, mike], sales, ["svc-1"]).map((c) => c.id)).toEqual([
+      "c2",
+      "c1",
+    ]);
+  });
+
+  it("ignores a sale with nobody attached when working out who bought what", () => {
+    const sales = [
+      sale({ id: "s1", clientId: null, date: "2026-08-01", lineItems: [item({ serviceId: "svc-1" })] }),
+      sale({ id: "s2", clientId: "c1", date: "2026-06-01", lineItems: [item({ serviceId: "svc-1" })] }),
+    ];
+    expect(rankClientsForProducts([rosa, mike], sales, ["svc-1"]).map((c) => c.id)).toEqual(["c1"]);
+  });
+
+  it("keeps the most recent date when a client has several sales", () => {
+    const sales = [
+      sale({ id: "s1", clientId: "c1", date: "2026-08-01", lineItems: [item({ serviceId: "svc-9" })] }),
+      sale({ id: "s2", clientId: "c1", date: "2026-06-01", lineItems: [item({ serviceId: "svc-9" })] }),
+      sale({ id: "s3", clientId: "c2", date: "2026-07-01", lineItems: [item({ serviceId: "svc-9" })] }),
+    ];
+    expect(rankClientsForProducts([rosa, mike], sales, []).map((c) => c.id)).toEqual(["c1", "c2"]);
+  });
+});
+
+describe("ranking the catalog when the client has bought the same thing twice", () => {
+  it("puts the more often bought service first, then the more recent", () => {
+    const catalog = [
+      service({ id: "svc-1", name: "Lawn mowing" }),
+      service({ id: "svc-2", name: "Deep clean" }),
+    ];
+    const sales = [
+      sale({ id: "s1", clientId: "c1", date: "2026-06-01", lineItems: [item({ serviceId: "svc-2" })] }),
+      sale({ id: "s2", clientId: "c1", date: "2026-07-01", lineItems: [item({ serviceId: "svc-2" })] }),
+      sale({ id: "s3", clientId: "c1", date: "2026-08-01", lineItems: [item({ serviceId: "svc-1" })] }),
+    ];
+    expect(rankServicesForClient(catalog, sales, "c1").map((s) => s.id)).toEqual([
+      "svc-2",
+      "svc-1",
+    ]);
+  });
+
+  it("breaks a dead-even tie by name so the picker does not reshuffle", () => {
+    const catalog = [
+      service({ id: "svc-1", name: "Zebra wash" }),
+      service({ id: "svc-2", name: "Apple pick" }),
+    ];
+    const sales = [
+      sale({
+        id: "s1",
+        clientId: "c1",
+        date: "2026-06-01",
+        lineItems: [item({ serviceId: "svc-1" }), item({ serviceId: "svc-2" })],
+      }),
+    ];
+    expect(rankServicesForClient(catalog, sales, "c1").map((s) => s.name)).toEqual([
+      "Apple pick",
+      "Zebra wash",
+    ]);
+  });
 });
 
 describe("this client's usual services", () => {

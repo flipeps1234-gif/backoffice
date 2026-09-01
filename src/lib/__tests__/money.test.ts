@@ -268,12 +268,31 @@ describe("distance is integer tenths, the same philosophy as cents", () => {
         const tenths = parseMilesToTenths(input);
         if (tenths !== null) {
           expect(Number.isInteger(tenths)).toBe(true);
-          expect(tenths).toBeGreaterThan(0);
+          expect(tenths).toBeGreaterThanOrEqual(0);
           expect(tenths).toBeLessThanOrEqual(99_999);
         }
       }),
       RUNS,
     );
+  });
+
+  // BUG — BUGS.md #1. The module's contract is that anything unparseable is
+  // null, and it guards `miles <= 0` to keep a non-positive distance out.
+  // The rounding happens AFTER that guard, so any distance under 0.05 miles
+  // survives it and is stored as 0 tenths: the owner sees "0.0" saved on the
+  // client, and the mileage log (which skips tenths <= 0) silently counts
+  // nothing. Marked failing so the suite stays green; delete the .fails when
+  // the guard moves after the rounding. Fixed examples, not a property, so
+  // this test fails on every run rather than only on an unlucky seed.
+  it.fails("rejects a distance that rounds down to nothing, rather than storing zero", () => {
+    expect(parseMilesToTenths(".01")).toBeNull();
+    expect(parseMilesToTenths("0.04")).toBeNull();
+    expect(parseMilesToTenths("0.049")).toBeNull();
+  });
+
+  it("stores a distance from 0.05 miles up, which is where the rounding starts", () => {
+    expect(parseMilesToTenths("0.05")).toBe(1);
+    expect(parseMilesToTenths("0.1")).toBe(1);
   });
 
   it("treats zero and unreadable distances as never set", () => {

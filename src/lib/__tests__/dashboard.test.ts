@@ -136,6 +136,22 @@ describe("revenue by service", () => {
     expect(ranked.map((r) => r.serviceId)).toEqual(["svc-2", "svc-1"]);
   });
 
+  // BUG — BUGS.md #2, cosmetic. Two services that earned exactly the same
+  // amount are ordered by whichever row the ledger happened to list first,
+  // because the sort has no final tie-break. Every other ranking in this
+  // codebase ends with one (insights and recommend both fall back to the
+  // name), so the same books can render this list two ways on two devices.
+  // Marked failing; delete the .fails when a tie-break lands.
+  it.fails("ranks two equal earners the same way whatever order the rows arrived in", () => {
+    const rows = [
+      txn({ id: "a", business: true, serviceId: "svc-1", amountCents: 5_000 }),
+      txn({ id: "b", business: true, serviceId: "svc-2", amountCents: 5_000 }),
+    ];
+    const forwards = revenueByService(rows, []).map((r) => r.serviceId);
+    const backwards = revenueByService([...rows].reverse(), []).map((r) => r.serviceId);
+    expect(backwards).toEqual(forwards);
+  });
+
   it("accounts for every business income row exactly once", () => {
     fc.assert(
       fc.property(transactionsArb(), (rows) => {
