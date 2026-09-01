@@ -450,43 +450,6 @@ at the demo input's center returns the cover; the founding CTA
 outside the frames still focuses. All public demos share this one
 frame, so the fix covers /, /how-it-works, /for/*, /track/*.
 
-NATIVE iOS APP (v0.7, 2026-08-28→30): the owner said the word — the
-"no native mobile" boundary flipped by explicit instruction, Swift
-not Expo, built into ~/Desktop/"contado native app" (their Xcode 26.6
-project, bundle e.contado-native-app, iOS 26.5). ARCHITECTURE: a
-second client of the SAME backend — same Supabase project (RLS is the
-boundary; plain URLSession, no SDK — boring wins), same Vercel API
-routes (/api/extract multipart+Bearer, /api/demo-session, and NEW
-/api/config which hands the public Supabase URL+anon key to the app
-so nothing ships hardcoded). All 714 message keys ×3 languages are
-GENERATED from this repo's fragments (messages.json), never
-hand-copied. Money/matching/recurring/insights/dash/csv/search/
-mileage etc. ported 1:1 to Swift incl. the conditional-settlement
-semantics (settleSale/claimTxnForSale/findLinkedTxn/loadSaleLink,
-three-state loss handling, generation readback). Sessions in
-Keychain; magic link deep-links via contado://auth-callback
-(OWNER: add that exact URL to Supabase Redirect URLs — DEPLOY.md §2);
-demo word works today. A 335-feature parity audit (webapp = spec)
-confirmed 285 at parity and 49 findings; all 7 HIGH + key MEDIUMs
-FIXED (account-switch state isolation, dedupe screening only prior
-screenshots, totals pinned above the deck, recurring cadence written
-as the web's jsonb OBJECT — a flat string silently degraded weekly
-templates to monthly cross-client, session-death returns to sign-in,
-overflow-clamp in dollarsToCents, append-not-replace suggestions);
-accepted deviations documented in the audit output. VERIFIED IN THE
-SIMULATOR against PRODUCTION: terms gate (exact copy, version
-2026-08-15), tester sign-in, hub totals $1.07 / +$120.50 owed /
-−$34.62 · 3 items matching the web to the cent, Owed tab with Rosa
-Márquez + 16-day amber flag. BUILD NOTES: derivedData must live
-OUTSIDE ~/Desktop (iCloud file-provider xattrs break codesign —
-"resource fork/Finder information not allowed"); Info.plist sits at
-the project root (synchronized folders double-produce it otherwise);
-@Published files need explicit `import Combine` under Xcode 26
-member-import visibility. UNTESTED: real magic-link round trip
-(needs the Redirect URL), camera capture on device, photo attach
-E2E, ES/PT native run-through, everything not covered by the sim
-pass. No App Store work yet (signing team, icons, TestFlight).
-
 Desktop site (2026-08-23): the marketing pages gained real desktop
 layouts — additive lg: classes ONLY, mobile markup untouched. At lg
 the frame widens to max-w-5xl (the app's own desktop width) and
@@ -626,11 +589,21 @@ queue drain. An 8-agent parity audit (webapp as spec) checked 335
 features: 285 parity at first pass, 49 findings, ALL 7 HIGH + the
 consequential MEDIUMs fixed (worst: recurring cadence was being
 written flat-string vs the web's jsonb object — weekly templates
-would silently degrade to monthly cross-client). Whole-project
-swiftc typecheck clean. NOT yet done: xcodebuild + simulator run
-(blocked on the iOS runtime download re-registering), behavioral
-E2E against production on the tester account, and the LOW-severity
-parity list (26 items, documented in the session log).
+would silently degrade to monthly cross-client). DONE 2026-08-30:
+BUILD SUCCEEDED and VERIFIED IN THE SIMULATOR AGAINST PRODUCTION —
+terms gate (exact copy, version 2026-08-15), tester sign-in via the
+live demo endpoint, hub totals $1.07 / +$120.50 owed / −$34.62 · 3
+items matching the web to the cent, Owed tab with Rosa Márquez and
+the 16-day amber flag. Build gotchas, recorded: derivedData must
+live OUTSIDE ~/Desktop (iCloud file-provider xattrs make codesign
+fail with "resource fork/Finder information not allowed"); the
+custom Info.plist sits at the PROJECT ROOT (inside the synchronized
+folder it double-produces); files using @Published need an explicit
+`import Combine` under Xcode 26 member-import visibility. STILL
+OPEN: real magic-link round trip (needs the contado://auth-callback
+Redirect URL, owner-side), camera/photo-attach on device, an ES/PT
+native run-through, the 26 LOW-severity parity items (session log),
+and all App Store work (signing team, icons, TestFlight).
 
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →
