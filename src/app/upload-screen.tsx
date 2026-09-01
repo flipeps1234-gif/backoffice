@@ -171,6 +171,30 @@ export default function UploadScreen() {
     document.documentElement.lang = locale;
   }, [locale]);
 
+  // The account's EMAIL language follows this device's chosen language:
+  // user_metadata.lang feeds {{ .Data.lang }} in the Supabase auth email
+  // templates. The app's own UI language stays per-device (the documented
+  // law) — this metadata exists only so the emails can localize. Missing
+  // metadata is treated as "en" by the templates, so we only write when
+  // the value actually differs. The shared tester account is skipped:
+  // every visitor's device would fight over it.
+  // Keyed by account, not just language: on a shared device the second
+  // account must still get its own stamp, even when both chose Spanish.
+  const pushedLang = useRef<string | null>(null);
+  useEffect(() => {
+    if (!user || user.email?.split("@")[0]?.toLowerCase() === "tester") return;
+    const stored =
+      typeof user.user_metadata?.lang === "string"
+        ? user.user_metadata.lang
+        : "en";
+    const stamp = `${user.id}:${locale}`;
+    if (stored === locale || pushedLang.current === stamp) return;
+    pushedLang.current = stamp;
+    // Fire-and-forget: a failed metadata write must never block the app —
+    // the next locale change or sign-in retries it.
+    void getSupabase()?.auth.updateUser({ data: { lang: locale } });
+  }, [user, locale]);
+
   // Don't flash the sign-in form at someone who is already signed in, and
   // don't flash the terms at someone who has already accepted them: `accepted`
   // is undefined until localStorage has actually been read.

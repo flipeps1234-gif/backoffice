@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { getSupabase } from "@/lib/supabase/client";
 import type { MessageKey } from "@/lib/i18n";
+import { currentLocale } from "@/lib/locale";
 import { useLocale } from "./use-locale";
 
 /**
@@ -114,6 +115,13 @@ export default function SignIn() {
         // Authentication → URL Configuration → Redirect URLs, or the link
         // bounces to the site URL and the session never arrives.
         emailRedirectTo: window.location.origin,
+        // Stamped into user_metadata at ACCOUNT CREATION (ignored for
+        // existing users): the device's chosen language — which itself
+        // falls back to browser detection — so the auth emails can
+        // localize via {{ .Data.lang }}. Always "en" | "es" | "pt";
+        // the templates treat missing as "en". Nothing else goes in
+        // metadata for this.
+        data: { lang: currentLocale() },
       },
     });
 

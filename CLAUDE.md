@@ -605,6 +605,22 @@ Redirect URL, owner-side), camera/photo-attach on device, an ES/PT
 native run-through, the 26 LOW-severity parity items (session log),
 and all App Store work (signing team, icons, TestFlight).
 
+AUTH EMAIL LANGUAGE (2026-09-01). The sign-in emails send through the
+owner's Google Workspace SMTP (mail@getcontado.com; SPF/DKIM/DMARC in
+Cloudflare) and the four templates are CUSTOMIZED AND OWNED IN THE
+SUPABASE DASHBOARD — never regenerate or overwrite them from here. So
+they can localize, `user_metadata.lang` now carries the reader's
+language and nothing else: signInWithOtp stamps `data.lang` at ACCOUNT
+CREATION (web sign-in.tsx / native sendMagicLink), and afterwards a
+signed-in device pushes changes through auth.updateUser when the
+language picker moves (web upload-screen effect, native
+AppStore.pushEmailLanguage — both skip the shared tester account, both
+fire-and-forget). Always "en" | "es" | "pt"; MISSING READS AS "en"
+everywhere, template side included. The UI language itself stays
+per-device (the settings law) — this only decides what the inbox says.
+The `{{ if eq .Data.lang "es" }}` conditionals are the owner's, added
+in the dashboard; no template edits ship from this repo.
+
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →
   confirmation sheet → swipe → running totals. In-memory is fine.
