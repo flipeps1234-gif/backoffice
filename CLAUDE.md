@@ -713,7 +713,8 @@ a fake #access_token fragment forwarded to /app and the SDK consumed it
 (GET /auth/v1/user fired). Lesson recorded in DEPLOY.md: a re-visit in
 the same browser can reuse the cached "/" document (no validators), and
 the edge briefly kept the previous build's HTML after the deploy —
-verify with a fresh window or a hard reload, never a plain re-visit. Also fixed from the newcode slot: the demo account's
+verify with a fresh window or a hard reload, never a plain re-visit.
+Also fixed from the newcode slot: the demo account's
 Sign out used auth-js's default "global" scope, so one visitor's Sign out
 deleted every concurrent demo session (three were live) — now "local" for
 the demo account, unchanged for real accounts (an owner call); and the
@@ -726,6 +727,39 @@ Permissions-Policy absent — hardening gaps with no demonstrated failure
 path here, not findings. Observation, not a finding: a native client
 caches /api/config for 24 h, so a publishable-key rotation needs the old
 key kept alive that long (there is no key-rotation runbook yet).
+PASS 2 (newcode over the pass-1 fixes + concurrency + performance/bundle +
+copy-vs-behavior scoped to what changed since mid-August): NOT CLEAN —
+count stays 0. Newcode came back clean with a live re-demonstration of
+the landing forward on the apex (success AND #error fragments), and
+perf/bundle clean with measured numbers (landing first-load 216 KB br,
+supabase-js confirmed absent from "/" and present on /app, Lighthouse
+mobile 0.87). Concurrency found a pre-existing MONEY defect, verified by
+me against the code: a "Got cash" tapped on a just-generated recurring
+instance inside the generation-readback window captured the PHANTOM
+sale id (the one ON CONFLICT DO NOTHING had dropped) in its queued
+closure; the readback remapped `sales` state only, so the item minted a
+mirror linked to a sale row that never existed and settleSale hit zero
+rows — the real instance stayed open, the job counted in revenue AND in
+owed on every device (transactions.matched_sale_id has no FK, so the
+database accepted the dangling link). The settle path's own comment
+said phantoms "cannot arrive here"; they could. FIXED: a saleIdRemap ref
+filled by the readback, every sale-scoped queue item (paySaleCash and
+its two adopt branches, linkSaleToTxn, both move-to-owed writes)
+resolves the id at RUN time, and the readback also remaps
+transactions[].matchedSaleId in memory. Harness replays the exact
+interleaving: OLD leaves the real instance open with one dangling
+mirror and double-counts; NEW settles it with none. Also fixed: a queued
+write that finds no session (the other tab signed out — auth-js clears
+the shared key and broadcasts SIGNED_OUT) is now refused and remembered
+in a module-level flag that the next signed-in Ledger mount turns into
+the save-failed banner (a lazy useState initializer — the repo's lint
+forbids synchronous setState in effects), instead of running with the
+anon key into an unmounted component; and signin.tooMany now says "up
+to an hour" — the project-wide email bucket is a FIXED hourly window, so
+"a few minutes" was false once it was spent. OWNER NOTE: a foreign key
+from transactions.matched_sale_id to sales(id) ON DELETE SET NULL would
+make the database refuse this whole class; it is a migration and a
+decision, not a hotfix.
 
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →

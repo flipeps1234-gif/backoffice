@@ -156,6 +156,13 @@ type Stage = "upload" | "confirm" | "sort";
  * account's rows structurally cannot survive into another's session on a
  * shared device: the component holding them is gone.
  */
+// Set by persist() when a queued write finds no session — the other tab
+// signed out (auth-js clears the SHARED storage key and broadcasts
+// SIGNED_OUT) after this tab enqueued work. The Ledger that owned the
+// write is unmounted by then, so this survives it and the next signed-in
+// mount raises the save-failed banner instead of losing the write silently.
+let lostWritesWhileSignedOut = false;
+
 export default function UploadScreen() {
   const accepted = useAcceptedTerms();
   const { user, loading, isConfigured } = useSession();
@@ -332,7 +339,13 @@ function Ledger({
   /** Ids of the most recently read batch — what the insights describe. */
   const [lastBatchIds, setLastBatchIds] = useState<string[]>([]);
   /** Set when any database write failed — see the finish copy. */
-  const [saveFailed, setSaveFailed] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(() => {
+    // A write that another tab's sign-out stranded (see persist below)
+    // surfaces here, on the next signed-in mount, as the sticky banner.
+    if (!lostWritesWhileSignedOut) return false;
+    lostWritesWhileSignedOut = false;
+    return true;
+  });
   /**
    * Set when the initial ledger pull failed. While true, uploads are OFF:
    * the duplicate screen compares new batches against the in-memory ledger,
@@ -435,11 +448,32 @@ function Ledger({
    * The queue never wedges: failures are caught and surfaced as a banner.
    */
   const writeChain = useRef<Promise<void>>(Promise.resolve());
+  // Phantom → canonical sale ids, filled by the generation readback below.
+  // A queued closure captured whatever id memory held at TAP time, and the
+  // readback that makes it canonical is itself an EARLIER item in this same
+  // chain — so every sale-scoped item resolves through this at RUN time.
+  // Without it, "Got cash" on a just-generated instance inside the readback
+  // window wrote a mirror pointing at a sale row that never existed and left
+  // the real instance open: the job in revenue AND in owed, on every device.
+  const saleIdRemap = useRef(new Map<string, string>());
+  const canonicalSaleId = useCallback(
+    (id: string): string => saleIdRemap.current.get(id) ?? id,
+    [],
+  );
   const persist = useCallback(
     (work: () => Promise<void>): Promise<void> => {
       const next = writeChain.current.then(async () => {
         if (!isConfigured || !accountId) return;
         try {
+          // Another tab's sign-out clears the shared session between enqueue
+          // and run; supabase-js would then send the ANON key, RLS would
+          // drop inserts (into a component already unmounted) and match
+          // updates to zero rows "successfully". Refuse, and remember.
+          const session = (await getSupabase()?.auth.getSession())?.data.session;
+          if (!session) {
+            lostWritesWhileSignedOut = true;
+            return;
+          }
           await work();
         } catch (cause) {
           console.error("Save failed:", cause);
@@ -629,6 +663,19 @@ function Ledger({
                   }
                 }
                 if (phantomToReal.size > 0) {
+                  for (const [phantom, real] of phantomToReal) {
+                    saleIdRemap.current.set(phantom, real);
+                  }
+                  // A mirror minted against the phantom (a "Got cash" that
+                  // beat this readback) must point at the row that exists.
+                  setTransactions((current) =>
+                    current.map((t) => {
+                      const real = t.matchedSaleId
+                        ? phantomToReal.get(t.matchedSaleId)
+                        : undefined;
+                      return real ? { ...t, matchedSaleId: real } : t;
+                    }),
+                  );
                   setSales((current) => {
                     const have = new Set(current.map((s) => s.id));
                     return current.map((s) => {
@@ -1095,7 +1142,7 @@ function Ledger({
         // the transition, so a heal replayed against an already-settled
         // sale (another device won meanwhile) is a no-op, not an overwrite.
         void persist(async () => {
-          await settleSale(sale.id, {
+          await settleSale(canonicalSaleId(sale.id), {
             state: "paid",
             method: "digital",
             matchedTxnId: existing.id,
@@ -1113,7 +1160,7 @@ function Ledger({
       resetTemplateMisses(sale);
       if (accountId) {
         void persist(async () => {
-          await settleSale(sale.id, {
+          await settleSale(canonicalSaleId(sale.id), {
             state: "paid",
             method: "cash",
             matchedTxnId: existing.id,
@@ -1156,7 +1203,17 @@ function Ledger({
       // row from a stale desktop's "Got cash" (doubled revenue, forever).
       const acct = accountId;
       void persist(async () => {
-        const linked = await findLinkedTxn(sale.id);
+        // Resolve at RUN time: if the generation readback (an earlier item
+        // in this chain) replaced this instance's phantom id, every write
+        // below must target the row the database actually kept.
+        const saleId = canonicalSaleId(sale.id);
+        const row = saleId === sale.id ? txn : { ...txn, matchedSaleId: saleId };
+        if (saleId !== sale.id) {
+          setTransactions((current) =>
+            current.map((t) => (t.id === txn.id ? row : t)),
+          );
+        }
+        const linked = await findLinkedTxn(saleId);
         if (linked) {
           // Settled (or half-settled) elsewhere — adopt that payment
           // instead of minting one. settleSale no-ops if already paid.
@@ -1165,7 +1222,7 @@ function Ledger({
           // default for a half-settlement WE complete; when the sale was
           // already settled, its own row knows the real method.
           const derived = linked.source === "manual" ? "cash" : "digital";
-          const won = await settleSale(sale.id, {
+          const won = await settleSale(saleId, {
             state: "paid",
             method: derived,
             matchedTxnId: linked.id,
@@ -1173,7 +1230,7 @@ function Ledger({
           let method: "cash" | "digital" = derived;
           if (!won) {
             try {
-              method = (await loadSaleLink(sale.id))?.method ?? derived;
+              method = (await loadSaleLink(saleId))?.method ?? derived;
             } catch {
               // Label-only lookup — the settle already stands. Throwing
               // out of the item here would abort mid-reconciliation and
@@ -1181,7 +1238,7 @@ function Ledger({
               // label heals on reload.
             }
           }
-          patchSale(sale.id, { state: "paid", method, matchedTxnId: linked.id });
+          patchSale(saleId, { state: "paid", method, matchedTxnId: linked.id });
           setTransactions((current) => [
             linked,
             ...current.filter((t) => t.id !== txn.id && t.id !== linked.id),
@@ -1193,7 +1250,7 @@ function Ledger({
         // whose money row is gone.
         const adoptWinner = async () => {
           setTransactions((current) => current.filter((t) => t.id !== txn.id));
-          const winner = await findLinkedTxn(sale.id);
+          const winner = await findLinkedTxn(saleId);
           if (winner) {
             // The sale row's method is authoritative — source is only
             // provenance (see the adopt branch above). Label-only, so a
@@ -1202,12 +1259,12 @@ function Ledger({
             let method: "cash" | "digital" =
               winner.source === "manual" ? "cash" : "digital";
             try {
-              const link = await loadSaleLink(sale.id);
+              const link = await loadSaleLink(saleId);
               method = link?.method ?? method;
             } catch {
               // derived label heals on reload
             }
-            patchSale(sale.id, { state: "paid", method, matchedTxnId: winner.id });
+            patchSale(saleId, { state: "paid", method, matchedTxnId: winner.id });
             setTransactions((current) => [
               winner,
               ...current.filter((t) => t.id !== winner.id),
@@ -1215,7 +1272,7 @@ function Ledger({
           }
         };
         try {
-          await insertTransactions([txn], acct);
+          await insertTransactions([row], acct);
         } catch (cause) {
           if (isUniqueViolation(cause)) {
             // The 0017 index beat us to it — another device linked this
@@ -1225,7 +1282,7 @@ function Ledger({
           }
           throw cause;
         }
-        const won = await settleSale(sale.id, {
+        const won = await settleSale(saleId, {
           state: "paid",
           method: "cash",
           matchedTxnId: txn.id,
@@ -1249,7 +1306,7 @@ function Ledger({
           // load effect, so they cannot arrive here.)
           let link: Awaited<ReturnType<typeof loadSaleLink>> = null;
           try {
-            link = await loadSaleLink(sale.id);
+            link = await loadSaleLink(saleId);
           } catch {
             // Can't tell which loss state this is. Keep the row: deleting
             // money on uncertainty is the one unrecoverable choice, and a
@@ -1351,13 +1408,19 @@ function Ledger({
         );
         setSaleNotice(translate(currentLocale(), "home.alreadySettled"));
       };
-      const claimed = await claimTxnForSale(txn.id, patch);
+      // Same run-time resolution as paySaleCash: a phantom instance id
+      // captured at tap time must not be written into the payment row.
+      const saleId = canonicalSaleId(sale.id);
+      const claimPatch =
+        saleId === sale.id ? patch : { ...patch, matchedSaleId: saleId };
+      if (saleId !== sale.id) updateTransaction(txn.id, { matchedSaleId: saleId });
+      const claimed = await claimTxnForSale(txn.id, claimPatch);
       if (!claimed) {
         // This payment was spent on another device since this tab loaded.
         rollBack();
         return;
       }
-      const won = await settleSale(sale.id, {
+      const won = await settleSale(saleId, {
         state: "paid",
         method: "digital",
         matchedTxnId: txn.id,
@@ -1372,7 +1435,7 @@ function Ledger({
         // row never landed — its insert failed earlier) takes the same
         // release path ON PURPOSE: a claim pointing at a nonexistent sale
         // would strand the payment forever (see handleSaleDone's law).
-        const link = await loadSaleLink(sale.id);
+        const link = await loadSaleLink(saleId);
         if (link && link.matchedTxnId === txn.id) return;
         await saveTransaction(txn.id, prevTxn);
         rollBack();
@@ -1742,7 +1805,9 @@ function Ledger({
         }}
         onMoveToOwed={(saleId) => {
           patchSale(saleId, { state: "open", method: null });
-          void persist(() => saveSale(saleId, { state: "open", method: null }));
+          void persist(() =>
+            saveSale(canonicalSaleId(saleId), { state: "open", method: null }),
+          );
         }}
         onFindPayment={(saleId) => {
           const sale = sales.find((sl) => sl.id === saleId);
@@ -2513,7 +2578,7 @@ function Ledger({
             onMoveToOwed={(saleId) => {
               patchSale(saleId, { state: "open", method: null });
               void persist(() =>
-                saveSale(saleId, { state: "open", method: null }),
+                saveSale(canonicalSaleId(saleId), { state: "open", method: null }),
               );
             }}
                 onFindPayment={(saleId) => {

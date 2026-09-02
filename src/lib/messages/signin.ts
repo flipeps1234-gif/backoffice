@@ -69,14 +69,18 @@ export const messages = {
     es: "No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo — si sigue fallando, es cosa nuestra, no tuya.",
     pt: "Não deu para conectar ao servidor. Confira sua conexão e tente de novo — se continuar falhando, o problema é nosso, não seu.",
   },
-  // The project-wide auth-email budget (Supabase Auth → Rate Limits) and
-  // the per-address 60 s cooldown both surface as over_email_send_rate_limit.
-  // Without this key the raw English "email rate limit exceeded" reached
-  // Spanish and Portuguese screens — it did, three times, on launch night.
+  // Shown for every 429 GoTrue raises on the sign-in endpoint: the
+  // project-wide auth-email budget (Supabase Auth → Rate Limits — a FIXED
+  // hourly window, so once it is spent nothing sends until the hour rolls
+  // over), the 60 s per-address cooldown, and the per-IP request bucket
+  // (~30 per 5 min). "Up to an hour" is the honest ceiling; the other two
+  // clear far sooner. Without this key the raw English "email rate limit
+  // exceeded" reached Spanish and Portuguese screens — three times, on
+  // launch night.
   "signin.tooMany": {
-    en: "Too many sign-in emails right now. Wait a few minutes and try again.",
-    es: "Demasiados correos de acceso por ahora. Espera unos minutos e intenta de nuevo.",
-    pt: "Muitos e-mails de acesso agora. Aguarde alguns minutos e tente de novo.",
+    en: "Too many sign-in emails right now. Try again later — it can take up to an hour to clear.",
+    es: "Demasiados correos de acceso por ahora. Intenta más tarde — puede tardar hasta una hora en liberarse.",
+    pt: "Muitos e-mails de acesso agora. Tente mais tarde — pode levar até uma hora para liberar.",
   },
   // The resend button's countdown, matching the server's per-address window.
   "signin.resendIn": {
