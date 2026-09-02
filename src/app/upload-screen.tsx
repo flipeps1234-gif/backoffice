@@ -180,16 +180,37 @@ export default function UploadScreen() {
   // every visitor's device would fight over it.
   // Keyed by account, not just language: on a shared device the second
   // account must still get its own stamp, even when both chose Spanish.
+  //
+  // The stamp records the (account, language) pair this device has
+  // RECONCILED — latched before the in-sync check, not only when a write
+  // happens. That matters because `user` changes identity on every auth
+  // event, TOKEN_REFRESHED included, and a refresh carries whatever another
+  // device wrote in the meantime. Latching only on writes let an idle
+  // desktop tab re-stamp "en" over a phone's "pt" every time its JWT
+  // refreshed — "last device in wins" quietly became "last device to
+  // refresh a token wins", ping-ponging for as long as both stayed open.
+  // Now only a change made on THIS device (the picker moving, a sign-in, a
+  // cold launch with the refs reset) can arm a write.
   const pushedLang = useRef<string | null>(null);
+  // Bumped when this device's own write lands after the picker moved again
+  // mid-flight, so the effect re-runs against the landed value (see below).
+  const [reconcileTick, setReconcileTick] = useState(0);
   useEffect(() => {
-    if (!user || user.email?.split("@")[0]?.toLowerCase() === "tester") return;
+    if (!user) {
+      // Signed out: whoever signs in next on this tab — the same account
+      // included — must reconcile afresh. A sign-in is a trigger.
+      pushedLang.current = null;
+      return;
+    }
+    if (user.email?.split("@")[0]?.toLowerCase() === "tester") return;
     const stored =
       typeof user.user_metadata?.lang === "string"
         ? user.user_metadata.lang
         : "en";
     const stamp = `${user.id}:${locale}`;
-    if (stored === locale || pushedLang.current === stamp) return;
+    if (pushedLang.current === stamp) return;
     pushedLang.current = stamp;
+    if (stored === locale) return;
     // Fire-and-forget: a failed metadata write must never block the app.
     // Releasing the stamp on failure is what makes the retry real — the
     // guard exists to stop a write storm, not to remember a write that
@@ -199,12 +220,27 @@ export default function UploadScreen() {
     void getSupabase()
       ?.auth.updateUser({ data: { lang: locale } })
       .then(({ error }) => {
-        if (error && pushedLang.current === stamp) pushedLang.current = null;
+        if (error) {
+          if (pushedLang.current === stamp) pushedLang.current = null;
+          return;
+        }
+        // The write landed. If the picker moved AGAIN while it was in
+        // flight, the effect that ran for that move read a `stored` this
+        // write had not yet replaced, and may have skipped its own write
+        // as "already in sync" — leaving the account on the value the
+        // device just moved away from, with nothing to heal it. Drop the
+        // latch and re-run against the landed value; the device's latest
+        // choice wins. Runs only on THIS device's own write resolving,
+        // so it cannot re-open the token-refresh ping-pong.
+        if (pushedLang.current !== stamp) {
+          pushedLang.current = null;
+          setReconcileTick((n) => n + 1);
+        }
       })
       .catch(() => {
         if (pushedLang.current === stamp) pushedLang.current = null;
       });
-  }, [user, locale]);
+  }, [user, locale, reconcileTick]);
 
   // Don't flash the sign-in form at someone who is already signed in, and
   // don't flash the terms at someone who has already accepted them: `accepted`

@@ -603,7 +603,12 @@ folder it double-produces); files using @Published need an explicit
 OPEN: real magic-link round trip (needs the contado://auth-callback
 Redirect URL, owner-side), camera/photo-attach on device, an ES/PT
 native run-through, the 26 LOW-severity parity items (session log),
-and all App Store work (signing team, icons, TestFlight).
+all App Store work (signing team, icons, TestFlight), and one parity
+gap from the 2026-09-01 post-deploy pass: the web now maps auth-js
+error code over_email_send_rate_limit to signin.tooMany and counts
+down a 60 s resend; native SignInView has neither, and the two new
+keys (signin.tooMany, signin.resendIn) are not in messages.json yet —
+regenerate it from the web fragments (never hand-copy) when porting.
 
 AUTH EMAIL LANGUAGE (2026-09-01). The sign-in emails send through the
 owner's Google Workspace SMTP (mail@getcontado.com; SPF/DKIM/DMARC in
@@ -612,16 +617,77 @@ SUPABASE DASHBOARD — never regenerate or overwrite them from here. So
 they can localize, `user_metadata.lang` now carries the reader's
 language and nothing else: signInWithOtp stamps `data.lang` at ACCOUNT
 CREATION (web sign-in.tsx / native sendMagicLink), and afterwards a
-signed-in device re-stamps it through auth.updateUser whenever THIS
-device's language differs from the stored value — the picker moving,
-but equally a plain sign-in or cold launch on a device set to another
-language, so the last device in wins (web upload-screen effect, native
+signed-in device re-stamps it through auth.updateUser when a change
+made on THAT device leaves its language different from the stored
+value — the picker moving, a sign-in, a cold launch on a device set to
+another language — so the last device in wins. A background token
+refresh is NOT a trigger: the web effect latches the (account,
+language) pair it has reconciled BEFORE the in-sync check, because
+`user` changes identity on every auth event and a refresh carries what
+another device just wrote; latching only on writes made an idle
+desktop tab revert a phone's choice on every JWT refresh (found by the
+post-deploy find-and-fix pass, fixed) (web upload-screen effect, native
 AppStore.pushEmailLanguage — both skip the shared tester account, both
 fire-and-forget). Always "en" | "es" | "pt"; MISSING READS AS "en"
 everywhere, template side included. The UI language itself stays
 per-device (the settings law) — this only decides what the inbox says.
 The `{{ if eq .Data.lang "es" }}` conditionals are the owner's, added
 in the dashboard; no template edits ship from this repo.
+
+POST-DEPLOY FIND-AND-FIX (2026-09-01, four lenses never run on this
+surface — newcode, authz/exposure of user_metadata, capacity/quotas,
+privacy lifecycle; 5 raw findings, each verified adversarially).
+Tooling first: tsc/eslint clean; the sharp <0.35 libvips CVE rejected
+with evidence (optional dep of next, nothing imports next/image, live
+/_next/image 400s, /api/extract forwards bytes to OpenAI undecoded —
+`npm audit fix --force` would bump next out of range for an
+unreachable path). Privacy: CLEAN — only {lang} is written, GoTrue
+merges per key (models.User.UpdateUserMetaData), the purge deletes the
+auth row, zero console lines added. Authz: CLEAN — 34 policies, the
+one JWT read is auth.jwt()->>'email' (not user-writable); GoTrue
+renders {{ .Data }} through html/template, so a hostile lang only
+garbles its owner's own email. FIXED this pass: (1) the sync effect
+latched its ref only on the WRITE path, so a TOKEN_REFRESHED carrying
+another device's value re-armed it — an idle desktop tab reverted a
+phone's "pt" to "en" every JWT refresh; the ref now latches BEFORE the
+in-sync check. The own-diff review of THAT fix found a regression inside
+it — two picker taps inside one write's flight time left the second tap
+reading a stale "in sync" and skipping its write, with the new latch
+then blocking the heal the old order got for free — so the write's
+resolution now drops the latch and re-runs the effect when the device
+moved on mid-flight, and a sign-out resets the latch so "a sign-in" is
+a real trigger. Harness v2 replays all of it: 0 refresh writes, the
+mid-flight double tap heals to the device's choice, picker wins, a
+reorder costs at most one duplicate write, failed writes retry, two
+accounts on one device both stamp, 50 refreshes write nothing; (2) the
+project-wide auth-email bucket is 30/h and ALREADY TRIPPED three times
+on launch night with raw English "email rate limit exceeded" on the
+screen — auth-js code over_email_send_rate_limit now maps to
+signin.tooMany (EN/ES/PT) and Resend counts down 60 s; (3) /api/extract
+now exports maxDuration=60 and aborts the OpenAI fetch at 55 s (a stall
+cost 300 s of a 2 GB function). WRITTEN, NOT APPLIED: migration 0019 —
+any visitor holds a real tester session and could PUT /auth/v1/user to
+reset the demo password (revoking every visitor) or its metadata; a
+BEFORE UPDATE trigger on auth.users makes the tester row's
+password/email/phone/metadata read-only. Verified before writing:
+auth.users is owned by supabase_auth_admin and the SQL-editor role is
+NOT a member of it (TRIGGER privilege only), so the file never drops or
+disables the trigger — it creates it only if absent and reads an on/off
+row in public.tester_lock, which `postgres` does own; rotation flips
+that row (DEPLOY.md). The tester hash is a plain $2a$10$ bcrypt, so
+GoTrue's login writes only last_sign_in_at and the trigger stays quiet.
+The sign-in cooldown is a clock deadline (iOS suspends timers while the
+user fetches the link in Mail) and also arms on the 429 itself. OWNER-SIDE, BLOCKING before
+any launch push: the Vercel team is on HOBBY (non-commercial licence,
+360 GB-hr/month hard stop) — upgrade to Pro; raise the auth-email cap
+to 60–80/h and enable Turnstile/hCaptcha on the OTP endpoint (the anon
+key is public; 30 junk addresses drain the hour in seconds). DEFERRED
+with reason: /api/extract has no per-account image budget and its
+brake is per-IP per-instance — the OpenAI spend cap bounds the money
+(accepted in the route comment); DEMO_EXTRACTION=mock in Vercel is the
+outstanding half of it. Known/accepted, not re-reported: a real user
+whose email local part is "tester" is treated as the demo account (the
+convention's cost, recorded above).
 
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →

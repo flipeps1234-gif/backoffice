@@ -42,6 +42,10 @@ export const sendWhatsAppTemplate = async (
     `${GRAPH}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
     {
       method: "POST",
+      // Same rule as the OpenAI call in src/lib/extract/openai.ts: a
+      // provider that hangs must not hold a function open until the
+      // platform kills it. The Graph API answers in well under a second.
+      signal: AbortSignal.timeout(15_000),
       headers: {
         Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
         "Content-Type": "application/json",

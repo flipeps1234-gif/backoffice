@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase/client";
 import type { MessageKey } from "@/lib/i18n";
 import { currentLocale } from "@/lib/locale";
@@ -47,7 +47,16 @@ const DEMO_WORD = "tester";
 export const humanAuthError = (
   raw: string,
   t: (key: MessageKey) => string,
+  code?: string,
 ): string => {
+  // The auth-email budget is one project-wide bucket (Supabase Auth → Rate
+  // Limits) plus a 60 s per-address cooldown; both arrive as this code, and
+  // on launch night the raw English "email rate limit exceeded" reached the
+  // screen three times. It is the one auth error a cleaner can do nothing
+  // about except wait, so say that, in their language.
+  if (code === "over_email_send_rate_limit") {
+    return t("signin.tooMany");
+  }
   // "{}" is what auth-js produces for a REACHABLE server answering
   // 5xx: its _getErrorMessage finds no message field on the Response
   // object and JSON.stringify's it. Same meaning as an unreachable
@@ -72,6 +81,34 @@ export default function SignIn() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [resent, setResent] = useState(false);
+  // When "Resend link" is offered again. The server refuses a second email
+  // to the same address inside 60 s anyway; counting it down here turns a
+  // 429 into a number the user can watch instead of an error they cannot
+  // act on. A DEADLINE, not a tick count: the phone goes to Mail to fetch
+  // the link and iOS suspends the page's timers, so a decrementing counter
+  // would still read "43s" two minutes later. Derived from the clock, and
+  // re-read when the tab becomes visible again.
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const cooldown =
+    cooldownUntil === null ? 0 : Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
+  const startCooldown = () => setCooldownUntil(Date.now() + 60_000);
+
+  useEffect(() => {
+    if (cooldownUntil === null) return;
+    const tick = () => {
+      const at = Date.now();
+      setNow(at);
+      if (at >= cooldownUntil) setCooldownUntil(null);
+    };
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", tick);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", tick);
+    };
+  }, [cooldownUntil]);
 
   async function enterDemo() {
     const supabase = getSupabase();
@@ -97,7 +134,7 @@ export default function SignIn() {
       // so it can fail the same way and used to print the same raw string.
       if (sessionError) {
         console.error("Demo sign-in failed:", sessionError);
-        setError(humanAuthError(sessionError.message, t));
+        setError(humanAuthError(sessionError.message, t, sessionError.code));
       }
     } catch {
       setError(t("signin.demoUnreachable"));
@@ -133,10 +170,15 @@ export default function SignIn() {
     setBusy(false);
     if (sendError) {
       console.error("Sign-in request failed:", sendError);
-      setError(humanAuthError(sendError.message, t));
+      setError(humanAuthError(sendError.message, t, sendError.code));
+      // The very case the countdown exists for: a reload or a second tab
+      // wiped the local timer and the server's window is still open.
+      // Arm it here too, or the button re-enables for a doomed tap.
+      if (sendError.code === "over_email_send_rate_limit") startCooldown();
       return;
     }
     setSent(true);
+    startCooldown();
   }
 
   async function submitEmail(event: React.FormEvent) {
@@ -199,11 +241,15 @@ export default function SignIn() {
           </button>
           <button
             type="button"
-            className="hover:underline"
-            disabled={busy}
+            className="hover:underline disabled:no-underline disabled:opacity-60"
+            disabled={busy || cooldown > 0}
             onClick={resend}
           >
-            {busy ? t("signin.sending") : t("signin.resendLink")}
+            {busy
+              ? t("signin.sending")
+              : cooldown > 0
+                ? t("signin.resendIn", { seconds: cooldown })
+                : t("signin.resendLink")}
           </button>
         </div>
       </div>

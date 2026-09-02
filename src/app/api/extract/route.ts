@@ -23,6 +23,17 @@ const MAX_FILES = 20;
 // uploading; a file this large here is an undecodable original (rare HEIC).
 const MAX_BYTES = 4 * 1024 * 1024;
 
+/**
+ * Wall-clock ceiling for one extract call. Vercel bills provisioned memory
+ * by the SECOND the function is alive, and this handler is alive for as
+ * long as OpenAI takes to answer. The platform default is 300 s, so one
+ * stalled model call could burn five minutes of a 2 GB function against a
+ * Hobby team's monthly budget. A 4-image chunk never legitimately needs a
+ * minute; the fetch in src/lib/extract/openai.ts aborts at 55 s so the
+ * caller still gets the honest 502 below rather than a platform timeout.
+ */
+export const maxDuration = 60;
+
 
 /**
  * Cheap per-IP brake: N requests per window, in memory. Per-instance only —

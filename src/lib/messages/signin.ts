@@ -69,6 +69,21 @@ export const messages = {
     es: "No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo — si sigue fallando, es cosa nuestra, no tuya.",
     pt: "Não deu para conectar ao servidor. Confira sua conexão e tente de novo — se continuar falhando, o problema é nosso, não seu.",
   },
+  // The project-wide auth-email budget (Supabase Auth → Rate Limits) and
+  // the per-address 60 s cooldown both surface as over_email_send_rate_limit.
+  // Without this key the raw English "email rate limit exceeded" reached
+  // Spanish and Portuguese screens — it did, three times, on launch night.
+  "signin.tooMany": {
+    en: "Too many sign-in emails right now. Wait a few minutes and try again.",
+    es: "Demasiados correos de acceso por ahora. Espera unos minutos e intenta de nuevo.",
+    pt: "Muitos e-mails de acesso agora. Aguarde alguns minutos e tente de novo.",
+  },
+  // The resend button's countdown, matching the server's per-address window.
+  "signin.resendIn": {
+    en: "Resend in {seconds}s",
+    es: "Reenviar en {seconds}s",
+    pt: "Reenviar em {seconds}s",
+  },
   "signin.genericError": {
     en: "Something went wrong. Try again in a moment.",
     es: "Algo salió mal. Intenta de nuevo en un momento.",

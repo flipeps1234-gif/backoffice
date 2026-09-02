@@ -39,6 +39,10 @@ export const sendSms = async (
     `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
     {
       method: "POST",
+      // Same rule as the OpenAI call in src/lib/extract/openai.ts: a
+      // provider that hangs must not hold a function open until the
+      // platform kills it. Twilio answers in well under a second.
+      signal: AbortSignal.timeout(15_000),
       headers: {
         Authorization: `Basic ${auth}`,
         "Content-Type": "application/x-www-form-urlencoded",

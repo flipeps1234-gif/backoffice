@@ -56,12 +56,18 @@ order by column_name;
 You need `direction` and `quantity` in that list. If either is missing,
 stop and run the migration.
 
-Current high-water mark: **0017** (`0017_settlement_idempotency.sql` — the
-unique index that makes "one payment, one sale" a database guarantee
-instead of a client guard; until it runs, the app's server-truth checks
-narrow the two-device double-settlement race but cannot close it). The
-combined file `~/Desktop/contado-combined-0001-0017.sql` holds everything
-in order and every migration is idempotent. Verify with:
+Current high-water mark: **0019**. 0018 (`0018_lock_rls_auto_enable.sql`)
+and 0017 were applied to production via the Supabase MCP on 2026-09-01;
+**0019 (`0019_protect_tester_identity.sql`) is written but NOT yet
+applied** — it adds a trigger on `auth.users`, so run it yourself in the
+SQL editor. Before applying, confirm the tester's stored hash is a plain
+bcrypt (`select left(encrypted_password, 7) from auth.users where
+split_part(email,'@',1) = 'tester';` → `$2a$10$`): GoTrue only rewrites
+`encrypted_password` during login when it re-hashes or re-encrypts, and
+either would make the trigger reject every demo sign-in. After applying,
+confirm the demo word still signs in. The combined
+file `~/Desktop/contado-combined-0001-0017.sql` predates both; append
+0018 and 0019 to it before the next fresh-project setup.
 
 ```sql
 select indexname from pg_indexes
@@ -179,7 +185,7 @@ built against a Supabase host that no longer exists in DNS.
 | `NEXT_PUBLIC_SUPABASE_URL` | Vercel | No accounts; in production `/api/extract` returns 503 |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Vercel | Same |
 | `OPENAI_API_KEY` | Vercel | Uploads return 503 — deliberately, rather than inventing rows |
-| `DEMO_EMAIL` / `DEMO_PASSWORD` | Vercel, server-only | The demo word stops working |
+| `DEMO_EMAIL` / `DEMO_PASSWORD` | Vercel, server-only | The demo word stops working. Migration 0019 makes the tester row's password/email/metadata read-only at the database (any visitor holds a real tester session and could otherwise reset its password from the console and lock every visitor out); to rotate `DEMO_PASSWORD` on purpose, run `update public.tester_lock set enabled = false;`, change it, then set `enabled = true` again (the SQL-editor role does not own `auth.users`, so the switch lives in a table it does own — never `disable trigger`) |
 | `DEMO_EXTRACTION=mock` | Vercel | Tester spends your OpenAI budget |
 | `NEXT_PUBLIC_SUPPORT_WHATSAPP` | Vercel, optional | Settings shows "Support line — coming soon" instead of the WhatsApp link. Digits only, country code first (e.g. `15551234567`); build-time inlined, so set it and redeploy |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | Vercel, optional | The contact page and footer show no email link. Build-time inlined |
@@ -266,7 +272,9 @@ that were written while the bad version was live. The app has no delete.
 |---|---|
 | OpenAI $50/month | Uploads start failing; set `DEMO_EXTRACTION=mock` first |
 | Vercel 4.5MB request body | Handled client-side by compression + chunking at 4 files |
-| Vercel function duration | A large batch is sequential model calls — long uploads |
+| **Vercel Hobby plan — BLOCKING before any launch push** | Hobby is licensed for non-commercial personal use only, and getcontado.com advertises a product: Vercel can pause the deployment (503 DEPLOYMENT_PAUSED) on policy alone. Separately, Hobby caps functions at 360 GB-hours/month: each `/api/extract` call holds a 2 GB function open for as long as OpenAI takes, so ~1,000 twenty-second calls/month (a few hundred active users) hits the wall and every function stops until the 30-day window resets. Upgrade the team to Pro (Settings → Billing) — it removes the licence exposure and turns the hard stop into billed usage with Spend Management |
+| Vercel function duration | A large batch is sequential model calls — long uploads. `/api/extract` now exports `maxDuration = 60` and aborts the OpenAI fetch at 55 s, so one stalled model call costs a minute of function time, not the 300 s platform default |
+| **Supabase auth emails — one project-wide bucket, 30/hour** | Every magic link, signup and "resend" tap draws one email from the same bucket (Auth → Rate Limits → "emails sent"; the GoTrue log shows it moving from 2/h to 30/h when custom SMTP went live). 30/h × 24 = 720 auth emails/day; Google Workspace allows 2,000/day per sending account, so Supabase binds first. It has already tripped: three 429s on launch night. The app now shows a localized "too many sign-in emails" message and a 60 s resend countdown instead of raw English. Owner side: raise the cap to 60–80/h (stays under Google's 2,000/day) and turn on Turnstile/hCaptcha for the OTP endpoint — anyone with curl and the public anon key can drain 30/h with 30 junk addresses in seconds |
 | Supabase 500MB database | **Photos.** Each sale photo is ~400KB of base64 IN the row (migration 0010), so 500MB is roughly **1,200–1,500 photos project-wide**, not "thousands of rows away". Text-only rows barely register. When photo volume becomes real, move bytes to Supabase Storage (1GB free, separate meter) — an architecture change to do deliberately |
 | Supabase egress (~5GB/month free) | Was the nearest cliff: the app re-downloaded every photo on every boot. Since the 2026-08-27 fix the boot pulls ids only and photo bytes load per client on demand, so egress now scales with photos actually viewed |
 | Supabase Auth /token per-IP rate limit (~30 per 5 min) | All demo sign-ins leave Vercel's shared egress IPs, so ~30 demo starts per 5 min site-wide trips it. The route now answers 429 "give it a minute" instead of a fake outage |

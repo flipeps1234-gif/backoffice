@@ -133,6 +133,12 @@ export const openAiExtractor: Extractor = {
 
     const response = await fetch(ENDPOINT, {
       method: "POST",
+      // Give up before the route's maxDuration (60 s) so a stalled model
+      // call ends in our own 502 copy, not a platform timeout — and never
+      // holds a 2 GB function open for the 300 s platform default. The
+      // other two server-side fetches (notify/sms.ts, notify/whatsapp.ts)
+      // carry the same guard at 15 s; keep all three when adding a fourth.
+      signal: AbortSignal.timeout(55_000),
       headers: {
         "content-type": "application/json",
         authorization: `Bearer ${apiKey}`,
