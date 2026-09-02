@@ -708,7 +708,12 @@ refreshed. FIXED: the landing now forwards any #access_token / #error
 fragment to /app with a full-document replace, where the client is always
 constructed and consumes it; supabase-js stays out of the landing bundle;
 DEPLOY.md gained the fresh-private-window magic-link check as the
-regression guard. Also fixed from the newcode slot: the demo account's
+regression guard. VERIFIED LIVE on the bare apex URL with a hard reload:
+a fake #access_token fragment forwarded to /app and the SDK consumed it
+(GET /auth/v1/user fired). Lesson recorded in DEPLOY.md: a re-visit in
+the same browser can reuse the cached "/" document (no validators), and
+the edge briefly kept the previous build's HTML after the deploy —
+verify with a fresh window or a hard reload, never a plain re-visit. Also fixed from the newcode slot: the demo account's
 Sign out used auth-js's default "global" scope, so one visitor's Sign out
 deleted every concurrent demo session (three were live) — now "local" for
 the demo account, unchanged for real accounts (an owner call); and the

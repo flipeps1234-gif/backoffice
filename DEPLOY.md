@@ -208,17 +208,21 @@ built against a Supabase host that no longer exists in DNS.
 
 ## Every push
 
-**After the deploy shows READY, confirm the apex actually serves it.**
-`curl -sI https://getcontado.com/ | grep -iE '^(x-vercel-cache|age):'` — a
-`HIT` whose `age` is older than the deployment means Vercel's edge is
-still serving the PREVIOUS build's HTML for `/`, which is where every
-magic link lands. It happened on 2026-09-01: a request hit `/` in the
-seconds between the cache purge and the alias switch, the old HTML was
-re-cached, and the sign-in fix in that deploy was live on the
-deployment URL but not on getcontado.com. The fix is another production
-deploy (it purges again) — and do not poll `/` while the switch happens.
-A cache-busted request (`/?x=1`) always reaches the new build, so use
-that to tell "stale edge" apart from "broken build".
+**After the deploy shows READY, confirm the apex actually serves it —
+in a way that cannot be fooled by a cache.** Two caches can lie to you:
+Vercel's edge (check `curl -sI https://getcontado.com/ | grep -iE
+'^(x-vercel-cache|age):'` — a `HIT` whose `age` is older than the
+deployment is the previous build's HTML for `/`, where every magic link
+lands; another production deploy purges it), and your own browser (`/`
+is served with no ETag or Last-Modified, so a re-visit in a tab that
+already loaded the old page can reuse that document without asking).
+So the check is: a fresh private window, or a hard reload — never a
+plain re-visit. A `?x=1` query string does NOT bypass the edge for this
+route (it returned byte-identical cached HTML on 2026-09-01), so it
+proves nothing either way. Seen that day: the magic-link fix (8dd1797)
+was READY and correct on the deployment URL while the apex `/` kept an
+older `HIT`; a redeploy refreshed it, and a hard reload on the bare apex
+URL then forwarded `#access_token` to `/app` as designed.
 
 - [ ] `npx tsc --noEmit && npm run lint && npm run build` — all exit 0
 - [ ] Working tree clean; you are pushing what you tested
