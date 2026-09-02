@@ -208,6 +208,18 @@ built against a Supabase host that no longer exists in DNS.
 
 ## Every push
 
+**After the deploy shows READY, confirm the apex actually serves it.**
+`curl -sI https://getcontado.com/ | grep -iE '^(x-vercel-cache|age):'` — a
+`HIT` whose `age` is older than the deployment means Vercel's edge is
+still serving the PREVIOUS build's HTML for `/`, which is where every
+magic link lands. It happened on 2026-09-01: a request hit `/` in the
+seconds between the cache purge and the alias switch, the old HTML was
+re-cached, and the sign-in fix in that deploy was live on the
+deployment URL but not on getcontado.com. The fix is another production
+deploy (it purges again) — and do not poll `/` while the switch happens.
+A cache-busted request (`/?x=1`) always reaches the new build, so use
+that to tell "stale edge" apart from "broken build".
+
 - [ ] `npx tsc --noEmit && npm run lint && npm run build` — all exit 0
 - [ ] Working tree clean; you are pushing what you tested
 - [ ] If you changed anything under `supabase/migrations/`, run it in the
