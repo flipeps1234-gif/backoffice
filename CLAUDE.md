@@ -620,7 +620,12 @@ CREATION (web sign-in.tsx / native sendMagicLink), and afterwards a
 signed-in device re-stamps it through auth.updateUser when a change
 made on THAT device leaves its language different from the stored
 value — the picker moving, a sign-in, a cold launch on a device set to
-another language — so the last device in wins. A background token
+another language — so the last device in wins. Precisely: a cold launch
+compares against the user object auth-js hands back, which is the
+CACHED one unless the access token had expired (Supabase default: one
+hour) — so within that hour a launch sees its own last value and does
+not write; after it, auth-js fetches a fresh user and the launch
+re-stamps. A background token
 refresh is NOT a trigger: the web effect latches the (account,
 language) pair it has reconciled BEFORE the in-sync check, because
 `user` changes identity on every auth event and a refresh carries what
@@ -744,8 +749,8 @@ owed on every device (transactions.matched_sale_id has no FK, so the
 database accepted the dangling link). The settle path's own comment
 said phantoms "cannot arrive here"; they could. FIXED: a saleIdRemap ref
 filled by the readback, every sale-scoped queue item (paySaleCash and
-its two adopt branches, linkSaleToTxn, both move-to-owed writes)
-resolves the id at RUN time, and the readback also remaps
+its two adopt branches, linkSaleToTxn and its rollBack, undoMatches,
+both move-to-owed writes) resolves the id at RUN time, and the readback also remaps
 transactions[].matchedSaleId in memory. Harness replays the exact
 interleaving: OLD leaves the real instance open with one dangling
 mirror and double-counts; NEW settles it with none. Also fixed: a queued
@@ -760,6 +765,32 @@ to an hour" — the project-wide email bucket is a FIXED hourly window, so
 from transactions.matched_sale_id to sales(id) ON DELETE SET NULL would
 make the database refuse this whole class; it is a migration and a
 decision, not a hotfix.
+PASS 3 (newcode over the pass-2 fixes + resilience + product-semantics +
+schema-drift, each scoped to this week's surfaces): NOT CLEAN — count
+stays 0. Schema-drift clean with SQL evidence (matched_sale_id uuid ==
+client string ids, occurred_on serializes YYYY-MM-DD so the remap key
+matches). The rest was mostly MY OWN previous fix: (1) HIGH, found by
+two lenses independently with harnesses against the real auth-js —
+the persist guard read "session null" as "signed out", but auth-js also
+returns null WITH an AuthRetryableFetchError, keeps the stored session
+and emits no SIGNED_OUT when the token has expired and the refresh
+fails offline; the write was dropped and the footer still said "Saved
+to your account" — the exact state that used to banner. FIXED: the
+guard throws that error into the existing catch; only a session-less,
+error-less read is quiet. (2) HIGH — a boot whose insertGeneratedSales
+failed left the generated instance ON SCREEN; "Got cash" minted a
+mirror against a row that never existed and the null-link branch kept
+it, while the next boot regenerated the instance open: revenue AND
+owed, and a re-tap doubled revenue. FIXED: the failed insert now takes
+the instances off the screen and restores the templates before
+rethrowing, and the null-link branch treats a RECURRING instance's
+missing row as a failed save (mirror removed, job back in owed, banner)
+rather than as a hand-logged sale's kept income. (3) MEDIUM/LOW —
+undoMatches and linkSaleToTxn's rollBack still used tap-time ids;
+resolved now. (4) LOW, copy: the cold-launch sentence above was
+overstated and is now precise. Product-semantics also proved the
+readback's "phantom kept alongside the real id" state unreachable, so
+it is no longer listed anywhere as a cosmetic case.
 
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →

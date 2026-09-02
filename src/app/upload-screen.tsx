@@ -469,8 +469,19 @@ function Ledger({
           // and run; supabase-js would then send the ANON key, RLS would
           // drop inserts (into a component already unmounted) and match
           // updates to zero rows "successfully". Refuse, and remember.
-          const session = (await getSupabase()?.auth.getSession())?.data.session;
-          if (!session) {
+          //
+          // But "no session" has TWO causes. auth-js also answers null —
+          // WITH an error, keeping the stored session and emitting no
+          // SIGNED_OUT — when the access token is past expiry and the
+          // refresh fails retryably: offline, DNS, auth 5xx. That is the
+          // product's headline moment (phone asleep an hour, "Got cash" in
+          // a driveway with no signal), the user is still here and this
+          // Ledger still mounted, so it is a FAILED SAVE and must banner.
+          // Only a session-less, error-less read (storage really cleared)
+          // takes the quiet flag path.
+          const res = await getSupabase()?.auth.getSession();
+          if (!res?.data.session) {
+            if (res?.error) throw res.error;
             lostWritesWhileSignedOut = true;
             return;
           }
@@ -630,7 +641,23 @@ function Ledger({
             // is an upsert against 0008's unique index, so a concurrent
             // open racing this one no-ops instead of duplicating.
             void persist(async () => {
-              await insertGeneratedSales(createdAll, accountId);
+              try {
+                await insertGeneratedSales(createdAll, accountId);
+              } catch (cause) {
+                // The instances never landed: take them OFF the screen and
+                // put the templates back where the walk started, so nothing
+                // can be settled against a row that does not exist. The
+                // next boot re-walks from the stored nextDue and generates
+                // them again — late, not lost. Rethrow so the banner shows.
+                const gone = new Set(createdAll.map((s) => s.id));
+                setSales((current) => current.filter((s) => !gone.has(s.id)));
+                setTemplates((current) =>
+                  current.map(
+                    (tpl) => templateRows.find((row) => row.id === tpl.id) ?? tpl,
+                  ),
+                );
+                throw cause;
+              }
               // Read back the WINNING ids: when a concurrent boot on
               // another device inserted the same (template, date)
               // instance first, ignoreDuplicates silently dropped our
@@ -1313,7 +1340,23 @@ function Ledger({
             // reload reconciles whichever state it really was.
             return;
           }
-          if (!link || link.matchedTxnId === txn.id) return;
+          if (!link) {
+            // Hand-logged sale: its row is simply gone; the mirror stays as
+            // standalone income, counted exactly once.
+            if (!sale.recurringTemplateId) return;
+            // Recurring instance whose row never landed (the boot upsert
+            // failed, or a phantom the readback could not remap): the walk
+            // regenerates it OPEN on the next boot, so a kept mirror puts
+            // the job in revenue AND owed, and a re-tap mints a second
+            // mirror. Remove ours, put the job back in owed on screen, and
+            // surface it as the failed save it is (the throw lands in
+            // persist's catch — banner plus the sticky saveFailed).
+            await deleteOwnTransaction(txn.id);
+            setTransactions((current) => current.filter((t) => t.id !== txn.id));
+            patchSale(saleId, { state: "open", method: null, matchedTxnId: null });
+            throw new Error("recurring instance row never landed");
+          }
+          if (link.matchedTxnId === txn.id) return;
           await deleteOwnTransaction(txn.id);
           await adoptWinner();
         }
@@ -1401,7 +1444,9 @@ function Ledger({
     const prevSale = { state: sale.state, method: sale.method };
     void persist(async () => {
       const rollBack = () => {
-        patchSale(sale.id, { ...prevSale, matchedTxnId: null });
+        for (const id of new Set([sale.id, canonicalSaleId(sale.id)])) {
+          patchSale(id, { ...prevSale, matchedTxnId: null });
+        }
         updateTransaction(txn.id, prevTxn);
         setMatchUndo((current) =>
           current.filter((u) => !(u.saleId === sale.id && u.txnId === txn.id)),
@@ -1445,11 +1490,17 @@ function Ledger({
 
   function undoMatches() {
     for (const undo of matchUndo) {
-      patchSale(undo.saleId, {
-        state: undo.prevState,
-        method: undo.prevMethod,
-        matchedTxnId: null,
-      });
+      // The entry stored the id memory held at LINK time; if the readback
+      // remapped a phantom instance since, the row lives under the
+      // canonical id. Patch both (a missing id is a no-op) and write the
+      // canonical one, resolved again at run time.
+      for (const id of new Set([undo.saleId, canonicalSaleId(undo.saleId)])) {
+        patchSale(id, {
+          state: undo.prevState,
+          method: undo.prevMethod,
+          matchedTxnId: null,
+        });
+      }
       updateTransaction(undo.txnId, {
         matchedSaleId: null,
         business: undo.prevBusiness,
@@ -1462,7 +1513,7 @@ function Ledger({
       // paySaleCash heals it by restoring the link. The reverse order's
       // residue (paid sale + unlinked business txn) double-counts.
       void persist(async () => {
-        await saveSale(undo.saleId, {
+        await saveSale(canonicalSaleId(undo.saleId), {
           state: undo.prevState,
           method: undo.prevMethod,
           matchedTxnId: null,
