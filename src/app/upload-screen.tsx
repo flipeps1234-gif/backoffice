@@ -68,6 +68,7 @@ import {
 } from "@/lib/sale";
 import { dedupe, isDuplicate } from "@/lib/extract/dedupe";
 import type { ExtractionWarning } from "@/lib/extract/types";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase/client";
 import {
   insertClient,
@@ -162,6 +163,18 @@ type Stage = "upload" | "confirm" | "sort";
 // write is unmounted by then, so this survives it and the next signed-in
 // mount raises the save-failed banner instead of losing the write silently.
 let lostWritesWhileSignedOut = false;
+
+// A queued write that deliberately took its own data back OFF the screen
+// before failing (a generated instance whose insert failed; a "Got cash"
+// on an instance whose row never landed). persist's catch shows this key
+// instead of "Saved on screen but not to your account" — that sentence
+// would be false here — and does not raise the sticky flag, because
+// nothing the user typed is left unsaved on screen.
+class RevertedWrite extends Error {
+  constructor(readonly key: "home.errRecurringNotSaved" | "home.errCashNotSaved") {
+    super(key);
+  }
+}
 
 export default function UploadScreen() {
   const accepted = useAcceptedTerms();
@@ -481,22 +494,37 @@ function Ledger({
           // takes the quiet flag path.
           const res = await getSupabase()?.auth.getSession();
           if (!res?.data.session) {
-            if (res?.error) throw res.error;
+            if (res?.error) {
+              // auth-js removes the stored session and broadcasts
+              // SIGNED_OUT (unmounting this Ledger) for every NON-retryable
+              // refresh failure — a revoked refresh token, say — so the
+              // throw below lands on nobody; remember the loss for the next
+              // signed-in mount. A retryable failure keeps the session and
+              // this Ledger, so the throw alone banners.
+              if (!isAuthRetryableFetchError(res.error)) {
+                lostWritesWhileSignedOut = true;
+              }
+              throw res.error;
+            }
             lostWritesWhileSignedOut = true;
             return;
           }
           await work();
         } catch (cause) {
           console.error("Save failed:", cause);
+          const reverted = cause instanceof RevertedWrite;
           // translate + currentLocale, not `t`: this callback (and the load
           // effect depending on it) must not re-run on a language switch.
-          setError(translate(currentLocale(), "home.errSaveFailed"));
+          setError(
+            translate(currentLocale(), reverted ? cause.key : "home.errSaveFailed"),
+          );
           setStatus("error");
           // Remembered, not just flashed: the finish copy below promises the
           // batch is on the user's account "next time you open this on any
           // device". After a failed write that sentence is false, and it is
-          // the only thing standing between them and losing the batch.
-          setSaveFailed(true);
+          // the only thing standing between them and losing the batch. A
+          // REVERTED write left nothing unsaved on screen, so it is not sticky.
+          if (!reverted) setSaveFailed(true);
         }
       });
       writeChain.current = next;
@@ -649,6 +677,7 @@ function Ledger({
                 // can be settled against a row that does not exist. The
                 // next boot re-walks from the stored nextDue and generates
                 // them again — late, not lost. Rethrow so the banner shows.
+                console.error("Generated instances did not land:", cause);
                 const gone = new Set(createdAll.map((s) => s.id));
                 setSales((current) => current.filter((s) => !gone.has(s.id)));
                 setTemplates((current) =>
@@ -656,7 +685,14 @@ function Ledger({
                     (tpl) => templateRows.find((row) => row.id === tpl.id) ?? tpl,
                   ),
                 );
-                throw cause;
+                // The walk's "3 missed — still active?" notice describes a
+                // pause this rollback just undid; do not leave it standing.
+                setSaleNotice((notice) =>
+                  notice === translate(currentLocale(), "home.noticeRecurringPaused")
+                    ? ""
+                    : notice,
+                );
+                throw new RevertedWrite("home.errRecurringNotSaved");
               }
               // Read back the WINNING ids: when a concurrent boot on
               // another device inserted the same (template, date)
@@ -1237,7 +1273,11 @@ function Ledger({
         const row = saleId === sale.id ? txn : { ...txn, matchedSaleId: saleId };
         if (saleId !== sale.id) {
           setTransactions((current) =>
-            current.map((t) => (t.id === txn.id ? row : t)),
+            // Only if the row still points at the tap-time id — a write
+            // over a snapshot must not resurrect a link the user undid.
+            current.map((t) =>
+              t.id === txn.id && t.matchedSaleId === sale.id ? row : t,
+            ),
           );
         }
         const linked = await findLinkedTxn(saleId);
@@ -1354,7 +1394,7 @@ function Ledger({
             await deleteOwnTransaction(txn.id);
             setTransactions((current) => current.filter((t) => t.id !== txn.id));
             patchSale(saleId, { state: "open", method: null, matchedTxnId: null });
-            throw new Error("recurring instance row never landed");
+            throw new RevertedWrite("home.errCashNotSaved");
           }
           if (link.matchedTxnId === txn.id) return;
           await deleteOwnTransaction(txn.id);
@@ -1458,7 +1498,18 @@ function Ledger({
       const saleId = canonicalSaleId(sale.id);
       const claimPatch =
         saleId === sale.id ? patch : { ...patch, matchedSaleId: saleId };
-      if (saleId !== sale.id) updateTransaction(txn.id, { matchedSaleId: saleId });
+      if (saleId !== sale.id) {
+        // Conditional on the row still carrying the tap-time id: an undo
+        // tapped before this item ran has already set it to null, and a
+        // run-time write over that snapshot would resurrect the link.
+        setTransactions((current) =>
+          current.map((t) =>
+            t.id === txn.id && t.matchedSaleId === sale.id
+              ? { ...t, matchedSaleId: saleId }
+              : t,
+          ),
+        );
+      }
       const claimed = await claimTxnForSale(txn.id, claimPatch);
       if (!claimed) {
         // This payment was spent on another device since this tab loaded.

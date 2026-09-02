@@ -622,9 +622,10 @@ made on THAT device leaves its language different from the stored
 value — the picker moving, a sign-in, a cold launch on a device set to
 another language — so the last device in wins. Precisely: a cold launch
 compares against the user object auth-js hands back, which is the
-CACHED one unless the access token had expired (Supabase default: one
-hour) — so within that hour a launch sees its own last value and does
-not write; after it, auth-js fetches a fresh user and the launch
+CACHED one unless the access token is within 90 s of expiry (auth-js's
+EXPIRY_MARGIN; Supabase tokens last an hour) — inside that window a
+launch sees its own last value and does not write; past it, auth-js
+refreshes and the refresh response carries a fresh user, so the launch
 re-stamps. A background token
 refresh is NOT a trigger: the web effect latches the (account,
 language) pair it has reconciled BEFORE the in-sync check, because
@@ -791,6 +792,31 @@ resolved now. (4) LOW, copy: the cold-launch sentence above was
 overstated and is now precise. Product-semantics also proved the
 readback's "phantom kept alongside the real id" state unreachable, so
 it is no longer listed anywhere as a cosmetic case.
+PASS 4 (narrow and deep on ea6f0d9: newcode + resilience +
+product-semantics + concurrency, all scoped to the changed regions):
+NOT CLEAN, but the trend broke — one MEDIUM and three LOWs, no HIGH,
+and the money figures were traced correct through every settle outcome
+with the real receivedCents/owedCents/byMonth (the home "business"
+figure is business transactions + EXPECTED sales; a paid sale enters
+revenue only through its one transaction, so matched-vs-unmatched never
+touches a sum). FIXED: (1) MEDIUM — a NON-retryable refresh failure
+(revoked refresh token) makes auth-js remove the session and broadcast
+SIGNED_OUT before getSession resolves, so the guard's throw landed on an
+already-unmounted Ledger and the flag was never set; the guard now sets
+the flag for non-retryable errors (isAuthRetryableFetchError decides)
+and still throws. (2) LOW — the two revert paths (a generated instance
+whose insert failed; a "Got cash" on a row that never landed) showed
+"Saved on screen but not to your account" while having deliberately
+taken the data OFF the screen; they now throw a RevertedWrite carrying
+its own key (home.errRecurringNotSaved / home.errCashNotSaved, EN/ES/PT)
+and do not raise the sticky flag. (3) LOW — the "3 missed — still
+active?" notice survived the generation catch rolling that pause back;
+the catch clears it. (4) LOW — the run-time memory re-link in
+linkSaleToTxn (and the mirror replacement in paySaleCash) wrote over a
+snapshot and could resurrect a link the user had already undone; both
+are now conditional on the row still carrying the tap-time id. Copy
+precision: the cold-launch sentence above now says 90 s of expiry, not
+"expired".
 
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →

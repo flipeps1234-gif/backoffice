@@ -14,6 +14,18 @@ export const messages = {
     es: "Se guardó en pantalla pero no en tu cuenta. Revisa tu conexión.",
     pt: "Salvo na tela, mas não na sua conta. Verifique sua conexão.",
   },
+  // The two writes that take their own data back OFF the screen before
+  // failing — "saved on screen" would be a lie for them.
+  "home.errRecurringNotSaved": {
+    en: "A recurring job couldn't be saved. It will come back the next time you open the app.",
+    es: "No se pudo guardar un trabajo recurrente. Volverá a aparecer la próxima vez que abras la app.",
+    pt: "Um serviço recorrente não pôde ser salvo. Ele volta na próxima vez que você abrir o app.",
+  },
+  "home.errCashNotSaved": {
+    en: "\"Got cash\" didn't save — the job is back in Owed. Try again in a moment.",
+    es: "\"Recibí efectivo\" no se guardó — el trabajo volvió a Por cobrar. Intenta de nuevo en un momento.",
+    pt: "\"Recebi em dinheiro\" não foi salvo — o serviço voltou para A receber. Tente de novo em instantes.",
+  },
   "home.errLoadFailed": {
     en: "Couldn't load your saved payments.",
     es: "No pudimos cargar tus pagos guardados.",
