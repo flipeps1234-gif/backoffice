@@ -836,6 +836,37 @@ in both states: it comes back the next time the app opens, tap it then;
 and the cold-launch sentence above named the wrong window — precise
 now. Severity trend across the loop: CRIT → MED(money) → 2×HIGH → MED →
 LOW-only.
+PASS 6 (narrow on e69da85: newcode over e40f947..e69da85 + a truth
+sweep of every string and doc sentence added this week; both agents told
+that zero is the expected answer if true): CLEAN — count 1 of 3.
+Evidence: home.errCashNotSaved traced true in both reachable states (the
+instance still on screen; the generation rollback already removed it) and
+in the landed-after-timeout case — the next boot's walk regenerates the
+row OPEN or loadSales returns it open, and a re-tap's settleSale wins;
+the cold-launch sentence checked clause by clause against auth-js
+2.111.0 (EXPIRY_MARGIN_MS = 3 × 30 000; __loadSession and
+_recoverAndRefresh apply the same margin test); signin.tooMany's "up to
+an hour" holds against GoTrue's IntervalLimiter (fixed 1 h window, worst
+case under an hour); the Resend countdown never paints below 0 or above
+60 (a React harness saw a stale 67 s in a commit, never in a painted
+frame); DEPLOY.md's ceilings, redirect and migration claims re-checked
+against code and READ-ONLY SQL (0019 trigger absent, tester hash
+$2a$10$, 0017/0018 live); ten CLAUDE.md claims confirmed (34 policies,
+auth.users ownership, no FK on matched_sale_id, html/template rendering,
+per-key metadata merge, local-scope demo Sign out, the set-state lint
+rule at level 2). Owner ruled: two stale CODE COMMENTS in
+upload-screen.tsx do not count against the pass — the null-link
+branch's comment still says "banner plus the sticky saveFailed" (false
+since e40f947 made a RevertedWrite non-sticky) and the readback comment
+above loadSaleLink says phantom ids "cannot arrive here" (the branch
+below has handled them since ea6f0d9); fix both inside the next src/
+commit. Fixed as docs, no reset: DEPLOY.md's browser-cache clause blamed
+missing validators for a re-visit reusing the old landing; `/` is served
+max-age=0, must-revalidate, so a plain re-visit refetches (from an edge
+that may itself be stale) and only a Back/forward restores without a
+request — advice unchanged, mechanism corrected. Left as stated, not
+verifiable from the repo: "tokens last an hour" (dashboard JWT setting)
+and "tripped three times" (GoTrue log).
 
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →

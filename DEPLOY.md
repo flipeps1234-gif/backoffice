@@ -213,11 +213,13 @@ in a way that cannot be fooled by a cache.** Two caches can lie to you:
 Vercel's edge (check `curl -sI https://getcontado.com/ | grep -iE
 '^(x-vercel-cache|age):'` — a `HIT` whose `age` is older than the
 deployment is the previous build's HTML for `/`, where every magic link
-lands; another production deploy purges it), and your own browser (`/`
-is served with no ETag or Last-Modified, so a re-visit in a tab that
-already loaded the old page can reuse that document without asking).
-So the check is: a fresh private window, or a hard reload — never a
-plain re-visit. A `?x=1` query string does NOT bypass the edge for this
+lands; another production deploy purges it), and your own browser (a
+back/forward navigation can restore the old page from the back-forward
+cache without any request; `/` is served `max-age=0, must-revalidate`
+with no ETag or Last-Modified, so a plain re-visit does refetch — but
+from the edge, which may itself still be the older HIT). So the check
+is: a fresh private window, or a hard reload — never a plain re-visit
+or a Back. A `?x=1` query string does NOT bypass the edge for this
 route (it returned byte-identical cached HTML on 2026-09-01), so it
 proves nothing either way. Seen that day: the magic-link fix (8dd1797)
 was READY and correct on the deployment URL while the apex `/` kept an
