@@ -26,9 +26,16 @@ export type ExtractionResult = {
   warnings: ExtractionWarning[];
 };
 
+/** What the caller knows that the images do not: which calendar day the
+ *  uploader is on (src/lib/extract/today.ts). Providers that resolve
+ *  relative dates must use it; the mock ignores it. */
+export type ExtractionContext = {
+  today: string;
+};
+
 export type Extractor = {
   name: string;
-  extract(inputs: ExtractionInput[]): Promise<ExtractionResult>;
+  extract(inputs: ExtractionInput[], context: ExtractionContext): Promise<ExtractionResult>;
 };
 
 export const warningMessage = (warning: ExtractionWarning): string => {

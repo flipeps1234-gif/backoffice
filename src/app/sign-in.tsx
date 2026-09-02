@@ -99,14 +99,26 @@ export default function SignIn() {
   const [now, setNow] = useState(() => Date.now());
   const cooldown =
     cooldownUntil === null ? 0 : Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
-  const startCooldown = () => setCooldownUntil(Date.now() + 60_000);
+  // Sample the clock here too: `now` is otherwise the last tick's value,
+  // and the first commit after arming would read 61.
+  const startCooldown = () => {
+    const at = Date.now();
+    setNow(at);
+    setCooldownUntil(at + 60_000);
+  };
 
   useEffect(() => {
     if (cooldownUntil === null) return;
     const tick = () => {
       const at = Date.now();
       setNow(at);
-      if (at >= cooldownUntil) setCooldownUntil(null);
+      // The deadline is wall-clock, so a clock set BACK mid-window (NTP
+      // fixing a fast phone, a manual time change) would read "Resend in
+      // 3640s" and hold the button that long. Never wait more than the
+      // 60 s the window is for; a clock set forward just ends it early,
+      // and a real 429 re-arms it.
+      if (cooldownUntil - at > 60_000) setCooldownUntil(at + 60_000);
+      else if (at >= cooldownUntil) setCooldownUntil(null);
     };
     tick();
     const timer = window.setInterval(tick, 1000);
@@ -224,7 +236,7 @@ export default function SignIn() {
         )}
 
         {error && (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
             {error}
           </p>
         )}
@@ -289,7 +301,7 @@ export default function SignIn() {
       </div>
 
       {error && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+        <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
           {error}
         </p>
       )}

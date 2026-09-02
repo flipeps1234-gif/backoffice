@@ -931,6 +931,15 @@ function Ledger({
       });
       const body = new FormData();
       for (const file of chunk) body.append("screenshots", file);
+      // The route tells the model which day "Today" is, and Vercel's clock
+      // is UTC — tomorrow, from late afternoon on, anywhere in the Americas.
+      // Send this device's calendar day and zone (src/lib/extract/today.ts).
+      body.append("today", localToday());
+      try {
+        body.append("timeZone", Intl.DateTimeFormat().resolvedOptions().timeZone);
+      } catch {
+        // No zone available: the route falls back to the date above.
+      }
 
       try {
         const response = await fetch("/api/extract", {
@@ -1369,8 +1378,9 @@ function Ledger({
           //                      winner. Deleting in the first two states
           //                      destroyed the only money record.
           // (Phantom recurring-instance ids — the fourth way to reach
-          // link null — are remapped away at generation readback in the
-          // load effect, so they cannot arrive here.)
+          // link null — are remapped at generation readback, but a tap
+          // queued inside that window can still carry one; the recurring
+          // branch below treats it as a row that never landed.)
           let link: Awaited<ReturnType<typeof loadSaleLink>> = null;
           try {
             link = await loadSaleLink(saleId);
@@ -1388,9 +1398,11 @@ function Ledger({
             // failed, or a phantom the readback could not remap): the walk
             // regenerates it OPEN on the next boot, so a kept mirror puts
             // the job in revenue AND owed, and a re-tap mints a second
-            // mirror. Remove ours, put the job back in owed on screen, and
-            // surface it as the failed save it is (the throw lands in
-            // persist's catch — banner plus the sticky saveFailed).
+            // mirror. Remove ours, put the job back in owed on screen (a
+            // no-op when the generation rollback already took it off), and
+            // surface it as the failed save it is: a RevertedWrite, which
+            // persist's catch shows under its own key and does NOT make
+            // sticky — nothing unsaved is left on screen.
             await deleteOwnTransaction(txn.id);
             setTransactions((current) => current.filter((t) => t.id !== txn.id));
             patchSale(saleId, { state: "open", method: null, matchedTxnId: null });
@@ -2654,9 +2666,13 @@ function Ledger({
             takeover screens can reach (Got cash, quick-add, client edits)
             reports here, and on a phone a takeover REPLACES mainLoop — a
             banner inside it is guaranteed unmounted at the exact moment
-            those saves fail. Silent loss looked like success. */}
+            those saves fail. Silent loss looked like success — and for a
+            screen-reader user it still did: a plain <p> appearing is not
+            spoken, and the "Got cash" button that was focused has just
+            unmounted. role="alert" makes the insertion itself announce
+            (the sign-in errors carry the same role). */}
         {status === "error" && (
-          <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+          <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
             {error}
           </p>
         )}

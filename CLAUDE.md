@@ -867,6 +867,56 @@ that may itself be stale) and only a Back/forward restores without a
 request — advice unchanged, mechanism corrected. Left as stated, not
 verifiable from the repo: "tokens last an hour" (dashboard JWT setting)
 and "tripped three times" (GoTrue log).
+PASS 7 (lens rotation — every lens in the loop's list had run, so three
+never-run angles: docs-newcode over 52d231d, TIME/DATE semantics, and
+ACCESSIBILITY on this week's UI; plus i18n completeness by tooling: 725
+keys in 19 modules, all three locales on every key, placeholders agree,
+every key used in src/ resolves): NOT CLEAN — count reset to 0.
+Docs-newcode: clean, every clause of the pass-6 record confirmed against
+code, auth-js, GoTrue source, live headers and read-only SQL. Time/date:
+recurring generation is pure string date math — byte-identical output
+under UTC, Chicago and Kiritimati across month-ends, Feb 29, both DST
+edges and a 3-year gap; byMonth, recap and the CSV bucket by string
+slice — clean there. FIXED: (1) HIGH, confirmed by an adversarial
+verifier: the OpenAI prompt's "Today is …" came from the Vercel clock,
+which is UTC — tomorrow from ~5 pm PDT / 7 pm CDT / 8 pm EDT every
+evening — so the model dated "Today", "Yesterday", weekday and year-less
+rows one day late. The row is saved before confirmation with no flag
+(the amber ring measures how well the label was READ, and "Today" reads
+perfectly), the duplicate screen keys on the exact date string, so an
+evening upload plus the next morning's overlapping re-upload persisted
+the same payment twice, and a month-end, quarter-end or Dec-31 evening
+moved income into the next period's byMonth and tax CSV. Now the client
+sends its local date and IANA zone; src/lib/extract/today.ts resolves
+the day (the zone applied to the SERVER clock → the client's date when
+real and within two days → the UTC slice), the Extractor contract
+carries it, and the prompt also states the weekday and forbids dates
+after today. Harnesses: 21:00 PDT resolves to 09-01 (was 09-02) under
+any server zone; bogus zones, "2026-02-31", a 3-year skew and an
+injection-shaped zone all fall back safely; the request body sent to
+OpenAI carries "Today is 2026-09-01 (Tuesday)" and the mock still runs.
+NATIVE GAP: ExtractClient.swift sends only screenshots, so the iOS app
+keeps the UTC day until it appends the same two fields (today,
+timeZone) — the route's fallback keeps it working meanwhile. Accepted:
+"Today" in a screenshot means the day it was CAPTURED; one uploaded days
+later is still dated on upload (a per-file capture date would fix it).
+(2) MEDIUM (reported HIGH by the a11y lens; one root cause): the error
+paragraphs on sign-in (rate limit, unreachable, demo failure) and the
+ledger's save-failed banner were plain <p> — nothing was announced to a
+screen reader while the focused button disabled or unmounted, so a
+failed "Got cash" was silent for exactly the user the banner exists for;
+all three carry role="alert" now (an inserted alert is announced).
+(3) LOW: the Resend deadline is wall-clock, so a clock set BACK inside
+the window inflated it ("Resend in 3640s", button held that long) —
+tick clamps it to 60 s, and startCooldown samples the clock so the
+first commit reads 60, not 61 (harness: OLD max 3640, NEW max 60; a
+forward jump still ends it early). Plus the two stale comments the owner
+ruled on in pass 6. DEFERRED with reason: the two existing aria-live
+regions (signin.newLinkSent, saleNotice) mount together with their
+content, which VoiceOver may not announce — pattern-level, not verified
+against assistive tech, and the countdown gives an indirect cue.
+Observation, not this week's: text-neutral-500 on the dark theme
+measures ≈4.2:1 on secondary text app-wide.
 
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →

@@ -1,6 +1,7 @@
 import { activeProviderName, extract } from "@/lib/extract";
-import type { ExtractionInput } from "@/lib/extract";
+import type { ExtractionContext, ExtractionInput } from "@/lib/extract";
 import { IMAGE_TYPES } from "@/lib/extract/image-types";
+import { resolveToday } from "@/lib/extract/today";
 import {
   isDemoAccount,
   isSupabaseConfigured,
@@ -112,6 +113,18 @@ export async function POST(request: Request) {
     });
   }
 
+  // Which day it is for THIS uploader. The web client sends its local date
+  // and IANA zone; a client that sends neither (the native app, until it is
+  // updated) gets the UTC slice this route always used. Untrusted input: a
+  // short string, validated in resolveToday, never echoed anywhere.
+  const hint = (name: string): string | null => {
+    const value = form.get(name);
+    return typeof value === "string" && value.length <= 64 ? value : null;
+  };
+  const context: ExtractionContext = {
+    today: resolveToday({ today: hint("today"), timeZone: hint("timeZone") }),
+  };
+
   // Who pays decides who may call — and, just as important, NOBODY gets the
   // mock by accident. The mock invents plausible payers, $20–$200 amounts and
   // 0.95–0.99 confidences, which is below the sheet's amber-flag threshold. In
@@ -190,7 +203,7 @@ export async function POST(request: Request) {
    */
   async function run(chosen: string) {
     try {
-      const result = await extract(inputs, chosen);
+      const result = await extract(inputs, context, chosen);
       // The client checks this: a signed-in caller that somehow receives
       // "mock" refuses the rows rather than showing invented payments.
       return Response.json({ ...result, provider: chosen });

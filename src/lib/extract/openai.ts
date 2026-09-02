@@ -1,5 +1,6 @@
 import { validateExtraction } from "./validate";
-import type { ExtractionInput, ExtractionResult, Extractor } from "./types";
+import { weekdayOf } from "./today";
+import type { ExtractionContext, ExtractionInput, ExtractionResult, Extractor } from "./types";
 
 /**
  * OpenAI provider. Plain fetch — no SDK, so no new dependency.
@@ -18,7 +19,7 @@ Ignore pending requests and balance figures.
 
 Rules:
 - amountCents is an INTEGER of cents. $64.50 is 6450. Never a decimal.
-- date is YYYY-MM-DD. If the document shows a relative date ("Yesterday", "Jul 3"), resolve it using today's date, given below. If you cannot determine a date, use an empty string.
+- date is YYYY-MM-DD. If the document shows a relative date ("Today", "Yesterday", "Tuesday", "Jul 3"), resolve it using today's date and weekday, given below. Never use a date later than today. If you cannot determine a date, use an empty string.
 - payer is the other party as shown: the person who paid (direction in) or the merchant/payee (direction out). For a check received, the drawer's printed name; for a check the user wrote, the payee line.
 - memo is the payment note or receipt description, or an empty string.
 - confidence is 0..1 per field: how sure you are that YOU READ IT CORRECTLY. Be honest — photographed paper is often blurry, angled, or handwritten; score low when unsure. This drives what the user is asked to check.
@@ -97,7 +98,7 @@ const userContent = (inputs: ExtractionInput[], today: string) => {
   const blocks: unknown[] = [
     {
       type: "text",
-      text: `Today is ${today}. ${inputs.length} image(s) follow, in order. Each is preceded by its filename — use that exact filename in any warning.`,
+      text: `Today is ${today} (${weekdayOf(today)}). ${inputs.length} image(s) follow, in order. Each is preceded by its filename — use that exact filename in any warning.`,
     },
   ];
 
@@ -121,7 +122,7 @@ const userContent = (inputs: ExtractionInput[], today: string) => {
 export const openAiExtractor: Extractor = {
   name: "openai",
 
-  async extract(inputs: ExtractionInput[]) {
+  async extract(inputs: ExtractionInput[], context: ExtractionContext) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       throw new Error(
@@ -129,7 +130,11 @@ export const openAiExtractor: Extractor = {
       );
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    // The UPLOADER's calendar day, resolved by the route from the device's
+    // zone (src/lib/extract/today.ts) — never this server's UTC clock, which
+    // is tomorrow every evening in the Americas and dated "Today" rows a
+    // day late (found by the time/date lens of clean pass 7).
+    const today = context.today;
 
     const response = await fetch(ENDPOINT, {
       method: "POST",

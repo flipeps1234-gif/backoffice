@@ -1,7 +1,12 @@
 import { dedupe } from "./dedupe";
 import { mockExtractor } from "./mock";
 import { openAiExtractor } from "./openai";
-import type { ExtractionInput, ExtractionResult, Extractor } from "./types";
+import type {
+  ExtractionContext,
+  ExtractionInput,
+  ExtractionResult,
+  Extractor,
+} from "./types";
 
 /**
  * One entry point. Swap the provider here and nothing else in the app changes.
@@ -30,10 +35,11 @@ export const getExtractor = (name = activeProviderName()): Extractor => {
 /** Dedupe happens here so no caller can forget it. */
 export const extract = async (
   inputs: ExtractionInput[],
+  context: ExtractionContext,
   provider = activeProviderName(),
 ): Promise<ExtractionResult> => {
-  const result = await getExtractor(provider).extract(inputs);
+  const result = await getExtractor(provider).extract(inputs, context);
   return { ...result, transactions: dedupe(result.transactions) };
 };
 
-export type { ExtractionInput, ExtractionResult, Extractor };
+export type { ExtractionContext, ExtractionInput, ExtractionResult, Extractor };
