@@ -689,6 +689,39 @@ outstanding half of it. Known/accepted, not re-reported: a real user
 whose email local part is "tester" is treated as the demo account (the
 convention's cost, recorded above).
 
+CLEAN-PASS LOOP (owner asked for three consecutive clean passes; a pass is
+clean when nothing survives verification that needs a change under src/
+or supabase/, and any landed fix resets the count). PASS 1 (newcode over
+the previous fix batch + deploy-headers/CSP + state-machine enumeration +
+migration of persisted device/DB state): NOT CLEAN — count reset to 0.
+State-machine and persisted-state came back clean with evidence (every
+localStorage key ever committed enumerated with its reader's fallback; no
+duplicate matched_sale_id rows; no legacy flat-string cadences). The
+deploy-headers lens found a CRITICAL that predates today's work, confirmed
+by two verifiers with a live demonstration on production: since c993498
+(2026-08-28) the landing page loaded the Supabase SDK ONLY when an
+sb-*-auth-token key already existed, yet magic links land on the bare
+origin (the only allowed redirect — /app is not on the list), so on every
+NEW device the link verified server-side and then died on the marketing
+page, signed out; no OTP session created after that commit had ever been
+refreshed. FIXED: the landing now forwards any #access_token / #error
+fragment to /app with a full-document replace, where the client is always
+constructed and consumes it; supabase-js stays out of the landing bundle;
+DEPLOY.md gained the fresh-private-window magic-link check as the
+regression guard. Also fixed from the newcode slot: the demo account's
+Sign out used auth-js's default "global" scope, so one visitor's Sign out
+deleted every concurrent demo session (three were live) — now "local" for
+the demo account, unchanged for real accounts (an owner call); and the
+second GoTrue 429 code (over_request_rate_limit, the per-IP bucket a
+venue's shared Wi-Fi trips) now gets the same localized copy and cooldown
+as the email bucket. Headers observed live: frame-ancestors 'none' and
+X-Frame-Options DENY on every response (the signed-in app is not
+framable); HSTS present; X-Content-Type-Options / Referrer-Policy /
+Permissions-Policy absent — hardening gaps with no demonstrated failure
+path here, not findings. Observation, not a finding: a native client
+caches /api/config for 24 h, so a publishable-key rotation needs the old
+key kept alive that long (there is no key-rotation runbook yet).
+
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →
   confirmation sheet → swipe → running totals. In-memory is fine.

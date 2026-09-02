@@ -2054,7 +2054,15 @@ function Ledger({
               // fail RLS, and be dropped with its error banner unmounted —
               // silent loss at the exact moment no UI remains to report it.
               await writeChain.current;
-              await getSupabase()?.auth.signOut();
+              // The demo account is ONE GoTrue user shared by every visitor,
+              // and auth-js's default scope is "global" — GoTrue deletes every
+              // session for the user, so one visitor's Sign out bounced every
+              // other visitor mid-demo. "local" revokes only this device's
+              // session. Real accounts keep the default: whether their sign-
+              // out should also be per-device is an owner call, not a fix.
+              await getSupabase()?.auth.signOut({
+                scope: demoAccount ? "local" : "global",
+              });
             }}
           >
             {t("home.signOut")}

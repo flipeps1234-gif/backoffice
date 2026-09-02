@@ -49,12 +49,14 @@ export const humanAuthError = (
   t: (key: MessageKey) => string,
   code?: string,
 ): string => {
-  // The auth-email budget is one project-wide bucket (Supabase Auth → Rate
-  // Limits) plus a 60 s per-address cooldown; both arrive as this code, and
-  // on launch night the raw English "email rate limit exceeded" reached the
-  // screen three times. It is the one auth error a cleaner can do nothing
-  // about except wait, so say that, in their language.
-  if (code === "over_email_send_rate_limit") {
+  // GoTrue has two independent 429s on the OTP endpoint: the auth-email
+  // bucket (project-wide 30/h plus a 60 s per-address cooldown —
+  // over_email_send_rate_limit, which reached the screen as raw English
+  // three times on launch night) and the per-IP request bucket (~30 per
+  // 5 min — over_request_rate_limit, the one a venue's shared Wi-Fi
+  // trips). Both mean "wait", the one auth error a cleaner can do nothing
+  // else about, so both get the same words in their language.
+  if (isRateLimited(code)) {
     return t("signin.tooMany");
   }
   // "{}" is what auth-js produces for a REACHABLE server answering
@@ -69,10 +71,15 @@ export const humanAuthError = (
   if (unreachable) {
     return t("signin.unreachable");
   }
-  // Supabase's own messages (rate limits, malformed address) are already
-  // written for humans, so they pass through untouched.
+  // Supabase's remaining messages (a malformed address, a disabled
+  // provider) are already written for humans, so they pass through
+  // untouched — rate limits are handled above, never here.
   return raw || t("signin.genericError");
 };
+
+/** Both of GoTrue's 429 codes on /otp; see humanAuthError. */
+const isRateLimited = (code: string | undefined): boolean =>
+  code === "over_email_send_rate_limit" || code === "over_request_rate_limit";
 
 export default function SignIn() {
   const { t } = useLocale();
@@ -174,7 +181,7 @@ export default function SignIn() {
       // The very case the countdown exists for: a reload or a second tab
       // wiped the local timer and the server's window is still open.
       // Arm it here too, or the button re-enables for a doomed tap.
-      if (sendError.code === "over_email_send_rate_limit") startCooldown();
+      if (isRateLimited(sendError.code)) startCooldown();
       return;
     }
     setSent(true);

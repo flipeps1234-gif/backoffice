@@ -92,6 +92,18 @@ migration file. Until it shows, the seven-day promise is not being kept.
 
 ### 2. Add the app's origin to Supabase Redirect URLs — BLOCKING for sign-in
 
+> Where the link actually lands: the bare origin (`https://getcontado.com`),
+> because that is the only redirect on the allow-list — `…/app` is NOT, so
+> pointing `emailRedirectTo` at `/app` would silently fall back to the
+> vercel.app Site URL. The landing page therefore forwards any
+> `#access_token…` / `#error…` fragment straight to `/app`, where the
+> Supabase client is always constructed and consumes it. Between
+> 2026-08-28 and 2026-09-01 that forward did not exist: the landing only
+> loaded the SDK when a session was already stored, so on every NEW device
+> the link verified server-side and then died on the marketing page.
+> Found by the post-deploy find-and-fix loop; the check below is the
+> regression guard.
+
 Supabase → Authentication → URL Configuration → Redirect URLs.
 
 Add the exact production origin (e.g. `https://contado.vercel.app`).
@@ -206,6 +218,13 @@ built against a Supabase host that no longer exists in DNS.
       deployment is still live, which is fine — fix forward or revert
 
 ## Smoke test, on production, signed in
+
+**First, signed OUT, in a fresh private window** (this is the check that
+would have caught the 2026-08-28 regression): open `/app`, request a
+magic link for an address you can read, tap the link in the mail — you
+must land on `/app` signed in, with no `#access_token` left in the URL.
+If you land on the marketing page still signed out, sign-in is broken for
+every new device, whatever the signed-in checks below say.
 
 Two minutes. Do it after any push that touched upload, auth, or the database.
 

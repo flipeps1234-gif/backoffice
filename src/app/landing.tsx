@@ -52,6 +52,19 @@ export default function Landing() {
   // session — is answerable from localStorage alone; only a visitor who
   // has actually signed in loads the SDK, after hydration, to confirm.
   useEffect(() => {
+    // A magic link lands HERE: emailRedirectTo is the bare origin, the only
+    // redirect Supabase allows today ("/app" is not in the Redirect URLs).
+    // The SDK that consumes #access_token — or #error for an expired link —
+    // is constructed on /app, never on this page, and the gate below skips
+    // it entirely on a device with no stored session. That is exactly a
+    // NEW user's device, so from 2026-08-28 (c993498) until this guard the
+    // link verified server-side and then died on the marketing page,
+    // signed out. Forward the fragment intact to the page that reads it;
+    // a full-document navigation, per the analytics rule.
+    if (/[#&](access_token|error|error_code|error_description)=/.test(window.location.hash)) {
+      window.location.replace(`/app${window.location.hash}`);
+      return;
+    }
     let hasToken = false;
     try {
       for (let i = 0; i < localStorage.length; i += 1) {
