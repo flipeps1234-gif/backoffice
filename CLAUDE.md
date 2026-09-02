@@ -622,11 +622,12 @@ made on THAT device leaves its language different from the stored
 value — the picker moving, a sign-in, a cold launch on a device set to
 another language — so the last device in wins. Precisely: a cold launch
 compares against the user object auth-js hands back, which is the
-CACHED one unless the access token is within 90 s of expiry (auth-js's
-EXPIRY_MARGIN; Supabase tokens last an hour) — inside that window a
-launch sees its own last value and does not write; past it, auth-js
-refreshes and the refresh response carries a fresh user, so the launch
-re-stamps. A background token
+CACHED one for roughly the first 58½ minutes of a token's life — auth-js
+refreshes only within EXPIRY_MARGIN (90 s) of expiry or after it, and
+Supabase tokens last an hour — so in that cached span a launch sees its
+own last value and does not write; within 90 s of expiry or past it,
+auth-js refreshes and the refresh response carries a fresh user, so the
+launch re-stamps. A background token
 refresh is NOT a trigger: the web effect latches the (account,
 language) pair it has reconciled BEFORE the in-sync check, because
 `user` changes identity on every auth event and a refresh carries what
@@ -817,6 +818,24 @@ snapshot and could resurrect a link the user had already undone; both
 are now conditional on the row still carrying the tap-time id. Copy
 precision: the cold-launch sentence above now says 90 s of expiry, not
 "expired".
+PASS 5 (narrow and deep on e40f947: newcode + resilience + concurrency +
+copy-vs-behavior): NOT CLEAN by the rule (a message file is src/), but
+nothing above LOW and no money or write-loss path: the guard was
+enumerated against the real auth-js through every getSession shape —
+storage empty, valid, expired+retryable, the 60 s cooldown replays,
+expired+non-retryable (SIGNED_OUT before resolve), refresh succeeding
+mid-call, the 90 s margin's proactive-preserve, blocked storage — and
+no shape drops a write without a banner or the flag; the conditional
+re-links and undo orderings traced consistent; the new strings match
+the real button and tab labels in all three languages. Five LOW
+findings, two root causes, both copy: home.errCashNotSaved claimed the
+job was "back in Owed" (false once the generation rollback has removed
+it from the screen) and "try again in a moment" (a re-tap fails the same
+way until the next boot regenerates the row) — reworded to what is true
+in both states: it comes back the next time the app opens, tap it then;
+and the cold-launch sentence above named the wrong window — precise
+now. Severity trend across the loop: CRIT → MED(money) → 2×HIGH → MED →
+LOW-only.
 
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →

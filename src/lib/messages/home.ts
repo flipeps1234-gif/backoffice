@@ -21,10 +21,14 @@ export const messages = {
     es: "No se pudo guardar un trabajo recurrente. Volverá a aparecer la próxima vez que abras la app.",
     pt: "Um serviço recorrente não pôde ser salvo. Ele volta na próxima vez que você abrir o app.",
   },
+  // True in BOTH states this banner can appear in: the instance is still
+  // on screen (a re-tap now would fail the same way until the next boot
+  // regenerates its row), or the generation rollback already removed it.
+  // Either way the honest instruction is the same: reopen, then tap.
   "home.errCashNotSaved": {
-    en: "\"Got cash\" didn't save — the job is back in Owed. Try again in a moment.",
-    es: "\"Recibí efectivo\" no se guardó — el trabajo volvió a Por cobrar. Intenta de nuevo en un momento.",
-    pt: "\"Recebi em dinheiro\" não foi salvo — o serviço voltou para A receber. Tente de novo em instantes.",
+    en: "\"Got cash\" didn't save. The job will be back in Owed the next time you open the app — tap it again then.",
+    es: "\"Recibí efectivo\" no se guardó. El trabajo volverá a Por cobrar la próxima vez que abras la app — tócalo de nuevo entonces.",
+    pt: "\"Recebi em dinheiro\" não foi salvo. O serviço volta para A receber na próxima vez que você abrir o app — toque de novo então.",
   },
   "home.errLoadFailed": {
     en: "Couldn't load your saved payments.",
