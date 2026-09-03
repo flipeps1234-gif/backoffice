@@ -58,8 +58,10 @@ stop and run the migration.
 
 Current high-water mark: **0020**. 0018 (`0018_lock_rls_auto_enable.sql`)
 and 0017 were applied to production via the Supabase MCP on 2026-09-01;
-**0019 (`0019_protect_tester_identity.sql`) is written but NOT yet
-applied** — it adds a trigger on `auth.users`, so run it yourself in the
+**0019 (`0019_protect_tester_identity.sql`) was APPLIED to production via
+the Supabase MCP on 2026-09-03 (trigger present, tester_lock enabled, demo
+word verified signing in afterwards). Historical note on why it needed
+care:** it was written but not applied for two days — it adds a trigger on `auth.users`, so run it yourself in the
 SQL editor. Before applying, confirm the tester's stored hash is a plain
 bcrypt (`select left(encrypted_password, 7) from auth.users where
 split_part(email,'@',1) = 'tester';` → `$2a$10$`): GoTrue only rewrites
@@ -69,8 +71,11 @@ confirm the demo word still signs in. The combined
 file `~/Desktop/contado-combined-0001-0017.sql` predates both; append
 0018 and 0019 to it before the next fresh-project setup.
 
-**0020 (`0020_abuse_caps_and_founding_rpc.sql`) is also written but NOT
-yet applied** — it caps the shared tester account's row counts and
+**0020 (`0020_abuse_caps_and_founding_rpc.sql`) was APPLIED to production
+via the Supabase MCP on 2026-09-03 and verified (9 cap triggers,
+founding_signup granted to anon/authenticated, old insert policy and
+grant gone, deletion UPDATE pinned, index scoped, 0 TRUNCATE grants, 8
+byte constraints, both cron jobs listed). What it does** — it caps the shared tester account's row counts and
 refuses it photos, replaces the character-count byte checks on
 `sales.photo` with real byte counts and adds equivalent bounds on other
 text columns, moves the founding-list signup behind a `founding_signup`
@@ -83,6 +88,25 @@ job. Run it in the SQL editor same as the others, then confirm
 `select proname from pg_proc where proname = 'founding_signup';` returns
 a row and that `select jobname from cron.job;` now also lists
 `reset-demo-rows` alongside `purge-deleted-accounts`.
+
+**Edge and DNS, set 2026-09-03 (security audit):** Cloudflare proxies the
+apex (orange cloud, owner's choice) with SSL **Full (strict)** (Vercel
+presents a valid Let's Encrypt cert at the origin), minimum TLS **1.2**,
+Web Analytics auto-injection **off** (it was injecting a beacon the CSP
+blocks and the privacy page never disclosed), one rate-limit rule (5
+requests per 10 s per IP on `/api/demo-session` and `/api/founding`), and a
+redirect rule sending `www.` to the apex (a proxied `www` CNAME exists for
+it). The routes read `cf-connecting-ip` before `x-forwarded-for` because
+Vercel overwrites the latter with the Cloudflare edge IP. DNS: DMARC
+`p=quarantine; adkim=s; aspf=s` (raise to `p=reject` after two clean
+weeks of reports to mail@getcontado.com), SPF `-all` (Google Workspace is
+the only sender — add any new sender BEFORE it sends), CAA for
+letsencrypt.org, pki.goog, sectigo.com and ssl.com (the CAs Cloudflare
+Universal SSL and Vercel use; a new CA must be added here first), DNSSEC
+enabled (Cloudflare is the registrar, so the DS publishes itself). Vercel:
+Vercel Authentication is ON for preview deployments; production stays
+public. Grey-clouding the apex later is one DNS toggle and makes the
+Cloudflare TLS/rate settings moot (Vercel then terminates TLS).
 
 ```sql
 select indexname from pg_indexes

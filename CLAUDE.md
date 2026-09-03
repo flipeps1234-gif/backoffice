@@ -971,7 +971,9 @@ insert until 0020 is applied; the deletion request upsert uses
 ignoreDuplicates so it needs no UPDATE right; the privacy page gained
 what-we-store / processors / retention / rights sections in EN/ES/PT
 and the three "never stored" claims now say what OpenAI's 30-day
-abuse-monitoring retention makes true. WRITTEN, NOT APPLIED: migration
+abuse-monitoring retention makes true. APPLIED 2026-09-03 via the MCP, both
+verified with SQL afterwards (0019: trigger present, lock enabled, demo
+word still signs in; 0020: every object listed in DEPLOY.md): migration
 0020 (statement-level demo cap trigger, 300 rows per table for the
 tester and no photos, on INSERT and, for sales, UPDATE; octet_length
 bounds on every text column; founding_signup RPC replacing the anon
@@ -979,12 +981,14 @@ INSERT policy; deletion cooling-off pinned in the UPDATE policy;
 transactions_matched_sale_key re-scoped to (account_id,
 matched_sale_id); TRUNCATE revoked from anon/authenticated; nightly
 reset_demo_rows that sweeps visitor rows older than a day but keeps
-rows created before 2026-09-03 as seed). OWNER-SIDE, from the audit's
-action plan: apply 0019 then 0020; DMARC p=quarantine and SPF -all;
-Cloudflare Full (strict), TLS 1.2 minimum, DNSSEC, CAA, a www record,
-and either grey-cloud the apex or add rate-limit rules; Vercel
-Authentication on preview deployments; OpenAI zero-data-retention
-setting. Not fixed by design: the demo route still returns a refresh
+rows created before 2026-09-03 as seed). DONE 2026-09-03 with the owner's approval (proxy kept and hardened):
+DMARC p=quarantine strict-aligned and SPF -all; Cloudflare Full
+(strict), TLS 1.2 minimum, Web Analytics injection off, a rate-limit
+rule on demo-session + founding, a www CNAME + redirect rule, CAA,
+DNSSEC (DS pending at the registrar); Vercel Authentication on preview
+deployments (verified: the branch alias 302s to SSO, production alias
+still 200). Still owner-side: the OpenAI zero-data-retention setting.
+The settings.privacyPromise sentence now matches the privacy page. Not fixed by design: the demo route still returns a refresh
 token (dropping it would sign demo visitors out hourly); the native app
 still sends no today/timeZone fields.
 

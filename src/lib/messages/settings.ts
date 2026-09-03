@@ -230,9 +230,9 @@ export const messages = {
     pt: "Exportar tudo (CSV)",
   },
   "settings.privacyPromise": {
-    en: "Your rows are yours: export them free, forever. We don't sell your data, there are no ads, and the screenshots you upload are read and discarded — only photos you attach to a sale are kept. Deleting your account erases everything for good.",
-    es: "Tus registros son tuyos: expórtalos gratis, siempre. No vendemos tus datos, no hay anuncios, y las capturas que subes se leen y se descartan — solo se guardan las fotos que adjuntas a una venta. Borrar tu cuenta elimina todo para siempre.",
-    pt: "Seus registros são seus: exporte grátis, sempre. Não vendemos seus dados, não há anúncios, e as capturas enviadas são lidas e descartadas — só ficam as fotos anexadas a uma venda. Apagar sua conta elimina tudo de vez.",
+    en: "Your rows are yours: export them free, forever. We don't sell your data, there are no ads, and the screenshots you upload are read by OpenAI and not kept by contado (OpenAI may hold them up to 30 days to monitor for abuse) — only photos you attach to a sale are kept. Deleting your account erases everything for good.",
+    es: "Tus registros son tuyos: expórtalos gratis, siempre. No vendemos tus datos, no hay anuncios, y las capturas que subes las lee OpenAI y contado no las guarda (OpenAI puede retenerlas hasta 30 días para vigilar abusos) — solo se guardan las fotos que adjuntas a una venta. Borrar tu cuenta elimina todo para siempre.",
+    pt: "Seus registros são seus: exporte grátis, sempre. Não vendemos seus dados, não há anúncios, e as capturas enviadas são lidas pela OpenAI e o contado não as guarda (a OpenAI pode retê-las por até 30 dias para monitorar abusos) — só ficam as fotos anexadas a uma venda. Apagar sua conta elimina tudo de vez.",
   },
   "settings.deleteAccount": {
     en: "Delete account",
