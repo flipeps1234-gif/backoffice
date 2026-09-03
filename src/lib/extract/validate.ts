@@ -19,6 +19,26 @@ const isObject = (value: unknown): value is Record<string, unknown> =>
 const asString = (value: unknown, fallback = ""): string =>
   typeof value === "string" ? value.trim() : fallback;
 
+// A 4-image chunk never legitimately yields more than a couple hundred rows;
+// an adversarial screenshot must not be able to flood the ledger with rows
+// or warnings.
+export const MAX_ROWS = 100;
+export const MAX_WARNINGS = 40;
+
+const PAYER_MAX_LEN = 200;
+const MEMO_MAX_LEN = 2000;
+
+/** C0 controls (U+0000–U+001F) except tab, plus DEL (U+007F). Postgres
+ *  rejects U+0000 outright — one bad byte would fail the whole batch
+ *  insert — and none of the rest belong in a name or note either. */
+const CONTROL_CHARS = /[\x00-\x08\x0A-\x1F\x7F]/g;
+
+const sanitizeText = (value: unknown, maxLen: number): string =>
+  (typeof value === "string" ? value : "")
+    .replace(CONTROL_CHARS, "")
+    .trim()
+    .slice(0, maxLen);
+
 /**
  * Cents must be a whole number in 0..MAX_CENTS. A model returning 12.5 is a
  * bug, not a price — and a negative or absurd value would violate the DB
@@ -56,12 +76,14 @@ const validateTransaction = (
 
   const rawConfidence = isObject(raw.confidence) ? raw.confidence : {};
 
+  const payer = sanitizeText(raw.payer, PAYER_MAX_LEN);
+
   return {
-    id: `tx-${index}-${asString(raw.payer)}-${amountCents}`,
-    payer: asString(raw.payer),
+    id: `tx-${index}-${payer}-${amountCents}`,
+    payer,
     amountCents,
     date: asIsoDate(raw.date),
-    memo: asString(raw.memo),
+    memo: sanitizeText(raw.memo, MEMO_MAX_LEN),
     source: "screenshot",
     // Anything unrecognized is money IN — the safer wrong guess, since the
     // user confirms every row and income is what these documents mostly are.
@@ -89,15 +111,20 @@ export const validateExtraction = (raw: unknown): ExtractionResult => {
   const rawTransactions = Array.isArray(raw.transactions) ? raw.transactions : [];
   const transactions = rawTransactions
     .map((row, index) => validateTransaction(row, index))
-    .filter((tx): tx is Transaction => tx !== null);
+    .filter((tx): tx is Transaction => tx !== null)
+    // Keep the first MAX_ROWS — an adversarial screenshot must not be able
+    // to flood the ledger with rows.
+    .slice(0, MAX_ROWS);
 
   const rawWarnings = Array.isArray(raw.warnings) ? raw.warnings : [];
-  const warnings = rawWarnings.flatMap((entry) => {
-    if (!isObject(entry)) return [];
-    const code = asString(entry.code) as ExtractionWarningCode;
-    if (!WARNING_CODES.includes(code)) return [];
-    return [{ code, filename: asString(entry.filename) || undefined }];
-  });
+  const warnings = rawWarnings
+    .flatMap((entry) => {
+      if (!isObject(entry)) return [];
+      const code = asString(entry.code) as ExtractionWarningCode;
+      if (!WARNING_CODES.includes(code)) return [];
+      return [{ code, filename: asString(entry.filename) || undefined }];
+    })
+    .slice(0, MAX_WARNINGS);
 
   return { transactions, warnings };
 };

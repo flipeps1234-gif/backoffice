@@ -25,8 +25,13 @@ const rateLimited = (ip: string): boolean => {
 };
 
 export async function POST(request: Request) {
+  // Cloudflare fronts production and sets cf-connecting-ip to the real
+  // client IP; x-forwarded-for is the fallback for anything else (local
+  // dev, previews, or a host not behind Cloudflare).
   const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    request.headers.get("cf-connecting-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "unknown";
   if (rateLimited(ip)) {
     return Response.json({ error: "Give it a minute." }, { status: 429 });
   }
@@ -57,16 +62,33 @@ export async function POST(request: Request) {
   const supabase = createClient(url, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { error } = await supabase
-    .from("founding_list")
-    .insert({ email: normalized });
+
+  // Migration 0020 moves the write behind a SECURITY DEFINER RPC so the
+  // table itself is closed to direct client inserts (the anon key could
+  // otherwise write arbitrary rows straight past this route's own
+  // validation and rate limiter). The RPC does its own ON CONFLICT DO
+  // NOTHING, so it never raises 23505 itself.
+  let { error } = await supabase.rpc("founding_signup", { p_email: normalized });
+
+  // 42883 (Postgres: function does not exist) or PGRST202 (PostgREST:
+  // function missing from its schema cache) means 0020 hasn't been
+  // applied to this database yet. Fall back to the pre-0020 direct
+  // insert so deploy order between the migration and this route doesn't
+  // matter — delete this fallback once 0020 is confirmed applied
+  // everywhere (see DEPLOY.md).
+  if (error && (error.code === "42883" || error.code === "PGRST202")) {
+    ({ error } = await supabase
+      .from("founding_list")
+      .insert({ email: normalized }));
+  }
 
   // 23505 = unique violation: already on the list. That's a success —
-  // never an error a caller can use to probe who signed up.
+  // never an error a caller can use to probe who signed up. (Only the
+  // fallback insert above can actually raise this.)
   if (error && error.code !== "23505") {
     // The code makes Vercel logs diagnosable at a glance — e.g.
     // PGRST205 = the table doesn't exist (migration never ran).
-    console.error("founding insert failed:", error.code, error.message);
+    console.error("founding signup failed:", error.code, error.message);
     return Response.json({ error: "Try again." }, { status: 500 });
   }
   return Response.json({ ok: true });

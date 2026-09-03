@@ -20,6 +20,23 @@ const BLOCKS: [MessageKey, MessageKey][] = [
   ["terms.demoTitle", "terms.demoBody"],
 ];
 
+// The fuller disclosure: what we store, who processes it, how long,
+// and the visitor's rights. Each section's body may be more than one
+// paragraph — this page renders each body key as its own <p>, so a
+// section with more to say lists several body keys instead of one
+// key holding a "\n\n" the page would otherwise print literally.
+const PRIVACY_SECTIONS: [MessageKey, MessageKey, ...MessageKey[]][] = [
+  ["site.privacyCollectTitle", "site.privacyCollectBody", "site.privacyCollectBody2"],
+  [
+    "site.privacyProcessorsTitle",
+    "site.privacyProcessorsBody",
+    "site.privacyProcessorsBody2",
+    "site.privacyProcessorsBody3",
+  ],
+  ["site.privacyRetentionTitle", "site.privacyRetentionBody", "site.privacyRetentionBody2"],
+  ["site.privacyRightsTitle", "site.privacyRightsBody", "site.privacyRightsBody2"],
+];
+
 export default function PrivacyContent() {
   const { t } = useLocale();
   return (
@@ -46,6 +63,22 @@ export default function PrivacyContent() {
       <p className="mt-3 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
         {t("site.privacyFounding")}
       </p>
+
+      <div className="mt-8 space-y-6">
+        {PRIVACY_SECTIONS.map(([title, ...bodies]) => (
+          <section key={title}>
+            <h2 className="text-base font-semibold">{t(title)}</h2>
+            {bodies.map((body) => (
+              <p
+                key={body}
+                className="mt-1 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400"
+              >
+                {t(body)}
+              </p>
+            ))}
+          </section>
+        ))}
+      </div>
 
       <div className="mt-8 space-y-6">
         {BLOCKS.map(([title, body]) => (

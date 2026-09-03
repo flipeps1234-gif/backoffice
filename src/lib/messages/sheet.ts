@@ -89,4 +89,9 @@ export const messages = {
     es: "Deshacer último",
     pt: "Desfazer último",
   },
+  "sheet.notAPayment": {
+    en: "Not a payment",
+    es: "No es un pago",
+    pt: "Não é um pagamento",
+  },
 } as const;

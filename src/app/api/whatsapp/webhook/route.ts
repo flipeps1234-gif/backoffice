@@ -13,8 +13,10 @@ import { serviceClient } from "@/lib/notify/store";
  *        user explicitly re-opts-in from Settings.
  *
  * Signature: when WHATSAPP_APP_SECRET is set, X-Hub-Signature-256 is
- * verified and unsigned posts are rejected. Without it (bare spike
- * against the test number) posts are accepted but say so in the log.
+ * verified and a bad signature is rejected. Without the secret, unsigned
+ * posts are refused outright in production (503, before any parsing or
+ * writes); outside production (bare spike against the test number) they
+ * are accepted but say so in the log.
  *
  * Always answers 200 fast — Meta retries non-200s aggressively and a
  * retry storm against a spike helps nobody.
@@ -60,6 +62,9 @@ const signatureValid = async (
   }
 };
 
+// Masks a phone number in logs down to its last 4 digits.
+const last4 = (n: string) => `***${n.slice(-4)}`;
+
 export async function POST(request: Request) {
   const rawBody = await request.text();
 
@@ -68,6 +73,12 @@ export async function POST(request: Request) {
     return new Response("bad signature", { status: 401 });
   }
   if (signed === "unsigned") {
+    // In production an unsigned POST could be anyone — never trust it far
+    // enough to parse or write. Non-production (the spike against a test
+    // number) keeps warning and continuing.
+    if (process.env.NODE_ENV === "production") {
+      return new Response("webhook not configured", { status: 503 });
+    }
     console.warn("whatsapp webhook: WHATSAPP_APP_SECRET unset — accepting unsigned POST (spike mode)");
   }
 
@@ -78,7 +89,7 @@ export async function POST(request: Request) {
     return new Response("ok", { status: 200 });
   }
 
-  const db = serviceClient();
+  const db = serviceClient("whatsapp");
 
   // Meta nests deeply: entry[] → changes[] → value.{statuses,messages}.
   const entries =
@@ -129,10 +140,10 @@ export async function POST(request: Request) {
             .update({ opted_out_at: new Date().toISOString() })
             .eq("phone", e164);
           if (error) console.error("whatsapp opt-out write failed:", error.message);
-          else console.log(`whatsapp STOP honored for ${e164}`);
+          else console.log(`whatsapp STOP honored for ${last4(e164)}`);
         } else {
           console.log(
-            `whatsapp STOP (no service key, not saved): ${e164} asked out`,
+            `whatsapp STOP (no service key, not saved): ${last4(e164)} asked out`,
           );
         }
       }

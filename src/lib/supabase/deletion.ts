@@ -24,9 +24,19 @@ export const requestDeletion = async (accountId: string): Promise<void> => {
   const supabase = getSupabase();
   if (!supabase) return;
 
+  // ignoreDuplicates turns the conflict arm into INSERT ... ON CONFLICT
+  // DO NOTHING instead of DO UPDATE, so a re-request never needs UPDATE
+  // rights on this table at all — it either creates the request or, if
+  // one already exists, silently no-ops and leaves the original
+  // requested_at (and its cooling-off window) untouched. account_id is
+  // the table's primary key (migration 0013), so it's the only possible
+  // conflict target.
   const { error } = await supabase
     .from("deletion_requests")
-    .upsert({ account_id: accountId });
+    .upsert(
+      { account_id: accountId },
+      { onConflict: "account_id", ignoreDuplicates: true },
+    );
   if (error) throw new Error(error.message);
 };
 

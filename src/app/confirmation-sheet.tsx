@@ -29,9 +29,19 @@ const inputClass = (flagged: boolean) =>
 export default function ConfirmationSheet({
   transactions,
   onChange,
+  removableIds,
+  onRemove,
 }: {
   transactions: Transaction[];
   onChange: (id: string, patch: Partial<Transaction>) => void;
+  /** Ids eligible for "Not a payment" — the batch just confirmed. Rows
+   *  outside it (already-sorted history, an earlier unfinished batch) keep
+   *  the existing flows instead. Optional: the public-site demo mounts
+   *  don't pass it. */
+  removableIds?: string[];
+  /** Deletes the row (already saved on arrival) both on screen and in the
+   *  account. Optional for the same reason as removableIds. */
+  onRemove?: (id: string) => void;
 }) {
   const { t } = useLocale();
   const flaggedCount = transactions.filter(
@@ -80,33 +90,54 @@ export default function ConfirmationSheet({
       )}
 
       <ul className="space-y-3">
-        {transactions.map((tx) => (
+        {transactions.map((tx) => {
+          // A matched row belongs to a sale — leave it to the existing
+          // unmatch/undo flows, not this one. Only the batch just confirmed
+          // is eligible, so an earlier unfinished batch's leftovers (also
+          // business === null) don't pick up a stray control.
+          const canRemove =
+            Boolean(onRemove) &&
+            (removableIds?.includes(tx.id) ?? false) &&
+            !tx.matchedSaleId;
+
+          return (
           <li
             key={tx.id}
             className="rounded-lg border border-neutral-200 bg-white p-3 space-y-3"
           >
-            {/* Direction is extracted too, and it's the one field that flips
-                the SIGN of the money — so it must be as fixable as a typo'd
-                amount. Tap to flip. */}
-            <button
-              type="button"
-              aria-pressed={tx.direction === "out"}
-              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
-                tx.direction === "out"
-                  ? "bg-red-50 text-red-700 ring-1 ring-red-200"
-                  : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
-              }`}
-              onClick={() =>
-                onChange(tx.id, {
-                  direction: tx.direction === "out" ? "in" : "out",
-                })
-              }
-            >
-              {tx.direction === "out"
-                ? t("sheet.moneyOut")
-                : t("sheet.moneyIn")}{" "}
-              {t("sheet.tapToFlip")}
-            </button>
+            <div className="flex items-center justify-between gap-2">
+              {/* Direction is extracted too, and it's the one field that
+                  flips the SIGN of the money — so it must be as fixable as a
+                  typo'd amount. Tap to flip. */}
+              <button
+                type="button"
+                aria-pressed={tx.direction === "out"}
+                className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                  tx.direction === "out"
+                    ? "bg-red-50 text-red-700 ring-1 ring-red-200"
+                    : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                }`}
+                onClick={() =>
+                  onChange(tx.id, {
+                    direction: tx.direction === "out" ? "in" : "out",
+                  })
+                }
+              >
+                {tx.direction === "out"
+                  ? t("sheet.moneyOut")
+                  : t("sheet.moneyIn")}{" "}
+                {t("sheet.tapToFlip")}
+              </button>
+              {canRemove && (
+                <button
+                  type="button"
+                  className="text-xs text-neutral-500 hover:underline"
+                  onClick={() => onRemove?.(tx.id)}
+                >
+                  {t("sheet.notAPayment")}
+                </button>
+              )}
+            </div>
             <div className="flex gap-2">
               <div className="flex-1">
                 <label className={labelClass} htmlFor={`${tx.id}-payer`}>
@@ -205,7 +236,8 @@ export default function ConfirmationSheet({
               </div>
             )}
           </li>
-        ))}
+          );
+        })}
       </ul>
     </section>
   );

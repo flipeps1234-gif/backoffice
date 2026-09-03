@@ -1083,6 +1083,23 @@ function Ledger({
     );
   }
 
+  /**
+   * The confirmation sheet's per-row "Not a payment" control. The row was
+   * already saved at arrival (see the comment above loadSaleLink / the
+   * insertTransactions call in the upload handler), so removing it here
+   * has to delete the saved copy too — enqueued through the same write
+   * queue as every other mutation, with the same failure-banner semantics
+   * (persist's catch sets error + saveFailed on a thrown delete). The
+   * sheet itself only offers this for un-matched rows in the batch just
+   * confirmed (see removableIds below), so this never touches a row a
+   * sale is pointing at.
+   */
+  function removeNotAPayment(id: string) {
+    setTransactions((current) => current.filter((tx) => tx.id !== id));
+    setLastBatchIds((current) => current.filter((txId) => txId !== id));
+    void persist(() => deleteOwnTransaction(id));
+  }
+
   function decide(id: string, business: boolean) {
     updateTransaction(id, { business });
     setDecided((current) => [...current, id]);
@@ -1378,9 +1395,11 @@ function Ledger({
           //                      winner. Deleting in the first two states
           //                      destroyed the only money record.
           // (Phantom recurring-instance ids — the fourth way to reach
-          // link null — are remapped at generation readback, but a tap
-          // queued inside that window can still carry one; the recurring
-          // branch below treats it as a row that never landed.)
+          // link null — are remapped at generation readback and resolved
+          // at run time by every queued item (canonicalSaleId above), so
+          // one reaches here only when the readback itself failed to remap
+          // it — threw, or found no twin; the recurring branch below treats
+          // it as a row that never landed.)
           let link: Awaited<ReturnType<typeof loadSaleLink>> = null;
           try {
             link = await loadSaleLink(saleId);
@@ -2575,7 +2594,12 @@ function Ledger({
         <>
           {/* Only the new batch needs confirming — anything already sorted
               (cash, or an earlier batch) has business set and is excluded. */}
-          <ConfirmationSheet transactions={pending} onChange={updateTransaction} />
+          <ConfirmationSheet
+            transactions={pending}
+            onChange={updateTransaction}
+            removableIds={lastBatchIds}
+            onRemove={removeNotAPayment}
+          />
           <button
             type="button"
             className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"

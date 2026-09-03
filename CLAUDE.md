@@ -917,6 +917,76 @@ content, which VoiceOver may not announce — pattern-level, not verified
 against assistive tech, and the countdown gives an indirect cue.
 Observation, not this week's: text-neutral-500 on the dark theme
 measures ≈4.2:1 on secondary text app-wide.
+PASS 8 (newcode over 2b8166b — my own pass-7 edits, two agents: the
+extraction date fix; the sign-in cooldown + alert roles + rewritten
+comments): CLEAN — count 1 of 3. Extraction: 44 zone spellings at a
+fixed instant (aliases, lowercase, Etc/GMT±N, offsets) all yield strict
+YYYY-MM-DD or throw into the client-date fallback — no crash; the
+two-day tolerance accepts exactly ±2 and rejects Feb 30, 2023-02-29 and
+padded forms; a valid zone always beats a bogus client date; both DST
+edges in Chicago and the half-hour zones resolve to the right day;
+weekdayOf agrees with the local weekday on ten dates; the real route
+POST (fetch stubbed) drops a File-typed or 65-char hint, never echoes
+a hint into the body or logs, and pre-auth work is one Intl construct;
+the only extract() caller is the route; the FormData fields ride in
+every chunk; the mock still runs. Bounded, documented, not a finding: an
+unknown zone plus a clock ≥10 h wrong can date rows up to two days
+ahead, visible and editable on the sheet. Sign-in: the clamp settles in
+one effect re-run (harness), the synchronous tick() is the pre-existing
+shape, both startCooldown call sites unchanged, the first commit reads
+60, a long sleep clears rather than re-arms, the alert and the polite
+region never coexist, setError fires only on outcomes, and every
+setStatus("error") site sets its message first. One LOW, comment-only
+(does not count, per the pass-6 ruling; fix inside the next src/
+commit): the rewritten phantom-id comment above loadSaleLink says "a
+tap queued inside that window can still carry one" — since a488a44
+every queued item resolves its id at run time through canonicalSaleId,
+so a phantom reaches the branch only when the readback itself failed
+to remap it (threw, or found no twin), which the comment two lines
+below already states.
+SECURITY AUDIT + FIX BATCH (2026-09-03; report artifact
+https://claude.ai/code/artifact/57555f00-7ca1-4611-b8f6-2b4cfa6e4716; 0
+CRITICAL, 1 HIGH, 7 MEDIUM, 9 LOW; everything above LOW verified
+adversarially). This commit lands every code-side fix, implemented by
+five Sonnet work packages and reviewed line by line, gated (tsc, eslint,
+next build) and proven by harnesses; it is a src/ change, so the
+clean-pass count resets to 0. Landed: an enforced CSP (script-src
+self + inline + GTM; connect/img limited to Supabase, GA and self;
+object/frame none; base-uri/form-action self) plus HSTS preload, nosniff,
+Referrer-Policy, Permissions-Policy, COOP and /.well-known/security.txt;
+/api/extract checks the token BEFORE parsing the body, rejects oversized
+content-length with 413, caps filenames at 120 chars, and reads
+cf-connecting-ip first (Cloudflare proxies production); /api/demo-session
+checks the demo word server-side (DEMO_WORD env, default "tester");
+both inbound webhooks refuse unsigned POSTs in production (503) and the
+service-role client refuses to construct without the provider's signing
+secret; phone numbers are masked in logs; /api/notify/test is deleted;
+/api/health no longer echoes PostgREST errors; the validator caps rows
+(100) and warnings (40), strips control characters and caps payer (200)
+and memo (2000); a warning's filename survives only if it names an
+actual upload; the confirmation sheet gained a per-row "Not a payment"
+control that deletes the already-saved row through the write queue;
+/api/founding calls the founding_signup RPC with a fallback to the old
+insert until 0020 is applied; the deletion request upsert uses
+ignoreDuplicates so it needs no UPDATE right; the privacy page gained
+what-we-store / processors / retention / rights sections in EN/ES/PT
+and the three "never stored" claims now say what OpenAI's 30-day
+abuse-monitoring retention makes true. WRITTEN, NOT APPLIED: migration
+0020 (statement-level demo cap trigger, 300 rows per table for the
+tester and no photos, on INSERT and, for sales, UPDATE; octet_length
+bounds on every text column; founding_signup RPC replacing the anon
+INSERT policy; deletion cooling-off pinned in the UPDATE policy;
+transactions_matched_sale_key re-scoped to (account_id,
+matched_sale_id); TRUNCATE revoked from anon/authenticated; nightly
+reset_demo_rows that sweeps visitor rows older than a day but keeps
+rows created before 2026-09-03 as seed). OWNER-SIDE, from the audit's
+action plan: apply 0019 then 0020; DMARC p=quarantine and SPF -all;
+Cloudflare Full (strict), TLS 1.2 minimum, DNSSEC, CAA, a www record,
+and either grey-cloud the apex or add rate-limit rules; Vercel
+Authentication on preview deployments; OpenAI zero-data-retention
+setting. Not fixed by design: the demo route still returns a refresh
+token (dropping it would sign demo visitors out hourly); the native app
+still sends no today/timeZone fields.
 
 ## Roadmap — strict order, one milestone at a time
 - v0.1 Ledger core: multi-select screenshot upload → extraction →

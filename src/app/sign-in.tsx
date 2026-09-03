@@ -138,7 +138,11 @@ export default function SignIn() {
 
     try {
       // The server holds the tester credentials; the word is just the knock.
-      const response = await fetch("/api/demo-session", { method: "POST" });
+      const response = await fetch("/api/demo-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word: DEMO_WORD }),
+      });
       const data = await response.json();
       if (!response.ok) {
         setError(data.error ?? t("signin.demoFailed"));

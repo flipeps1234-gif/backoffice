@@ -10,6 +10,12 @@ import { createClient } from "@supabase/supabase-js";
  * from every real account by row level security. The tester session uses
  * the real extraction provider by design — the owner caps spend on the
  * OpenAI side, and DEMO_EXTRACTION=mock flips it back to the free mock.
+ *
+ * The demo word is checked SERVER-SIDE now: the client sends { word } and
+ * this route compares it to DEMO_WORD (default "tester", same fallback the
+ * client hardcodes) before ever calling Supabase. Not a secret — it's public
+ * in the client bundle either way — it just stops a bodyless POST from
+ * reaching signInWithPassword for free.
  */
 
 const WINDOW_MS = 60_000;
@@ -28,9 +34,15 @@ const rateLimited = (ip: string): boolean => {
   return entry.count > MAX_PER_WINDOW;
 };
 
+// Cloudflare sits in front of production; Vercel's x-forwarded-for is
+// overwritten with the edge IP there, so prefer Cloudflare's own header.
+const clientIp = (request: Request): string =>
+  request.headers.get("cf-connecting-ip") ??
+  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+  "unknown";
+
 export async function POST(request: Request) {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = clientIp(request);
   if (rateLimited(ip)) {
     return Response.json({ error: "Give it a minute." }, { status: 429 });
   }
@@ -44,6 +56,20 @@ export async function POST(request: Request) {
     return Response.json(
       { error: "The test account isn't set up on this deployment." },
       { status: 501 },
+    );
+  }
+
+  // Tolerate an empty/invalid body as simply "missing" — same generic
+  // failure as a wrong word, never a distinct error that would let a caller
+  // tell the two apart.
+  const body = (await request.json().catch(() => null)) as
+    | { word?: string }
+    | null;
+  const expectedWord = process.env.DEMO_WORD ?? "tester";
+  if (body?.word !== expectedWord) {
+    return Response.json(
+      { error: "The test account couldn't sign in right now." },
+      { status: 401 },
     );
   }
 

@@ -60,13 +60,67 @@ const rateLimited = (ip: string): boolean => {
   return entry.count > MAX_PER_WINDOW;
 };
 
+// Cloudflare sits in front of production; Vercel's x-forwarded-for is
+// overwritten with the edge IP there, so prefer Cloudflare's own header.
+const clientIp = (request: Request): string =>
+  request.headers.get("cf-connecting-ip") ??
+  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+  "unknown";
+
 export async function POST(request: Request) {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = clientIp(request);
   if (rateLimited(ip)) {
     return Response.json(
       { error: "Too many uploads at once. Give it a minute." },
       { status: 429 },
+    );
+  }
+
+  // Reject an oversized body by its declared length before spending any
+  // work on it. Absent header (chunked/unknown) falls through to the real
+  // per-file checks below — this is a cheap early exit, not the only guard.
+  const contentLength = Number(request.headers.get("content-length"));
+  if (
+    Number.isFinite(contentLength) &&
+    contentLength > MAX_FILES * MAX_BYTES + 1_000_000
+  ) {
+    return Response.json(
+      { error: "That upload is too large." },
+      { status: 413 },
+    );
+  }
+
+  // Who pays decides who may call. Check auth BEFORE touching the body —
+  // formData() parses and base64-encodes every file, which is real work an
+  // unauthenticated stranger should never get to trigger.
+  let verified: Awaited<ReturnType<typeof verifyAccessToken>> = null;
+  if (isSupabaseConfigured) {
+    const token =
+      request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
+    // With Supabase configured the UI cannot reach this without a session —
+    // UploadScreen renders SignIn instead. So a tokenless request is a broken
+    // session or a direct call, and previously both were answered with
+    // fabricated rows and a 200.
+    if (!token) {
+      return Response.json(
+        { error: "Sign in again and retry." },
+        { status: 401 },
+      );
+    }
+    verified = await verifyAccessToken(token);
+    if (!verified) {
+      return Response.json(
+        { error: "Your session expired. Sign in again and retry." },
+        { status: 401 },
+      );
+    }
+  } else if (process.env.NODE_ENV === "production") {
+    // A production deploy with no Supabase has no way to authenticate anyone,
+    // so serving the paid provider here would be a free OpenAI proxy on the
+    // open internet, billed to the owner. Fail closed instead of open.
+    return Response.json(
+      { error: "This deployment isn't set up for uploads yet." },
+      { status: 503 },
     );
   }
 
@@ -109,7 +163,10 @@ export async function POST(request: Request) {
       kind: "image",
       mediaType: file.type,
       base64: bytes.toString("base64"),
-      filename: file.name,
+      // Cap what an attacker-chosen filename can do downstream (logs, the
+      // extraction prompt). Display-only on the client — see upload-screen
+      // warning.filename — so truncating here doesn't break any lookup.
+      filename: file.name.slice(0, 120),
     });
   }
 
@@ -140,31 +197,14 @@ export async function POST(request: Request) {
   const provider = activeProviderName();
 
   if (isSupabaseConfigured) {
-    const token =
-      request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
-    // With Supabase configured the UI cannot reach this without a session —
-    // UploadScreen renders SignIn instead. So a tokenless request is a broken
-    // session or a direct call, and previously both were answered with
-    // fabricated rows and a 200.
-    if (!token) {
-      return Response.json(
-        { error: "Sign in again and retry." },
-        { status: 401 },
-      );
-    }
-    const verified = await verifyAccessToken(token);
-    if (!verified) {
-      return Response.json(
-        { error: "Your session expired. Sign in again and retry." },
-        { status: 401 },
-      );
-    }
+    // Auth (token presence + verifyAccessToken) already ran above, before
+    // formData() — `verified` is non-null on every path that reaches here.
     // The shared tester account gets the REAL provider — an accepted,
     // deliberately bounded cost: the owner caps spend on the OpenAI side,
     // and anyone who types the demo word draws from that cap. Setting
     // DEMO_EXTRACTION=mock in the environment flips tester back to the
     // free mock without a code change.
-    if (isDemoAccount(verified.email) && process.env.DEMO_EXTRACTION === "mock") {
+    if (isDemoAccount(verified?.email ?? null) && process.env.DEMO_EXTRACTION === "mock") {
       return await run("mock");
     }
 
@@ -182,14 +222,6 @@ export async function POST(request: Request) {
         { status: 503 },
       );
     }
-  } else if (process.env.NODE_ENV === "production") {
-    // A production deploy with no Supabase has no way to authenticate anyone,
-    // so serving the paid provider here would be a free OpenAI proxy on the
-    // open internet, billed to the owner. Fail closed instead of open.
-    return Response.json(
-      { error: "This deployment isn't set up for uploads yet." },
-      { status: 503 },
-    );
   }
 
   // No account system at all — local dev. Whatever the env selected is fine;

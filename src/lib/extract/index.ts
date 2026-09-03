@@ -39,7 +39,23 @@ export const extract = async (
   provider = activeProviderName(),
 ): Promise<ExtractionResult> => {
   const result = await getExtractor(provider).extract(inputs, context);
-  return { ...result, transactions: dedupe(result.transactions) };
+
+  // A warning's filename is model output, and the UI renders it inside
+  // first-party chrome (the warning banner) — keep it only when it names an
+  // actual upload from this request, so a provider can't inject arbitrary
+  // text there. Done here, next to dedupe, so no caller can forget it either.
+  const uploadedFilenames = new Set(
+    inputs.flatMap((input) => (input.kind === "image" ? [input.filename] : [])),
+  );
+  const warnings = result.warnings.map((warning) => ({
+    ...warning,
+    filename:
+      warning.filename !== undefined && uploadedFilenames.has(warning.filename)
+        ? warning.filename
+        : undefined,
+  }));
+
+  return { ...result, transactions: dedupe(result.transactions), warnings };
 };
 
 export type { ExtractionContext, ExtractionInput, ExtractionResult, Extractor };

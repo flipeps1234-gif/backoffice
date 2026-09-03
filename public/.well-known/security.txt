@@ -1,0 +1,5 @@
+Contact: mailto:mail@getcontado.com
+Expires: 2027-09-01T00:00:00.000Z
+Preferred-Languages: en, es, pt
+Canonical: https://getcontado.com/.well-known/security.txt
+Policy: https://getcontado.com/privacy

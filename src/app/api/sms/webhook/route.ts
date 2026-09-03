@@ -9,8 +9,10 @@ import { serviceClient } from "@/lib/notify/store";
  *
  * Signature: Twilio signs POSTs with X-Twilio-Signature = base64
  * HMAC-SHA1(auth token, full URL + form params concatenated sorted by
- * key). Verified when TWILIO_AUTH_TOKEN is set; unsigned spike posts
- * are accepted with a loud log, same posture as the WhatsApp side.
+ * key). Verified when TWILIO_AUTH_TOKEN is set; unsigned posts are
+ * refused outright in production (503, before any parsing or writes) —
+ * outside production they're accepted with a loud log, same posture as
+ * the WhatsApp side.
  *
  * Twilio expects TwiML back; an empty <Response/> means "no reply" —
  * Twilio itself auto-handles the carrier-level STOP keyword, this
@@ -48,6 +50,9 @@ const signatureValid = (
   }
 };
 
+// Masks a phone number in logs down to its last 4 digits.
+const last4 = (n: string) => `***${n.slice(-4)}`;
+
 export async function POST(request: Request) {
   const raw = await request.text();
   const params = new URLSearchParams(raw);
@@ -57,10 +62,16 @@ export async function POST(request: Request) {
     return new Response("bad signature", { status: 401 });
   }
   if (signed === "unsigned") {
+    // In production an unsigned POST could be anyone — never trust it far
+    // enough to parse or write. Non-production (the spike against a test
+    // number) keeps warning and continuing.
+    if (process.env.NODE_ENV === "production") {
+      return new Response("webhook not configured", { status: 503 });
+    }
     console.warn("sms webhook: TWILIO_AUTH_TOKEN unset — accepting unsigned POST (spike mode)");
   }
 
-  const db = serviceClient();
+  const db = serviceClient("twilio");
 
   // Status callback: MessageSid + MessageStatus (queued/sent/delivered/
   // undelivered/failed).
@@ -106,9 +117,9 @@ export async function POST(request: Request) {
         .update({ opted_out_at: new Date().toISOString() })
         .eq("phone", from);
       if (error) console.error("sms opt-out write failed:", error.message);
-      else console.log(`sms STOP honored for ${from}`);
+      else console.log(`sms STOP honored for ${last4(from)}`);
     } else {
-      console.log(`sms STOP (no service key, not saved): ${from} asked out`);
+      console.log(`sms STOP (no service key, not saved): ${last4(from)} asked out`);
     }
   }
 

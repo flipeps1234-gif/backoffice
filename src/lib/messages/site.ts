@@ -59,9 +59,9 @@ export const messages = {
     pt: "Quatro telas, sem configuração. Você tira print, confirma, desliza — e seu livro-caixa existe.",
   },
   "site.how1Detail": {
-    en: "Open Venmo, Cash App or Zelle, screenshot the Transactions list — not the social feed, which hides amounts — and add as many as you like. They're sent to an AI service to be read, then discarded — never stored.",
-    es: "Abre Venmo, Cash App o Zelle, toma captura de la lista de Transacciones — no del feed social, que oculta los montos — y agrega todas las que quieras. Se envían a un servicio de IA para leerlas y luego se descartan — nunca se guardan.",
-    pt: "Abra o Venmo, Cash App ou Zelle, tire print da lista de Transações — não do feed social, que esconde os valores — e adicione quantas quiser. Elas são enviadas a um serviço de IA para leitura e depois descartadas — nunca ficam guardadas.",
+    en: "Open Venmo, Cash App or Zelle, screenshot the Transactions list — not the social feed, which hides amounts — and add as many as you like. They're sent to OpenAI to be read: we keep the rows it returns, not the image itself, though OpenAI may hold the image for up to 30 days to watch for abuse.",
+    es: "Abre Venmo, Cash App o Zelle, toma captura de la lista de Transacciones — no del feed social, que oculta los montos — y agrega todas las que quieras. Se envían a OpenAI para leerlas: guardamos las filas que devuelve, no la imagen en sí, aunque OpenAI puede conservarla hasta 30 días para vigilar abusos.",
+    pt: "Abra o Venmo, Cash App ou Zelle, tire print da lista de Transações — não do feed social, que esconde os valores — e adicione quantas quiser. Elas são enviadas à OpenAI para leitura: guardamos as linhas que ela devolve, não a imagem em si, embora a OpenAI possa retê-la por até 30 dias para monitorar abusos.",
   },
   "site.how2Title": { en: "Check every row", es: "Revisa cada fila", pt: "Confira cada linha" },
   "site.how2Detail": {
@@ -433,9 +433,9 @@ export const messages = {
   },
   "site.faq4Q": { en: "What happens to my screenshots?", es: "¿Qué pasa con mis capturas?", pt: "O que acontece com meus prints?" },
   "site.faq4A": {
-    en: "They're sent to an AI service to be read, then discarded — never stored. The only images we keep are photos you choose to attach to a sale, and those stay with that sale until you delete your account.",
-    es: "Se envían a un servicio de IA para leerlas y luego se descartan — nunca se guardan. Las únicas imágenes que guardamos son fotos que tú decides adjuntar a una venta, y quedan con esa venta hasta que borres tu cuenta.",
-    pt: "São enviados a um serviço de IA para leitura e depois descartados — nunca ficam guardados. As únicas imagens que guardamos são fotos que você escolhe anexar a uma venda, e elas ficam com essa venda até você apagar a conta.",
+    en: "They're sent to OpenAI to be read. contado keeps the rows it returns, not the screenshot itself — though OpenAI may retain the image for up to 30 days to monitor for abuse. The only images we keep are photos you choose to attach to a sale, and those stay with that sale until you delete your account.",
+    es: "Se envían a OpenAI para leerlas. contado guarda las filas que devuelve, no la captura en sí — aunque OpenAI puede conservar la imagen hasta 30 días para vigilar abusos. Las únicas imágenes que guardamos son fotos que tú decides adjuntar a una venta, y quedan con esa venta hasta que borres tu cuenta.",
+    pt: "São enviados à OpenAI para leitura. O contado guarda as linhas que ela devolve, não o print em si — embora a OpenAI possa reter a imagem por até 30 dias para monitorar abusos. As únicas imagens que guardamos são fotos que você escolhe anexar a uma venda, e elas ficam com essa venda até você apagar a conta.",
   },
   "site.faq5Q": { en: "Does it do invoices or estimates?", es: "¿Hace facturas o presupuestos?", pt: "Faz faturas ou orçamentos?" },
   "site.faq5A": {
@@ -484,6 +484,78 @@ export const messages = {
     en: "The founding-hundred form stores your email address for one purpose: telling you when the founding price goes live. It is never sold or shared. To come off the list, send us a message from the contact page and we delete the address.",
     es: "El formulario de los cien fundadores guarda tu correo para una sola cosa: avisarte cuando el precio fundador esté disponible. Nunca se vende ni se comparte. Para salir de la lista, envíanos un mensaje desde la página de contacto y borramos tu dirección.",
     pt: "O formulário dos cem fundadores guarda seu e-mail para uma coisa só: avisar quando o preço de fundador estiver disponível. Nunca é vendido nem compartilhado. Para sair da lista, mande uma mensagem pela página de contato e apagamos seu endereço.",
+  },
+
+  // ---- privacy: what contado stores, who processes it, how long,
+  // and the visitor's rights — the fuller disclosure the promise
+  // above summarizes. Single-paragraph bodies: the privacy page
+  // renders each body key as one <p>, so a topic that needs more
+  // than one paragraph gets a numbered follow-up key instead of a
+  // "\n\n" the page would render literally. ----
+  "site.privacyCollectTitle": {
+    en: "What we store",
+    es: "Qué guardamos",
+    pt: "O que guardamos",
+  },
+  "site.privacyCollectBody": {
+    en: "Your email address and preferred email language; the payment rows you confirm (payer name, amount, date, note and category); client names and notes; sales and recurring jobs; and your business profile.",
+    es: "Tu correo y el idioma en que prefieres recibirlo; las filas de pago que confirmas (nombre de quien paga, monto, fecha, nota y categoría); nombres y notas de clientes; ventas y trabajos recurrentes; y tu perfil de negocio.",
+    pt: "Seu e-mail e o idioma em que prefere recebê-lo; as linhas de pagamento que você confirma (nome de quem pagou, valor, data, nota e categoria); nomes e notas de clientes; vendas e trabalhos recorrentes; e seu perfil de negócio.",
+  },
+  "site.privacyCollectBody2": {
+    en: "If you attach a photo to a sale, it's kept as an image inside your account. If you turn on SMS or WhatsApp reminders, we store the phone number and a timestamp of your consent. If you joined the founding-hundred list on this site, we store that email separately, as described below.",
+    es: "Si adjuntas una foto a una venta, se guarda como imagen dentro de tu cuenta. Si activas recordatorios por SMS o WhatsApp, guardamos el número de teléfono y la fecha y hora en que diste tu consentimiento. Si te uniste a la lista de los cien fundadores en este sitio, guardamos ese correo por separado, como se explica más abajo.",
+    pt: "Se você anexa uma foto a uma venda, ela fica guardada como imagem dentro da sua conta. Se você ativa lembretes por SMS ou WhatsApp, guardamos o número de telefone e a data e hora do seu consentimento. Se você entrou na lista dos cem fundadores neste site, guardamos esse e-mail separadamente, como explicado abaixo.",
+  },
+  "site.privacyProcessorsTitle": {
+    en: "Who processes it",
+    es: "Quién lo procesa",
+    pt: "Quem processa isso",
+  },
+  "site.privacyProcessorsBody": {
+    en: "Supabase runs our database and sends the sign-in emails, on servers in the United States. Vercel hosts the app and keeps short-lived request logs.",
+    es: "Supabase administra nuestra base de datos y envía los correos de inicio de sesión, en servidores en Estados Unidos. Vercel aloja la app y guarda registros de solicitudes de corta duración.",
+    pt: "A Supabase administra nosso banco de dados e envia os e-mails de login, em servidores nos Estados Unidos. A Vercel hospeda o app e mantém registros de requisições de curta duração.",
+  },
+  "site.privacyProcessorsBody2": {
+    en: "OpenAI reads your screenshots to extract the payment rows. OpenAI may keep the images it receives for up to 30 days to monitor for abuse and does not train its models on them; contado itself does not store the images it sends.",
+    es: "OpenAI lee tus capturas para extraer las filas de pago. OpenAI puede conservar las imágenes que recibe hasta 30 días para vigilar abusos y no entrena sus modelos con ellas; contado en sí no guarda las imágenes que envía.",
+    pt: "A OpenAI lê seus prints para extrair as linhas de pagamento. A OpenAI pode reter as imagens recebidas por até 30 dias para monitorar abusos e não treina seus modelos com elas; o contado em si não guarda as imagens que envia.",
+  },
+  "site.privacyProcessorsBody3": {
+    en: "Google's Workspace mail sends the sign-in emails, and Google Analytics runs on the public pages only — never inside the app — honoring Do Not Track. Twilio and Meta process your phone number only if you turn on SMS or WhatsApp reminders.",
+    es: "El correo de Google Workspace envía los correos de inicio de sesión, y Google Analytics funciona solo en las páginas públicas — nunca dentro de la app — respetando Do Not Track. Twilio y Meta procesan tu número de teléfono solo si activas recordatorios por SMS o WhatsApp.",
+    pt: "O e-mail do Google Workspace envia os e-mails de login, e o Google Analytics funciona só nas páginas públicas — nunca dentro do app — respeitando o Do Not Track. Twilio e Meta processam seu número de telefone só se você ativar lembretes por SMS ou WhatsApp.",
+  },
+  "site.privacyRetentionTitle": {
+    en: "How long we keep it",
+    es: "Por cuánto tiempo lo guardamos",
+    pt: "Por quanto tempo guardamos",
+  },
+  "site.privacyRetentionBody": {
+    en: "We keep everything until you delete your account. Deletion has a 7-day cooling-off period during which you can change your mind, and then a nightly job permanently removes every row — including your sign-in record.",
+    es: "Guardamos todo hasta que borras tu cuenta. Borrarla tiene un período de gracia de 7 días durante el cual puedes arrepentirte, y después un proceso nocturno elimina para siempre cada registro — incluido el de tu inicio de sesión.",
+    pt: "Guardamos tudo até você apagar sua conta. Apagar a conta tem um período de carência de 7 dias durante o qual você pode mudar de ideia, e depois um processo noturno remove definitivamente cada registro — incluindo o do seu login.",
+  },
+  "site.privacyRetentionBody2": {
+    en: "The founding-hundred email is kept separately and survives account deletion on purpose — we hold it until you ask us to remove it.",
+    es: "El correo de la lista de los cien fundadores se guarda por separado y sobrevive a propósito al borrar la cuenta — lo conservamos hasta que nos pidas quitarlo.",
+    pt: "O e-mail da lista dos cem fundadores é guardado separadamente e sobrevive de propósito ao apagar a conta — nós o mantemos até você pedir para removê-lo.",
+  },
+  "site.privacyRightsTitle": {
+    en: "Your rights",
+    es: "Tus derechos",
+    pt: "Seus direitos",
+  },
+  "site.privacyRightsBody": {
+    en: "Export everything from Settings whenever you like, and delete your account from Settings too. For an LGPD (Brazil) or CCPA (California) request — access, correction, deletion or portability — email mail@getcontado.com.",
+    es: "Exporta todo desde Ajustes cuando quieras, y borra tu cuenta también desde Ajustes. Para una solicitud bajo LGPD (Brasil) o CCPA (California) — acceso, corrección, eliminación o portabilidad — escribe a mail@getcontado.com.",
+    pt: "Exporte tudo em Configurações quando quiser, e apague sua conta também em Configurações. Para uma solicitação sob a LGPD (Brasil) ou a CCPA (Califórnia) — acesso, correção, eliminação ou portabilidade — escreva para mail@getcontado.com.",
+  },
+  "site.privacyRightsBody2": {
+    en: "We don't sell or share your personal information. If you're outside the United States, know that your data is processed here.",
+    es: "No vendemos ni compartimos tu información personal. Si estás fuera de Estados Unidos, ten en cuenta que tus datos se procesan aquí.",
+    pt: "Não vendemos nem compartilhamos suas informações pessoais. Se você está fora dos Estados Unidos, saiba que seus dados são processados aqui.",
   },
 
   // ---- footer: track-payments column ----
@@ -540,9 +612,9 @@ export const messages = {
     pt: "Preciso conectar minha conta do Venmo?",
   },
   "site.chVenmoFaq1A": {
-    en: "No. There is no Venmo login and no bank connection — you screenshot your own Transactions list and upload it. Screenshots are read by an AI service and discarded, never stored.",
-    es: "No. No hay acceso a Venmo ni conexión bancaria — tú tomas captura de tu propia lista de Transacciones y la subes. Las capturas se leen con un servicio de IA y se descartan, nunca se guardan.",
-    pt: "Não. Não há login do Venmo nem conexão bancária — você tira print da sua própria lista de Transações e envia. Os prints são lidos por um serviço de IA e descartados, nunca guardados.",
+    en: "No. There is no Venmo login and no bank connection — you screenshot your own Transactions list and upload it. Screenshots are read by OpenAI; we keep the rows it returns, not the image, though OpenAI may retain the image for up to 30 days to monitor for abuse.",
+    es: "No. No hay acceso a Venmo ni conexión bancaria — tú tomas captura de tu propia lista de Transacciones y la subes. Las capturas las lee OpenAI; guardamos las filas que devuelve, no la imagen, aunque OpenAI puede conservarla hasta 30 días para vigilar abusos.",
+    pt: "Não. Não há login do Venmo nem conexão bancária — você tira print da sua própria lista de Transações e envia. Os prints são lidos pela OpenAI; guardamos as linhas que ela devolve, não a imagem, embora a OpenAI possa retê-la por até 30 dias para monitorar abusos.",
   },
   "site.chVenmoFaq2Q": {
     en: "I use a Venmo business profile. Does it still work?",

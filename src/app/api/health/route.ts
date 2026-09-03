@@ -63,8 +63,10 @@ export async function GET() {
   //
   // A non-2xx also makes the daily cron show up as FAILED in Vercel's log,
   // which is the only free alarm this project has.
+  // Never echo the raw PostgREST error message publicly — it can carry
+  // schema/table details. This endpoint is unauthenticated by design.
   return Response.json(
-    { ok: !error, supabase: error ? error.message : "reached" },
+    { ok: !error, supabase: error ? "unreachable" : "reached" },
     { status: error ? 503 : 200 },
   );
 }

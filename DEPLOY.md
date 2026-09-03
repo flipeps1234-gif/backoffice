@@ -56,7 +56,7 @@ order by column_name;
 You need `direction` and `quantity` in that list. If either is missing,
 stop and run the migration.
 
-Current high-water mark: **0019**. 0018 (`0018_lock_rls_auto_enable.sql`)
+Current high-water mark: **0020**. 0018 (`0018_lock_rls_auto_enable.sql`)
 and 0017 were applied to production via the Supabase MCP on 2026-09-01;
 **0019 (`0019_protect_tester_identity.sql`) is written but NOT yet
 applied** — it adds a trigger on `auth.users`, so run it yourself in the
@@ -68,6 +68,21 @@ either would make the trigger reject every demo sign-in. After applying,
 confirm the demo word still signs in. The combined
 file `~/Desktop/contado-combined-0001-0017.sql` predates both; append
 0018 and 0019 to it before the next fresh-project setup.
+
+**0020 (`0020_abuse_caps_and_founding_rpc.sql`) is also written but NOT
+yet applied** — it caps the shared tester account's row counts and
+refuses it photos, replaces the character-count byte checks on
+`sales.photo` with real byte counts and adds equivalent bounds on other
+text columns, moves the founding-list signup behind a `founding_signup`
+RPC (the API route falls back to the pre-0020 direct insert when the RPC
+is missing, so applying this one out of order does not break signups),
+pins the deletion-request cooling-off window, re-scopes the settlement
+unique index to be per-account, revokes TRUNCATE from the anon/
+authenticated roles, and schedules a nightly `reset-demo-rows` pg_cron
+job. Run it in the SQL editor same as the others, then confirm
+`select proname from pg_proc where proname = 'founding_signup';` returns
+a row and that `select jobname from cron.job;` now also lists
+`reset-demo-rows` alongside `purge-deleted-accounts`.
 
 ```sql
 select indexname from pg_indexes
