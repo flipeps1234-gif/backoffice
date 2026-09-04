@@ -2,6 +2,7 @@ import { activeProviderName, extract } from "@/lib/extract";
 import type { ExtractionContext, ExtractionInput } from "@/lib/extract";
 import { IMAGE_TYPES } from "@/lib/extract/image-types";
 import { resolveToday } from "@/lib/extract/today";
+import { reserveExtraction, finishExtraction } from "@/lib/supabase/security";
 import {
   isDemoAccount,
   isSupabaseConfigured,
@@ -13,9 +14,9 @@ import {
  * in its API key stays on the server.
  *
  * This is a PUBLIC Vercel endpoint — every file under app/api is. The paid
- * provider path therefore requires a signed-in caller: anonymous requests
- * (including demo mode) only ever reach the free deterministic mock, so a
- * stranger with curl cannot spend the owner's OpenAI budget.
+ * provider path requires verified auth plus an atomic database reservation.
+ * Anonymous production requests fail closed. The shared demo keeps real
+ * extraction within its own quota unless DEMO_EXTRACTION=mock is selected.
  */
 
 const MAX_FILES = 20;
@@ -199,11 +200,8 @@ export async function POST(request: Request) {
   if (isSupabaseConfigured) {
     // Auth (token presence + verifyAccessToken) already ran above, before
     // formData() — `verified` is non-null on every path that reaches here.
-    // The shared tester account gets the REAL provider — an accepted,
-    // deliberately bounded cost: the owner caps spend on the OpenAI side,
-    // and anyone who types the demo word draws from that cap. Setting
-    // DEMO_EXTRACTION=mock in the environment flips tester back to the
-    // free mock without a code change.
+    // The shared tester retains real extraction, bounded by a separate
+    // database quota below. The existing explicit mock opt-in stays free.
     if (isDemoAccount(verified?.email ?? null) && process.env.DEMO_EXTRACTION === "mock") {
       return await run("mock");
     }
@@ -234,6 +232,25 @@ export async function POST(request: Request) {
    * one legitimate way to reach the mock with a verified token.
    */
   async function run(chosen: string) {
+    let reservationId: string | null = null;
+    if (chosen !== "mock" && verified) {
+      try {
+        const reservation = await reserveExtraction(verified.accountId, inputs.length);
+        if (!reservation.allowed) {
+          return Response.json(
+            { error: "Upload limit reached. Please try again later." },
+            { status: 429, headers: { "Retry-After": String(reservation.retry_after) } },
+          );
+        }
+        reservationId = reservation.reservation_id;
+      } catch {
+        console.error("Upload quota unavailable; provider was not called.");
+        return Response.json(
+          { error: "Uploads are temporarily unavailable. Please try again later." },
+          { status: 503 },
+        );
+      }
+    }
     try {
       const result = await extract(inputs, context, chosen);
       // The client checks this: a signed-in caller that somehow receives
@@ -246,6 +263,8 @@ export async function POST(request: Request) {
         { error: "We couldn't read those right now. Try again in a moment." },
         { status: 502 },
       );
+    } finally {
+      if (reservationId) await finishExtraction(reservationId);
     }
   }
 }

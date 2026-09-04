@@ -1,11 +1,9 @@
-import { createClient } from "@supabase/supabase-js";
+import { securityClient, signupIpHash } from "@/lib/supabase/security";
 
 /**
  * The founding-hundred signup (landing page CTA). Public by design —
- * the table's RLS allows anon INSERT and nothing else, so the worst a
- * caller can do is add email rows. Same in-memory rate limiter as
- * /api/demo-session: per serverless instance, a speed bump not a wall
- * (documented in DEPLOY.md).
+ * only this server can invoke the write RPC. Shared database limits bound
+ * per-IP and global attempts; the local counter is a cheap extra brake.
  */
 
 const WINDOW_MS = 60_000;
@@ -36,9 +34,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "Give it a minute." }, { status: 429 });
   }
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) {
+  const supabase = securityClient();
+  if (!supabase) {
     return Response.json({ error: "Not configured." }, { status: 503 });
   }
 
@@ -53,43 +50,28 @@ export async function POST(request: Request) {
   }
   const normalized = email.trim().toLowerCase();
   if (
-    normalized.length > 320 ||
+    Buffer.byteLength(normalized, "utf8") > 320 ||
     !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
   ) {
     return Response.json({ error: "Bad request." }, { status: 400 });
   }
 
-  const supabase = createClient(url, anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  // Migration 0020 moves the write behind a SECURITY DEFINER RPC so the
-  // table itself is closed to direct client inserts (the anon key could
-  // otherwise write arbitrary rows straight past this route's own
-  // validation and rate limiter). The RPC does its own ON CONFLICT DO
-  // NOTHING, so it never raises 23505 itself.
-  let { error } = await supabase.rpc("founding_signup", { p_email: normalized });
-
-  // 42883 (Postgres: function does not exist) or PGRST202 (PostgREST:
-  // function missing from its schema cache) means 0020 hasn't been
-  // applied to this database yet. Fall back to the pre-0020 direct
-  // insert so deploy order between the migration and this route doesn't
-  // matter — delete this fallback once 0020 is confirmed applied
-  // everywhere (see DEPLOY.md).
-  if (error && (error.code === "42883" || error.code === "PGRST202")) {
-    ({ error } = await supabase
-      .from("founding_list")
-      .insert({ email: normalized }));
-  }
-
-  // 23505 = unique violation: already on the list. That's a success —
-  // never an error a caller can use to probe who signed up. (Only the
-  // fallback insert above can actually raise this.)
-  if (error && error.code !== "23505") {
-    // The code makes Vercel logs diagnosable at a glance — e.g.
-    // PGRST205 = the table doesn't exist (migration never ran).
-    console.error("founding signup failed:", error.code, error.message);
-    return Response.json({ error: "Try again." }, { status: 500 });
+  try {
+    const { data, error } = await supabase.rpc("founding_signup_limited", {
+      p_email: normalized,
+      p_ip_hash: signupIpHash(ip),
+    });
+    if (error || typeof data !== "boolean") {
+      console.error("Founding signup protection unavailable:", error?.code);
+      return Response.json({ error: "Try again later." }, { status: 503 });
+    }
+    if (!data) {
+      return Response.json({ error: "Please try again later." }, {
+        status: 429, headers: { "Retry-After": "3600" },
+      });
+    }
+  } catch {
+    return Response.json({ error: "Try again later." }, { status: 503 });
   }
   return Response.json({ ok: true });
 }

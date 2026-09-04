@@ -17,11 +17,11 @@ export function FoundingForm() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const normalized = email.trim();
+    const normalized = email.trim().toLowerCase();
     // Mirrors the server's checks exactly (route.ts) — anything that
     // passes here can only fail server-side for a reason retrying fixes.
     if (
-      normalized.length > 320 ||
+      new TextEncoder().encode(normalized).length > 320 ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
     ) {
       setState("invalid");

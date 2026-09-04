@@ -485,6 +485,11 @@ export const messages = {
     es: "El formulario de los cien fundadores guarda tu correo para una sola cosa: avisarte cuando el precio fundador esté disponible. Nunca se vende ni se comparte. Para salir de la lista, envíanos un mensaje desde la página de contacto y borramos tu dirección.",
     pt: "O formulário dos cem fundadores guarda seu e-mail para uma coisa só: avisar quando o preço de fundador estiver disponível. Nunca é vendido nem compartilhado. Para sair da lista, mande uma mensagem pela página de contato e apagamos seu endereço.",
   },
+  "site.privacySecurity": {
+    en: "To limit abuse, we keep upload counts, times and an account reference for about 36 days, and protected hashes of signup IP addresses for about a day. Deleting your account removes its reference from these usage counters. The counters contain no images or payment details.",
+    es: "Para limitar abusos, guardamos cantidades y horarios de cargas y una referencia a la cuenta durante unos 36 días, y hashes protegidos de las direcciones IP de registro durante aproximadamente un día. Al eliminar tu cuenta, quitamos su referencia de estos contadores de uso. Los contadores no contienen imágenes ni detalles de pagos.",
+    pt: "Para limitar abusos, guardamos quantidades e horários de envios e uma referência à conta por cerca de 36 dias, e hashes protegidos dos endereços IP de cadastro por cerca de um dia. Ao apagar sua conta, removemos a referência dela desses contadores de uso. Os contadores não contêm imagens nem detalhes de pagamentos.",
+  },
 
   // ---- privacy: what contado stores, who processes it, how long,
   // and the visitor's rights — the fuller disclosure the promise

@@ -4,6 +4,73 @@ Read this before pushing. It exists because the same three config items
 have been "I'll do it later" for several sessions, and two of them break
 production silently.
 
+## Security fixes prepared 2026-09-04 — NOT APPLIED TO PRODUCTION
+
+Branch `fix/security-review-2026-09-04` contains migrations **0021** and
+**0022**. Production's last verified high-water mark remains **0020**.
+The Obsidian rule “Production-side changes need one explicit go-ahead”
+requires approval of this concrete rollout before changing production:
+
+1. Run `supabase/checks/security_preflight.sql` in project
+   `xdvnnqiwanpkdwvjtsfk`. Oversized-row counts must be zero; compare the
+   live cap function with the baseline. Do not truncate existing data to
+   make a migration pass. Confirm pg_cron and the two existing jobs.
+2. Set `SUPABASE_SERVICE_ROLE_KEY` directly in Vercel's **Production**
+   environment for project `prj_30RKx6YpP2XiIIqlIAz8kp7t859R` / team
+   `team_k7KDw6zgiWRhnaPtdXI3LdSQ`. It must belong to this Supabase project.
+   Never put it in NEXT_PUBLIC, a commit, chat or a preview environment
+   pointing at production data. Keep notification signing/enabling vars off.
+3. Apply `0021_complete_write_guards.sql`, then
+   `0022_server_usage_limits.sql` in the SQL editor. Each is transactional.
+   The files preserve seed data and pending deletion requests. 0022 closes
+   the old anonymous signup RPC: the OLD deployed founding form will be
+   temporarily unavailable until the new deployment is ready. Prepare the
+   tested deployment first and perform these steps in one maintenance window.
+4. Run `supabase/checks/security_verify.sql`: public RPC grants false;
+   service-role grants true; byte constraints validated; all three cron
+   jobs active (including `cleanup-security-usage`).
+5. Deploy the tested branch to production, then verify READY and the apex
+   as described below. Smoke one demo screenshot, a synthetic demo cash
+   entry, one approved founding signup, and unsigned webhooks. Remove any
+   synthetic test data. Check extraction_usage increments and its lease
+   closes; do not expose access tokens or signup emails in logs.
+
+New defaults live in `public.security_limits` (owner-only, no client grants):
+
+| Limit | Default |
+|---|---|
+| Paid images per ordinary account / UTC day | 40 |
+| Paid images across the shared demo / UTC day | 10 |
+| Paid images project-wide / UTC day | 200 |
+| Paid images project-wide / UTC calendar month | 1,000 |
+| Concurrent extraction requests per account / project | 2 / 8 |
+| Signup attempts per IP / project in a rolling hour | 5 / 50 |
+
+Reservations survive instance restarts and IP changes. Failed model calls
+still consume usage because an upstream timeout may already have cost money.
+Concurrency is released on completion or after a 120-second crash lease.
+No screenshot/filename/payment content is stored in counters. Account deletion
+nulls the counter's account reference, preserving only aggregate budget usage.
+The nightly cleanup removes extraction counters older than 35 days and
+signup IP HMACs older than an hour; routine requests also prune these tables.
+Verify the cleanup job before deploying the associated privacy disclosure.
+An 8,192-token completion ceiling includes reasoning tokens; truncated
+responses fail rather than silently returning partial financial records.
+These are abuse ceilings, not a guaranteed dollar cap. Keep the independent
+OpenAI project spending control; tune limits deliberately in the SQL editor.
+
+**Validation:** `npm run test:security`, `npx tsc --noEmit`, `npm run lint`,
+`npm run build`, and `npm audit --omit=dev`. Tests use isolated PGlite and
+stubbed API calls, never production credentials, paid calls or emails.
+Next and eslint-config-next are updated together to 16.3.4.
+
+**Rollback:** prefer fixing forward. Rolling back only the application to
+the old version leaves founding signup unavailable because its anonymous
+RPC grant is intentionally revoked, and restores the unmetered extraction
+path. Do not undo the security migration or restore anon grants as an
+automatic rollback. If needed, disable extraction at the provider/project
+while repairing the new deployment; viewing and exporting remain available.
+
 ## What "deploy" means here
 
 **Pushing to `main` IS deploying.** Vercel builds and promotes every push

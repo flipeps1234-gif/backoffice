@@ -150,6 +150,9 @@ export const openAiExtractor: Extractor = {
       },
       body: JSON.stringify({
         model: process.env.OPENAI_MODEL ?? "gpt-5.6",
+        // Includes reasoning tokens. Limits worst-case output cost even
+        // when a screenshot or filename attempts to redirect the model.
+        max_completion_tokens: 8192,
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userContent(inputs, today) },
@@ -166,6 +169,12 @@ export const openAiExtractor: Extractor = {
       throw new Error(`OpenAI returned ${response.status}: ${detail.slice(0, 300)}`);
     }
 
-    return parseResponse(await response.json());
+    const body = await response.json();
+    if (body?.choices?.[0]?.finish_reason === "length") {
+      // A capped response can be incomplete JSON or omit financial rows.
+      // Never present a partial ledger as a successful extraction.
+      throw new Error("Extraction reached its output limit; retry fewer images.");
+    }
+    return parseResponse(body);
   },
 };

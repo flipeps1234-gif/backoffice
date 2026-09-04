@@ -56,12 +56,14 @@ export default function PrivacyContent() {
       <p className="mt-3 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
         {t("site.privacyAnalytics")}
       </p>
-      {/* The one piece of personal data the public SITE itself collects —
-          the founding email — disclosed where the promise lives, with the
+      {/* The founding email is disclosed where the promise lives, with the
           way out. The app's terms blocks below can't cover it: the list
           predates any account and survives account deletion on purpose. */}
       <p className="mt-3 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
         {t("site.privacyFounding")}
+      </p>
+      <p className="mt-3 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
+        {t("site.privacySecurity")}
       </p>
 
       <div className="mt-8 space-y-6">

@@ -2,6 +2,33 @@
 
 # CLAUDE.md — read this before doing anything
 
+## Security follow-up 2026-09-04 — prepared locally, NOT deployed
+
+Branch `fix/security-review-2026-09-04` fixes the review's remaining gaps.
+0021 repairs the demo transition-table photo guard (normal transactions
+raised 42703), bounds every previously omitted writable text/JSON field,
+and stamps deletion requests at the database while ignoring timestamp edits.
+The owning account retains UPDATE for existing native merge-upserts; web
+ignore-upserts and native first/repeated requests are both regression-tested.
+0022 adds atomic account/demo/project image quotas and concurrency leases,
+and a server-only signup RPC with shared per-IP/global limits. Both routes
+use SUPABASE_SERVICE_ROLE_KEY only through a `server-only` module and fail
+closed if protection is unavailable. Real demo extraction remains enabled
+by default, as the Obsidian notes intended, with a 10-image daily allowance.
+No notification settings, seeded demo records or existing deletion requests
+were changed. No production credential was read or used.
+
+Next/eslint-config-next moved together to 16.3.4 (the earlier audit's
+deferred dependency upgrade is now included in the owner's “fix” request).
+The provider has an 8192-token completion cap and rejects length-truncated
+output. The security counters' retention and anonymization are disclosed
+in EN/ES/PT. `npm run test:security` runs isolated PostgreSQL migrations and
+stubbed real-route regressions; no API keys are required. DEPLOY.md records
+the exact pending production rollout, preflight/verification SQL, quotas,
+and the temporary founding-signup outage during the migration/deploy window.
+Obsidian's explicit production go-ahead rule still applies. Do not push or
+mark migrations applied until that rollout is authorized and verified.
+
 ## Who you're working with
 Beginner: some Python, a little JavaScript, learning TypeScript/React/
 Next.js by building this. Pair-program and teach: new concept = one
