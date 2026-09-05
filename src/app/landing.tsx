@@ -65,10 +65,6 @@ export default function Landing() {
       window.location.replace(`/app${window.location.hash}`);
       return;
     }
-    // Any other fragment means the visitor asked for THIS page — the app's
-    // own brand link points at /#top so a signed-in user can reach the site
-    // deliberately. The bounce below is for people who typed the domain.
-    if (window.location.hash) return;
     let hasToken = false;
     try {
       for (let i = 0; i < localStorage.length; i += 1) {

@@ -106,6 +106,7 @@ import {
   updateTransaction as saveTransaction,
 } from "@/lib/supabase/transactions";
 import { useSession } from "@/lib/supabase/use-session";
+import { HOME_EVENT } from "./brand-home";
 import { acceptTerms, TERMS_VERSION } from "@/lib/terms";
 import type { Service } from "@/lib/service";
 import { formatCents, type Transaction } from "@/lib/transaction";
@@ -431,6 +432,32 @@ function Ledger({
   const [showProducts, setShowProducts] = useState(false);
   /** One line of good news after a sale/match, with undo where honest. */
   const [saleNotice, setSaleNotice] = useState("");
+
+  // The header's brand link (brand-home.tsx) asks for the hub. Same guard
+  // as openClientFromSearch: a half-typed sale, expense, service or
+  // profile edit is never vaporized by navigation — the notice says why
+  // nothing moved. Otherwise every typed-state-free takeover closes and
+  // the page returns to the top. Answering (preventDefault) is what stops
+  // the link from reloading the document; on the gates, where no Ledger
+  // is mounted, the browser follows the href instead.
+  useEffect(() => {
+    const goHome = (ask: Event) => {
+      ask.preventDefault();
+      if (quickAdd || logAgain || showNewSale || showProducts || showSettings) {
+        setSaleNotice(t("home.finishEntryFirst"));
+        return;
+      }
+      setShowRecentSales(false);
+      setShowOwed(false);
+      setShowClients(false);
+      setClientsFocus(null);
+      setShowDashboard(false);
+      setShowHistory(false);
+      window.scrollTo({ top: 0 });
+    };
+    window.addEventListener(HOME_EVENT, goHome);
+    return () => window.removeEventListener(HOME_EVENT, goHome);
+  }, [quickAdd, logAgain, showNewSale, showProducts, showSettings, t]);
   /** Auto-link undo: everything needed to put both sides back. */
   const [matchUndo, setMatchUndo] = useState<
     {

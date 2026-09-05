@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import BrandHome from "../brand-home";
 import LocalePicker from "../locale-picker";
-import Mark from "../mark";
 import UploadScreen from "../upload-screen";
 
 /** The sign-in gate is not content: its own title, and an explicit
@@ -27,17 +27,12 @@ export default function AppPage() {
           for might as well not exist. */}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-lg font-semibold tracking-tight">
-          {/* The mark and the word are one link to the homepage, like the
-              public header's. A plain <a>, not <Link>: site and app are
-              separate documents on purpose (the analytics tag never rides a
-              client-side transition either way). The "#top" fragment tells
-              the landing page this visit was ASKED for — without it the
-              landing bounces every signed-in device straight back here. */}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- full-document navigation on purpose, see above */}
-          <a href="/#top" className="flex items-center gap-2">
-            <Mark />
-            contado
-          </a>
+          {/* The mark and the word are one link to the APP's home (the hub),
+              the way the public header's brand link goes to the site's
+              homepage — each surface points at its own front door. See
+              brand-home.tsx for why a click goes home in place rather than
+              reloading the page. */}
+          <BrandHome />
         </h1>
         <LocalePicker compact />
       </div>
