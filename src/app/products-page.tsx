@@ -99,10 +99,14 @@ function EditForm({
               key={choice}
               type="button"
               aria-pressed={pricing === choice}
+              // Unselected chips take the theme's card surface (white / dark
+              // neutral-900). Hard-coded white made them near-identical to
+              // the selected chip in dark mode, where the foreground fill
+              // is itself light — the owner could not tell which was on.
               className={`rounded-lg px-2 py-2 text-sm font-medium ${
                 pricing === choice
                   ? "bg-foreground text-background"
-                  : "border border-neutral-300 bg-white text-neutral-900"
+                  : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
               }`}
               onClick={() => setPricing(choice)}
             >

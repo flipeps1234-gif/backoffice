@@ -389,7 +389,7 @@ export default function NewSale({
                       className={`rounded-full px-3 py-1.5 text-sm font-medium ${
                         knownClient?.id === c.id
                           ? "bg-foreground text-background"
-                          : "border border-neutral-300 bg-white text-neutral-900"
+                          : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                       }`}
                       onClick={() => setClientName(c.name)}
                     >
@@ -540,7 +540,7 @@ export default function NewSale({
                     className={`rounded-lg px-2 py-2 text-sm font-medium ${
                       cadence.type === option.type
                         ? "bg-foreground text-background"
-                        : "border border-neutral-300 bg-white text-neutral-900"
+                        : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                     }`}
                     onClick={() => setCadence(option)}
                   >
@@ -641,7 +641,7 @@ export default function NewSale({
                 className={`rounded-full px-3 py-2 text-sm font-medium ${
                   knownClient?.id === c.id
                     ? "bg-foreground text-background"
-                    : "border border-neutral-300 bg-white text-neutral-900"
+                    : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                 }`}
                 onClick={() => setClientName(c.name)}
               >

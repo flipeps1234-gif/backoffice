@@ -430,7 +430,7 @@ export default function QuickAdd({
                 className={`rounded-lg px-2 py-2 text-sm font-medium ${
                   promptPricing === choice
                     ? "bg-foreground text-background"
-                    : "border border-neutral-300 bg-white text-neutral-900"
+                    : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                 }`}
                 onClick={() => setPromptPricing(choice)}
               >
@@ -578,7 +578,7 @@ export default function QuickAdd({
               className={`rounded-full px-3 py-1.5 text-xs font-medium ${
                 category === id
                   ? "bg-foreground text-background"
-                  : "border border-neutral-300 bg-white text-neutral-900"
+                  : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
               }`}
               onClick={() => setCategory(category === id ? null : id)}
             >
@@ -602,7 +602,7 @@ export default function QuickAdd({
               className={`rounded-full px-3 py-2 text-sm font-medium ${
                 selected?.id === service.id
                   ? "bg-emerald-600 text-white"
-                  : "border border-neutral-300 bg-white text-neutral-900"
+                  : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
               }`}
               onClick={() => tapChip(service)}
             >

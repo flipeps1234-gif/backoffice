@@ -124,7 +124,7 @@ function ChannelAlerts({
       className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium ${
         channel === value
           ? "bg-foreground text-background"
-          : "border border-neutral-300 bg-white text-neutral-900"
+          : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
       }`}
       onClick={() => {
         setChannel(value);
@@ -437,7 +437,7 @@ export default function SettingsPage({
       className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium ${
         theme === value
           ? "bg-foreground text-background"
-          : "border border-neutral-300 bg-white text-neutral-900"
+          : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
       }`}
       onClick={() => setTheme(value)}
     >
