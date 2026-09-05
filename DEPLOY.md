@@ -4,12 +4,62 @@ Read this before pushing. It exists because the same three config items
 have been "I'll do it later" for several sessions, and two of them break
 production silently.
 
-## Security fixes prepared 2026-09-04 — NOT APPLIED TO PRODUCTION
+## Security fixes 2026-09-04 — APPLIED TO PRODUCTION (2026-09-04 19:14–19:30 CDT)
 
-Branch `fix/security-review-2026-09-04` contains migrations **0021** and
-**0022**. Production's last verified high-water mark remains **0020**.
-The Obsidian rule “Production-side changes need one explicit go-ahead”
-requires approval of this concrete rollout before changing production:
+Commit `52117c4` (branch `fix/security-review-2026-09-04`, fast-forwarded
+into `main`) with migrations **0021** and **0022**. The owner authorized the
+whole rollout explicitly ("deploy all", then a written authorization of
+migrations, environment, deployment and smoke tests); the Obsidian
+one-go-ahead rule was satisfied by that message. **Production's high-water
+mark is now 0022.** What was done, in the order below, with the evidence:
+
+- Preflight (read-only SQL via the Supabase MCP): 0 oversized rows in all
+  five tables, 0 future-dated deletion requests, live `enforce_demo_cap`
+  byte-identical to the 0020 baseline, pg_cron present with both jobs.
+- Key: a NEW Supabase **secret API key** named `vercel_production_server`
+  (`sb_secret_…`, Dashboard → Settings → API Keys, created 2026-09-04) is
+  `SUPABASE_SERVICE_ROLE_KEY` in Vercel **Production only**, type Sensitive
+  (unreadable in the dashboard afterwards). It was moved clipboard → `vercel
+  env add … production --sensitive` and never displayed, logged or pasted.
+  Secret keys carry service_role privileges and, unlike the legacy
+  `service_role` JWT, are revocable on their own: to rotate, create another
+  secret key, replace the Vercel value, redeploy, then delete the old key.
+  The legacy JWT keys were not touched. Preview has no key (fails closed).
+- Migrations via `apply_migration` (each in its own transaction, the files'
+  own begin/commit dropped): `20260905001435 complete_write_guards`
+  (0021) and `20260905001625 server_usage_limits` (0022). No data was
+  truncated or rewritten.
+- `security_verify.sql` equivalent, all green: anon/authenticated cannot
+  execute any of the five functions (old `founding_signup` included);
+  service_role can execute all three server RPCs; anon and authenticated
+  cannot INSERT `founding_list`; authenticated keeps UPDATE on
+  `deletion_requests` (native merge-upserts) with the `stamp_deletion_request`
+  trigger enabled; the five byte constraints are VALIDATED; RLS on the three
+  new tables with no client grants; TRUNCATE revoked; `security_limits` at
+  the defaults below; cron shows all three jobs active
+  (`cleanup-security-usage` at 04:17 UTC).
+- Deploy: `main` pushed 19:18 CDT → `dpl_GohsSuFf4PUMqYibWJYSGeMotPje`
+  READY 19:19 CDT, aliased to getcontado.com (commit `52117c4`, Next
+  16.3.4). The founding form was closed between 0022 (19:16) and READY
+  (19:19) — about three minutes.
+- Smoke on the live apex, all with `Cache-Control: no-cache`: `/`, `/app`,
+  `/privacy` 200 (x-vercel-cache PRERENDER, age 0), the new privacy
+  disclosure present; CSP, HSTS preload, nosniff, Referrer-Policy and
+  X-Frame-Options DENY on `/`; `/.well-known/security.txt` 200. Demo
+  session 200 (tester); a synthetic `manual` cash transaction of 1 cent
+  inserted (201), read back and deleted (0 left); one blank 64×32 PNG
+  through `/api/extract` → 200 `{"transactions":[],"warnings":[unreadable],
+  "provider":"openai"}` and `extraction_usage` gained one row (1 image,
+  tester, lease closed 3.4 s later — that row is real spend and was KEPT);
+  two synthetic founding signups of `smoke-20260904@example.com` → 200
+  `{ok:true}` twice (duplicate identical), one `founding_list` row and two
+  `founding_attempts` rows, both removed afterwards (list back to its one
+  pre-existing row); unsigned POSTs to both webhooks 503, bad verify token
+  403, anonymous `/api/extract` 401, malformed founding email 400. Vercel
+  runtime logs for the deployment: zero warnings or errors. Local gate on
+  52117c4 before the push: 22 security tests, tsc, eslint, build all clean.
+
+The rollout procedure, kept as the record of what the steps were:
 
 1. Run `supabase/checks/security_preflight.sql` in project
    `xdvnnqiwanpkdwvjtsfk`. Oversized-row counts must be zero; compare the
@@ -123,7 +173,9 @@ order by column_name;
 You need `direction` and `quantity` in that list. If either is missing,
 stop and run the migration.
 
-Current high-water mark: **0020**. 0018 (`0018_lock_rls_auto_enable.sql`)
+Current high-water mark: **0022** (0021 + 0022 applied 2026-09-04 19:14
+CDT via the Supabase MCP and verified — see the section at the top of this
+file). 0018 (`0018_lock_rls_auto_enable.sql`)
 and 0017 were applied to production via the Supabase MCP on 2026-09-01;
 **0019 (`0019_protect_tester_identity.sql`) was APPLIED to production via
 the Supabase MCP on 2026-09-03 (trigger present, tester_lock enabled, demo
@@ -146,8 +198,10 @@ byte constraints, both cron jobs listed). What it does** — it caps the shared 
 refuses it photos, replaces the character-count byte checks on
 `sales.photo` with real byte counts and adds equivalent bounds on other
 text columns, moves the founding-list signup behind a `founding_signup`
-RPC (the API route falls back to the pre-0020 direct insert when the RPC
-is missing, so applying this one out of order does not break signups),
+RPC (the API route USED to fall back to the pre-0020 direct insert when
+the RPC was missing; since 52117c4 the route calls the server-only
+`founding_signup_limited` RPC through the service key and 0022 revoked the
+old RPC from anon/authenticated, so there is no anonymous path left),
 pins the deletion-request cooling-off window, re-scopes the settlement
 unique index to be per-account, revokes TRUNCATE from the anon/
 authenticated roles, and schedules a nightly `reset-demo-rows` pg_cron

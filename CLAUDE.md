@@ -2,7 +2,7 @@
 
 # CLAUDE.md — read this before doing anything
 
-## Security follow-up 2026-09-04 — prepared locally, NOT deployed
+## Security follow-up 2026-09-04 — DEPLOYED to production 2026-09-04 19:14–19:30 CDT
 
 Branch `fix/security-review-2026-09-04` fixes the review's remaining gaps.
 0021 repairs the demo transition-table photo guard (normal transactions
@@ -16,7 +16,7 @@ use SUPABASE_SERVICE_ROLE_KEY only through a `server-only` module and fail
 closed if protection is unavailable. Real demo extraction remains enabled
 by default, as the Obsidian notes intended, with a 10-image daily allowance.
 No notification settings, seeded demo records or existing deletion requests
-were changed. No production credential was read or used.
+were changed. While preparing, no production credential was read or used.
 
 Next/eslint-config-next moved together to 16.3.4 (the earlier audit's
 deferred dependency upgrade is now included in the owner's “fix” request).
@@ -26,8 +26,23 @@ in EN/ES/PT. `npm run test:security` runs isolated PostgreSQL migrations and
 stubbed real-route regressions; no API keys are required. DEPLOY.md records
 the exact pending production rollout, preflight/verification SQL, quotas,
 and the temporary founding-signup outage during the migration/deploy window.
-Obsidian's explicit production go-ahead rule still applies. Do not push or
-mark migrations applied until that rollout is authorized and verified.
+ROLLED OUT 2026-09-04 (owner's explicit written authorization; DEPLOY.md
+top section has the full evidence): preflight clean; a NEW Supabase secret
+API key `vercel_production_server` set as SUPABASE_SERVICE_ROLE_KEY in
+Vercel Production only (Sensitive, moved by clipboard, never displayed;
+revocable on its own — the legacy service_role JWT was not used); 0021 and
+0022 applied via the MCP (`20260905001435`, `20260905001625`) and verified
+(public grants false, service_role true, five constraints validated, three
+cron jobs active, limits at defaults); `main` fast-forwarded to 52117c4 and
+READY as dpl_GohsSuFf4PUMqYibWJYSGeMotPje on getcontado.com (founding form
+closed ~3 minutes between 0022 and READY); smoke-tested live — demo session,
+a synthetic 1-cent cash row (inserted, read, deleted), one blank-PNG
+extraction through the real provider (200, one `extraction_usage` row kept
+as real spend, lease closed), two synthetic founding signups (ok twice,
+rows removed), unsigned webhooks 503, anonymous extract 401. High-water mark
+0022. Still owner-side: the OpenAI project spending cap stays the money
+ceiling; tune `security_limits` in the SQL editor if the demo's 10 images/day
+or the 200/day project cap prove wrong.
 
 ## Who you're working with
 Beginner: some Python, a little JavaScript, learning TypeScript/React/
@@ -45,8 +60,10 @@ personal → running totals climb. Manual quick-add covers cash. The
 law: every flow survives "ten seconds, one hand, in a driveway."
 
 ## Status — rewritten 2026-08-14 after the v0.6 + v0.6.5 build, no optimism
-Typecheck, lint and `next build` pass clean. Still ZERO automated
-tests (no runner, no test script) — the pure logic old and new is
+Typecheck, lint and `next build` pass clean. At the time, ZERO automated
+tests (no runner, no test script; since 2026-09-04 `npm run test:security`
+runs 22 isolated regression tests, and branch `overnight/engine-tests`
+holds a 455-test Vitest suite for src/lib) — the pure logic old and new is
 proven against a throwaway 52-case node harness on the tsc-transpiled
 real modules; nothing guards regressions between sessions. A 47-agent
 adversarial review ran over the entire v0.6+v0.6.5 diff (5 lenses,
