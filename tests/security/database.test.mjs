@@ -32,7 +32,7 @@ before(async () => {
   // Minimal Supabase-style roles and JWT helpers; no credentials/network.
   await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
     CREATE SCHEMA auth;
-    CREATE TABLE auth.users(id uuid primary key, email text, encrypted_password text, phone text, raw_user_meta_data jsonb);
+    CREATE TABLE auth.users(id uuid primary key, email text, encrypted_password text, phone text, raw_user_meta_data jsonb, created_at timestamptz not null default now(), last_sign_in_at timestamptz);
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS $$SELECT coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb$$;
     CREATE FUNCTION public.rls_auto_enable() RETURNS void LANGUAGE sql AS $$ SELECT $$;
@@ -195,3 +195,46 @@ test('security cleanup removes expired counters without deleting current budget 
   assert.equal((await db.query('SELECT sum(images)::int AS n FROM public.extraction_usage')).rows[0].n,2);
   assert.equal((await db.query('SELECT count(*)::int AS n FROM public.founding_attempts')).rows[0].n,1);
 });
+
+// ---- 0023 admin_overview: service_role only; totals follow the product laws ----
+test('admin_overview is executable by service_role only', async () => {
+  await db.exec('RESET ROLE');
+  const grants = (await db.query(`SELECT r AS role, has_function_privilege(r, 'public.admin_overview()', 'EXECUTE') AS ok
+    FROM unnest(ARRAY['anon','authenticated','service_role']) r`)).rows;
+  assert.deepEqual(Object.fromEntries(grants.map(g => [g.role, g.ok])), { anon: false, authenticated: false, service_role: true });
+  await asUser(user, 'test@example.invalid');
+  await assert.rejects(db.query('SELECT public.admin_overview()'), /permission denied/);
+});
+test('admin_overview totals: per-line rounding, owed = open only, demo excluded but listed', async () => {
+  await db.exec('RESET ROLE; DELETE FROM public.transactions; DELETE FROM public.sales; DELETE FROM public.clients;');
+  await asUser(user, 'test@example.invalid');
+  await db.query(`INSERT INTO public.transactions(account_id,payer,amount_cents,source,direction,business) VALUES
+    ($1,'A',1000,'screenshot','in',true),($1,'B',250,'manual','in',true),($1,'C',400,'manual','out',true),($1,'D',9999,'manual','in',false)`, [user]);
+  await db.query(`INSERT INTO public.sales(account_id,occurred_on,line_items,state) VALUES
+    ($1,'2026-09-01','[{"unitCents":333,"quantity":1.5,"unitCostCents":null},{"unitCents":100,"quantity":1,"unitCostCents":null}]','open'),
+    ($1,'2026-09-01','[{"unitCents":5000,"quantity":1,"unitCostCents":null}]','expected'),
+    ($1,'2026-09-01','[{"unitCents":7000,"quantity":1,"unitCostCents":null}]','paid')`, [user]);
+  await asUser(demo, 'tester@demo.dem');
+  await db.query("INSERT INTO public.transactions(account_id,payer,amount_cents,source,direction,business) VALUES ($1,'demo',123456,'manual','in',true)", [demo]);
+  await db.exec('RESET ROLE; SET ROLE service_role');
+  const o = (await db.query('SELECT public.admin_overview() AS o')).rows[0].o;
+  await db.exec('RESET ROLE');
+  assert.equal(Number(o.totals.money_in_cents), 1250);          // business income only; personal 9999 and demo 123456 excluded
+  assert.equal(Number(o.totals.money_out_cents), 400);
+  assert.equal(Number(o.totals.owed_cents), 600);               // open sale: round(333*1.5)=500 + 100; expected counts as received
+  assert.equal(Number(o.totals.sales_open), 1); assert.equal(Number(o.totals.sales_expected), 1); assert.equal(Number(o.totals.sales_paid), 1);
+  assert.equal(Number(o.totals.transactions), 4);
+  assert.equal(Number(o.totals.transactions_screenshot), 1);
+  const realAccounts = Number((await db.query("SELECT count(*) AS n FROM auth.users WHERE split_part(coalesce(email,''),'@',1) <> 'tester'")).rows[0].n);
+  assert.equal(Number(o.totals.accounts), realAccounts);        // every non-tester account, however many earlier tests left
+  assert.ok(realAccounts >= 1);
+  assert.equal(o.weekly.length, 12); assert.equal(o.daily_uploads.length, 30);
+  assert.equal(o.weekly.reduce((s, w) => s + Number(w.money_in_cents), 0), 1250);
+  const tester = o.accounts.find(a => a.is_tester);
+  assert.ok(tester, 'the demo account is listed'); assert.equal(Number(tester.money_in_cents), 123456);
+  const me = o.accounts.find(a => a.id === user);
+  assert.equal(Number(me.owed_cents), 600); assert.equal(Number(me.transactions), 4); assert.equal(me.lang, 'en');
+  for (const a of o.accounts) for (const k of Object.keys(a)) assert.ok(!/payer|memo|notes|photo|name$/.test(k), `no content field leaks: ${k}`);
+  assert.ok(Number(o.storage.db_bytes) > 0);
+});
+

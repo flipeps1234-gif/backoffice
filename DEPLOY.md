@@ -121,6 +121,38 @@ path. Do not undo the security migration or restore anon grants as an
 automatic rollback. If needed, disable extraction at the provider/project
 while repairing the new deployment; viewing and exporting remain available.
 
+## Owner analytics — /app/admin (2026-09-05)
+
+The owner's view across every account: money logged (business in / out,
+owed = OPEN sales), payments and sales counts, uploads and images per
+day, new accounts and money per week, languages, founding signups,
+deletions pending, storage against the 500 MB ceiling, and the account
+list (email, joined, last active, counts, money, flags). Totals exclude
+the shared demo account; it is listed, flagged, behind a checkbox.
+
+How it is gated — three checks in order, in `src/app/api/admin/overview`:
+a valid session token (else 401); the route configured (else 503); the
+session's email on **`OWNER_EMAILS`** and not the demo account (else
+403). Only then does the server-only client call
+`public.admin_overview()` — migration **0023**, one read-only SECURITY
+DEFINER function executable by service_role alone, which returns
+aggregates and per-account counts and never memos, payers, customer
+names, notes or photos. RLS keeps every client key blind to it.
+
+**Owner step, one-time:** set `OWNER_EMAILS` in Vercel → Project →
+Settings → Environment Variables, **Production only**, to the exact
+address you sign into contado with (comma-separated if more than one;
+case does not matter), then redeploy. Until it is set the page shows a
+one-line "dark" note to everyone, including you. Never list the demo
+address — it is refused anyway. The same `SUPABASE_SERVICE_ROLE_KEY`
+from the 0022 rollout is what the route reads with.
+
+Verifying: signed out, `/app/admin` says sign in first; signed in as a
+non-owner it says the page is for the owner's account; `curl -s -o
+/dev/null -w '%{http_code}' https://getcontado.com/api/admin/overview`
+is 401 with no token. In development, `/app/admin?sample=1` renders a
+fake payload for layout work (never in production builds).
+
 ## What "deploy" means here
 
 **Pushing to `main` IS deploying.** Vercel builds and promotes every push
@@ -173,9 +205,11 @@ order by column_name;
 You need `direction` and `quantity` in that list. If either is missing,
 stop and run the migration.
 
-Current high-water mark: **0022** (0021 + 0022 applied 2026-09-04 19:14
+Current high-water mark: **0023** (0021 + 0022 applied 2026-09-04 19:14
 CDT via the Supabase MCP and verified — see the section at the top of this
-file). 0018 (`0018_lock_rls_auto_enable.sql`)
+file; **0023 `admin_overview`** applied 2026-09-05 via the MCP: a
+read-only, service_role-only function for /app/admin, verified by grant
+check and a live call — drop the function to undo it). 0018 (`0018_lock_rls_auto_enable.sql`)
 and 0017 were applied to production via the Supabase MCP on 2026-09-01;
 **0019 (`0019_protect_tester_identity.sql`) was APPLIED to production via
 the Supabase MCP on 2026-09-03 (trigger present, tester_lock enabled, demo

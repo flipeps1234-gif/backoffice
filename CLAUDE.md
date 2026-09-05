@@ -44,6 +44,34 @@ rows removed), unsigned webhooks 503, anonymous extract 401. High-water mark
 ceiling; tune `security_limits` in the SQL editor if the demo's 10 images/day
 or the 200/day project cap prove wrong.
 
+## Owner analytics 2026-09-05 — /app/admin
+
+Owner-asked ("an analytics page where I can have a view of what's going
+on with my clients … total money logged, account lists"): the owner's
+cross-account view lives at /app/admin — headline tiles (accounts, active
+7/30 d, money in and out logged, owed = open sales, payments with the
+screenshot/typed split, sales by state, uploads and images in 30 days),
+12-week money and new-account sparklines, a 30-day images column chart,
+reach facts (clients, active recurring, profiles, founding signups,
+deletions pending), languages, storage against the 500 MB ceiling with
+the biggest tables, and a sortable account list (email, joined, last
+active, counts, money, demo/deleting/profile/recurring chips; the demo
+account behind a checkbox and excluded from every total). English only on
+purpose — owner tooling behind `OWNER_EMAILS`, not a user surface, so it
+stays out of the trilingual dictionary. Data path: `/api/admin/overview`
+(token → 401, unconfigured → 503, non-owner or the demo account → 403)
+calls `public.admin_overview()` (migration 0023, SECURITY DEFINER,
+service_role only, returns aggregates + per-account counts, never
+memos/payers/names/notes/photos) through the server-only client. Pure
+helpers and the typed parser are in `src/lib/admin/overview.ts`; the
+screen is inline SVG in currentColor, palette per design-tokens.md.
+Product laws inside the SQL: per-line rounding for sale totals, EXPECTED
+counts as received so owed is OPEN only. Tests: `npm run test:security`
+covers the function's grants and totals (PGlite) and the route's four
+gates. OWNER-SIDE: set `OWNER_EMAILS` (Production only) to the owner's
+sign-in address — DEPLOY.md; until then the page is dark for everyone.
+Dev-only `?sample=1` renders a fake payload for layout work.
+
 ## Who you're working with
 Beginner: some Python, a little JavaScript, learning TypeScript/React/
 Next.js by building this. Pair-program and teach: new concept = one
