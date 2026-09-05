@@ -26,9 +26,18 @@ export default function AppPage() {
           state, including signed-out. A language switcher you have to hunt
           for might as well not exist. */}
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-          <Mark />
-          contado
+        <h1 className="text-lg font-semibold tracking-tight">
+          {/* The mark and the word are one link to the homepage, like the
+              public header's. A plain <a>, not <Link>: site and app are
+              separate documents on purpose (the analytics tag never rides a
+              client-side transition either way). The "#top" fragment tells
+              the landing page this visit was ASKED for — without it the
+              landing bounces every signed-in device straight back here. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- full-document navigation on purpose, see above */}
+          <a href="/#top" className="flex items-center gap-2">
+            <Mark />
+            contado
+          </a>
         </h1>
         <LocalePicker compact />
       </div>
