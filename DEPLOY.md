@@ -139,12 +139,13 @@ DEFINER function executable by service_role alone, which returns
 aggregates and per-account counts and never memos, payers, customer
 names, notes or photos. RLS keeps every client key blind to it.
 
-**Owner step, one-time:** set `OWNER_EMAILS` in Vercel → Project →
-Settings → Environment Variables, **Production only**, to the exact
-address you sign into contado with (comma-separated if more than one;
-case does not matter), then redeploy. Until it is set the page shows a
-one-line "dark" note to everyone, including you. Never list the demo
-address — it is refused anyway. The same `SUPABASE_SERVICE_ROLE_KEY`
+**Owner list — SET 2026-09-06:** `OWNER_EMAILS` is `felipe@getcontado.com`
+in Vercel Production (Secret; owner's choice, given in chat), applied
+by a redeploy and verified live: anonymous 401, a demo session 403
+(before the variable it was 503). Sign in to the app with that exact
+address and open /app/admin. To add or change an owner: edit the
+variable (comma-separated, case does not matter) and redeploy. Never
+list the demo address — it is refused anyway. The same `SUPABASE_SERVICE_ROLE_KEY`
 from the 0022 rollout is what the route reads with.
 
 Verifying: signed out, `/app/admin` says sign in first; signed in as a

@@ -68,9 +68,9 @@ screen is inline SVG in currentColor, palette per design-tokens.md.
 Product laws inside the SQL: per-line rounding for sale totals, EXPECTED
 counts as received so owed is OPEN only. Tests: `npm run test:security`
 covers the function's grants and totals (PGlite) and the route's four
-gates. OWNER-SIDE: set `OWNER_EMAILS` (Production only) to the owner's
-sign-in address — DEPLOY.md; until then the page is dark for everyone.
-Dev-only `?sample=1` renders a fake payload for layout work.
+gates. `OWNER_EMAILS` = felipe@getcontado.com in Vercel Production since
+2026-09-06 (owner's choice; verified live — non-owner 403, anonymous
+401). Dev-only `?sample=1` renders a fake payload for layout work.
 
 ## Who you're working with
 Beginner: some Python, a little JavaScript, learning TypeScript/React/
