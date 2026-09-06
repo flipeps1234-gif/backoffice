@@ -44,6 +44,29 @@ rows removed), unsigned webhooks 503, anonymous extract 401. High-water mark
 ceiling; tune `security_limits` in the SQL editor if the demo's 10 images/day
 or the 200/day project cap prove wrong.
 
+## Landing playground + savings calculator 2026-09-06
+
+Owner: "make the landing page interactive with the fields being fill out
+able … write in a slider for monthly money and time saved, with hourly
+rate, weekly time spent on accounting". This REVERSES, on the owner's
+call, the inert-only rule DemoFrame was built for after the 2026-08-26
+iPhone incident: the hero sheet, the swipe stage and the Owed tab are now
+real, usable components in a TryFrame (same card, no inert, no cover)
+captioned "Try it — nothing is saved" with a reset link once touched
+(landing-playground.tsx; state is page-local, nothing persists). The
+drop zone, Insights and the totals/Dashboard demos stay inert — nothing
+honest for them to do without an account. Sheet: every field editable,
+rows removable, totals recompute. Deck: Business/Personal decide, undo
+restores, empty state reachable. Owed: "Got cash" settles (open →
+paid/cash), "actually unpaid" reopens. The calculator
+(savings-calculator.tsx, math in src/lib/savings.ts, tests/unit) takes
+hourly rate ($10–150) and weekly bookkeeping hours (0.5–12) and shows
+hours back per month and their worth at that rate, on ONE stated
+assumption printed beside it: about 15 minutes a week with contado
+(CONTADO_MINUTES_PER_WEEK). The note says it is an estimate of the
+visitor's time, not money contado pays. `npm test` now runs
+tests/security and tests/unit.
+
 ## Google sign-in 2026-09-06 — code live, provider off until the owner enables it
 
 "Continue with Google" on the sign-in gate (sign-in.tsx): rendered only

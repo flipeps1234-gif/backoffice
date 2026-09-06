@@ -2,23 +2,21 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import ConfirmationSheet from "./confirmation-sheet";
 import Dashboard from "./dashboard";
 import DropZone from "./drop-zone";
 import Cta from "./founding-cta";
 import Insights from "./insights";
-import OwedTab from "./owed-tab";
 import {
   DemoFrame,
   SHEET_DEMO,
   TOTALS_DEMO,
   noop,
-  owedDemo,
   useMounted,
 } from "./public-demos";
+import { OwedPlayground, SheetPlayground, SwipePlayground } from "./landing-playground";
 import { PublicFooter, PublicHeader } from "./public-shell";
+import SavingsCalculator from "./savings-calculator";
 import RunningTotals from "./running-totals";
-import SwipeDeck from "./swipe-deck";
 import { useLocale } from "./use-locale";
 import { EMPTY_PROFILE } from "@/lib/profile";
 
@@ -94,7 +92,6 @@ export default function Landing() {
     });
   }, []);
 
-  const owed = mounted ? owedDemo() : null;
 
   return (
     <main className="mx-auto w-full max-w-[40rem] px-4 py-8 lg:max-w-5xl">
@@ -137,9 +134,7 @@ export default function Landing() {
           </div>
         </div>
         <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
-          <DemoFrame label={t("landing.demoData")}>
-            <ConfirmationSheet transactions={SHEET_DEMO} onChange={noop} />
-          </DemoFrame>
+          <SheetPlayground />
         </div>
         <div className="lg:col-start-1 lg:row-start-2 lg:self-end">
           <Cta />
@@ -185,19 +180,7 @@ export default function Landing() {
             {/* The sorting stage exactly as it ships: "What we found" on
                 top, then the deck — one card, Personal / Business below.
                 On desktop the insights render in the left column instead. */}
-            <DemoFrame label={t("landing.demoData")}>
-              <div className="space-y-4">
-                <div className="lg:hidden">
-                  <Insights transactions={SHEET_DEMO} />
-                </div>
-                <SwipeDeck
-                  pending={SHEET_DEMO}
-                  onDecide={noop}
-                  onUndo={noop}
-                  canUndo={false}
-                />
-              </div>
-            </DemoFrame>
+            <SwipePlayground insightsBelow />
           </li>
           <li className="space-y-3 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:space-y-0">
             <div className="space-y-3">
@@ -240,6 +223,9 @@ export default function Landing() {
         </Link>
       </section>
 
+      {/* WHAT IT COSTS YOU — two sliders, two numbers, one stated assumption */}
+      <SavingsCalculator />
+
       {/* OWED */}
       <section className="mt-14 space-y-4 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:space-y-0">
         <div className="space-y-3">
@@ -251,18 +237,7 @@ export default function Landing() {
             <li>{t("landing.owed3")}</li>
           </ul>
         </div>
-        {owed && (
-          <DemoFrame label={t("landing.demoData")}>
-            <OwedTab
-              sales={owed.sales}
-              clients={owed.clients}
-              onMarkCash={noop}
-              onMoveToOwed={noop}
-              onFindPayment={noop}
-              onLogAgain={noop}
-            />
-          </DemoFrame>
-        )}
+        <OwedPlayground />
       </section>
 
       {/* TAX + TRUST — side by side on desktop, stacked on a phone */}

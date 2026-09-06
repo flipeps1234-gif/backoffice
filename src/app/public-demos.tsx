@@ -142,6 +142,42 @@ export const useMounted = (): boolean =>
     () => false,
   );
 
+/** A real component the visitor can actually use, in the same card as
+ *  DemoFrame but with nothing between them and it. State lives in the
+ *  playground component that mounts it and dies with the page — the
+ *  caption says so ("nothing is saved"). This reverses, on the owner's
+ *  call (2026-09-06), the inert-only rule DemoFrame was built for; the
+ *  drop zone and the totals stay inert because they have nothing honest
+ *  to do without an account behind them. */
+export function TryFrame({
+  label,
+  onReset,
+  resetLabel,
+  children,
+}: {
+  label: string;
+  /** Present once the visitor changed something; renders the reset link. */
+  onReset?: () => void;
+  resetLabel?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <figure className="mx-auto w-full max-w-sm">
+      <div className="overflow-hidden rounded-xl border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
+        {children}
+      </div>
+      <figcaption className="mt-2 flex items-center justify-center gap-3 text-center text-xs text-neutral-500">
+        <span>{label}</span>
+        {onReset && (
+          <button type="button" onClick={onReset} className="underline">
+            {resetLabel}
+          </button>
+        )}
+      </figcaption>
+    </figure>
+  );
+}
+
 /** A real component shown as an illustration: inert and out of the
  *  accessibility tree, framed in the app's own card style.
  *

@@ -25,6 +25,61 @@ export const messages = {
     es: "Datos de ejemplo",
     pt: "Dados de exemplo",
   },
+  "landing.tryIt": {
+    en: "Try it — nothing is saved",
+    es: "Pruébalo — no se guarda nada",
+    pt: "Experimente — nada é salvo",
+  },
+  "landing.resetDemo": {
+    en: "Reset the demo",
+    es: "Reiniciar el ejemplo",
+    pt: "Reiniciar o exemplo",
+  },
+  "landing.savingsTitle": {
+    en: "What is bookkeeping costing you?",
+    es: "¿Cuánto te cuesta llevar las cuentas?",
+    pt: "Quanto a contabilidade está custando para você?",
+  },
+  "landing.savingsBody": {
+    en: "Move the sliders. With contado the week's bookkeeping is about {minutes} minutes — a few screenshots and a swipe.",
+    es: "Mueve los controles. Con contado, las cuentas de la semana toman unos {minutes} minutos — unas capturas y un deslizamiento.",
+    pt: "Mova os controles. Com o contado, a contabilidade da semana leva uns {minutes} minutos — alguns prints e um deslize.",
+  },
+  "landing.savingsRate": {
+    en: "Your hourly rate",
+    es: "Tu tarifa por hora",
+    pt: "Seu valor por hora",
+  },
+  "landing.savingsRateValue": {
+    en: "{rate} an hour",
+    es: "{rate} la hora",
+    pt: "{rate} por hora",
+  },
+  "landing.savingsHours": {
+    en: "Hours a week on receipts and payments",
+    es: "Horas a la semana en recibos y pagos",
+    pt: "Horas por semana com recibos e pagamentos",
+  },
+  "landing.savingsHoursValue": {
+    en: "{hours} h a week",
+    es: "{hours} h a la semana",
+    pt: "{hours} h por semana",
+  },
+  "landing.savingsHoursOut": {
+    en: "hours back every month",
+    es: "horas que recuperas cada mes",
+    pt: "horas de volta todo mês",
+  },
+  "landing.savingsMoneyOut": {
+    en: "of your time, every month",
+    es: "de tu tiempo, cada mes",
+    pt: "do seu tempo, todo mês",
+  },
+  "landing.savingsNote": {
+    en: "An estimate, not a promise: it assumes you keep doing today's bookkeeping by hand, and spend about {minutes} minutes a week with contado instead. It counts your time at your rate — it is not money contado pays you.",
+    es: "Es una estimación, no una promesa: supone que hoy llevas las cuentas a mano y que con contado dedicarías unos {minutes} minutos a la semana. Cuenta tu tiempo a tu tarifa — no es dinero que contado te pague.",
+    pt: "É uma estimativa, não uma promessa: supõe que hoje você faz a contabilidade à mão e que com o contado gastaria uns {minutes} minutos por semana. Conta o seu tempo pelo seu valor — não é dinheiro que o contado paga a você.",
+  },
   "landing.law": {
     en: "Every flow survives ten seconds, one hand, in a driveway.",
     es: "Cada flujo sobrevive diez segundos, con una mano, en la entrada de una casa.",
