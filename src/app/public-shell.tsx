@@ -101,11 +101,18 @@ export function PublicHeader() {
     <header className="mb-10 space-y-4 lg:space-y-0">
       <div className="flex items-center justify-between gap-6">
         <div className="flex items-center gap-10">
+          {/* Bigger than the app's header on purpose (owner's call): the
+              marketing site's brand should read from across the page.
+              text-2xl is the app's own big-figure size (the business
+              total), so it stays inside design-tokens.md. Phones keep the
+              app's size: at 390px the header row (brand, picker, "Open the
+              app") already measures 358 of 358px, so any bigger brand
+              wraps the button; from 640px up there is room. */}
           <Link
             href="/"
-            className="flex items-center gap-2 text-lg font-semibold tracking-tight"
+            className="flex items-center gap-2 text-lg font-semibold tracking-tight sm:gap-2.5 sm:text-2xl"
           >
-            <Mark />
+            <Mark className="h-6 w-6 sm:h-8 sm:w-8" />
             contado
           </Link>
           {/* Desktop: the nav sits in the header row. Only one of the two

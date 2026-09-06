@@ -1,9 +1,11 @@
 /** The two-cards mark, drawn in the page's own text color so it works in
  *  both themes. The favicon (icon.svg) is the same mark on black. Shared
  *  by the app header and the public pages — one mark, one file. */
-export default function Mark() {
+export default function Mark({ className = "h-6 w-6" }: { className?: string }) {
+  // Size only — the app header keeps the default; the public site's
+  // header passes a larger one so the brand reads from across the page.
   return (
-    <svg viewBox="0 0 96 96" className="h-6 w-6" aria-hidden="true">
+    <svg viewBox="0 0 96 96" className={className} aria-hidden="true">
       <rect
         x="34"
         y="20"
