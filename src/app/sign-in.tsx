@@ -81,6 +81,44 @@ export const humanAuthError = (
 const isRateLimited = (code: string | undefined): boolean =>
   code === "over_email_send_rate_limit" || code === "over_request_rate_limit";
 
+/**
+ * Whether the project has Google sign-in switched on. GoTrue publishes
+ * this at /auth/v1/settings for the anon key — one small GET, cached for
+ * the page's life, false on any failure (the email link still works).
+ */
+let googleProbe: Promise<boolean> | null = null;
+const googleEnabled = (): Promise<boolean> => {
+  googleProbe ??= (async () => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !anonKey) return false;
+    try {
+      const response = await fetch(`${url}/auth/v1/settings`, {
+        headers: { apikey: anonKey },
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (!response.ok) return false;
+      const settings = (await response.json()) as { external?: Record<string, unknown> };
+      return settings.external?.google === true;
+    } catch {
+      return false;
+    }
+  })();
+  return googleProbe;
+};
+
+/** Google's four-color "G", drawn inline so no external asset loads. */
+function GoogleMark() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+      <path fill="#4285F4" d="M23.5 12.3c0-.9-.1-1.5-.2-2.2H12v4.1h6.6c-.1 1.1-.9 2.7-2.5 3.8l3.7 2.9c2.2-2 3.7-5 3.7-8.6z" />
+      <path fill="#34A853" d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.2 0-5.9-2.1-6.9-5.1l-3.9 3C3.1 21.3 7.2 24 12 24z" />
+      <path fill="#FBBC05" d="M5.1 14.3c-.3-.8-.4-1.5-.4-2.3s.2-1.6.4-2.3l-3.9-3C.4 8.3 0 10.1 0 12s.4 3.7 1.2 5.3l3.9-3z" />
+      <path fill="#EA4335" d="M12 4.7c2.3 0 3.8 1 4.7 1.8l3.4-3.3C18 1.2 15.2 0 12 0 7.2 0 3.1 2.7 1.2 6.7l3.9 3c1-3 3.7-5 6.9-5z" />
+    </svg>
+  );
+}
+
 export default function SignIn() {
   const { t } = useLocale();
   const [sent, setSent] = useState(false);
@@ -97,6 +135,21 @@ export default function SignIn() {
   // re-read when the tab becomes visible again.
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  // "Continue with Google" shows only when the Supabase project has the
+  // provider switched on (Dashboard → Auth → Providers). A button that
+  // bounced every visitor to a JSON error page until the owner finished
+  // the setup would be copy that does not match behavior.
+  const [googleReady, setGoogleReady] = useState(false);
+
+  useEffect(() => {
+    let stale = false;
+    googleEnabled().then((ready) => {
+      if (!stale) setGoogleReady(ready);
+    });
+    return () => {
+      stale = true;
+    };
+  }, []);
   const cooldown =
     cooldownUntil === null ? 0 : Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
   // Sample the clock here too: `now` is otherwise the last tick's value,
@@ -204,6 +257,31 @@ export default function SignIn() {
     startCooldown();
   }
 
+  async function signInWithGoogle() {
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    setBusy(true);
+    setError("");
+    // Lands on the bare origin like the magic link (the only allowed
+    // redirect); the landing forwards the tokens to /app. select_account
+    // so a person with two Google accounts gets to choose every time.
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: { prompt: "select_account" },
+      },
+    });
+    // On success the browser has already left for Google; only a failure
+    // to even start the handoff comes back here.
+    if (oauthError) {
+      console.error("Google sign-in failed to start:", oauthError);
+      setError(t("signin.googleFailed"));
+      setBusy(false);
+    }
+  }
+
   async function submitEmail(event: React.FormEvent) {
     event.preventDefault();
     if (email.trim().toLowerCase() === DEMO_WORD) {
@@ -281,6 +359,24 @@ export default function SignIn() {
 
   return (
     <form className="space-y-4" onSubmit={submitEmail}>
+      {googleReady && (
+        <>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void signInWithGoogle()}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-4 text-base font-medium text-neutral-900 hover:bg-neutral-100 disabled:opacity-40 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:hover:bg-neutral-800"
+          >
+            <GoogleMark />
+            {t("signin.google")}
+          </button>
+          <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-neutral-500">
+            <span className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" aria-hidden="true" />
+            {t("signin.or")}
+            <span className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" aria-hidden="true" />
+          </div>
+        </>
+      )}
       <div>
         <label
           className="mb-1 block text-xs font-medium text-neutral-500"

@@ -103,4 +103,19 @@ export const messages = {
     es: "No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.",
     pt: "Não deu para conectar ao servidor. Confira sua conexão e tente de novo.",
   },
+  "signin.google": {
+    en: "Continue with Google",
+    es: "Continuar con Google",
+    pt: "Continuar com o Google",
+  },
+  "signin.or": {
+    en: "or",
+    es: "o",
+    pt: "ou",
+  },
+  "signin.googleFailed": {
+    en: "Google sign-in didn't go through. Use the email link instead.",
+    es: "No se pudo entrar con Google. Usa el enlace por correo.",
+    pt: "Não deu para entrar com o Google. Use o link por e-mail.",
+  },
 } as const;

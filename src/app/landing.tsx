@@ -65,6 +65,14 @@ export default function Landing() {
       window.location.replace(`/app${window.location.hash}`);
       return;
     }
+    // Google sign-in returns here as well. With this client's implicit
+    // flow the tokens ride the hash above; if the flow ever becomes PKCE
+    // they arrive as ?code= (errors as ?error=) — forward those the same
+    // way, query and hash intact, so /app can finish the exchange.
+    if (/[?&](code|error|error_code|error_description)=/.test(window.location.search)) {
+      window.location.replace(`/app${window.location.search}${window.location.hash}`);
+      return;
+    }
     let hasToken = false;
     try {
       for (let i = 0; i < localStorage.length; i += 1) {

@@ -44,6 +44,26 @@ rows removed), unsigned webhooks 503, anonymous extract 401. High-water mark
 ceiling; tune `security_limits` in the SQL editor if the demo's 10 images/day
 or the 200/day project cap prove wrong.
 
+## Google sign-in 2026-09-06 — code live, provider off until the owner enables it
+
+"Continue with Google" on the sign-in gate (sign-in.tsx): rendered only
+when GoTrue's public /auth/v1/settings says `external.google` is true
+(one cached GET; false or unreachable = no button — copy matches
+behavior), `signInWithOAuth` with `redirectTo` = the bare origin and
+`prompt=select_account`; the landing already forwards `#access_token` /
+`#error` to /app and now also `?code=` / `?error=` in case the client's
+flow ever becomes PKCE (supabase-js's default is implicit, verified in
+node_modules). Failure to start the handoff shows signin.googleFailed
+(EN/ES/PT). Privacy processors paragraph discloses the Google exchange.
+Metadata rule amended: `user_metadata.lang` is the only key WE write;
+Google adds full_name/avatar_url/picture/email, unread by the app.
+OWNER-SIDE (DEPLOY.md): Google Cloud OAuth client + consent screen, then
+Supabase → Auth → Providers → Google; the button appears by itself.
+Native SignInView: no Google yet (parity item). "Dispatch" check the same
+day: nothing in the repo is named dispatch; the notification pipeline is
+still dark (senders no-op, no cron, no WHATSAPP_/SMS_/TWILIO_ env in
+Vercel; the only Vercel cron is /api/health at 12:00 UTC).
+
 ## Owner analytics 2026-09-05 — /app/admin
 
 Owner-asked ("an analytics page where I can have a view of what's going

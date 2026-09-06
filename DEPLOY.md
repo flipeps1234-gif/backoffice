@@ -121,6 +121,43 @@ path. Do not undo the security migration or restore anon grants as an
 automatic rollback. If needed, disable extraction at the provider/project
 while repairing the new deployment; viewing and exporting remain available.
 
+## Google sign-in — code shipped 2026-09-06, provider NOT yet enabled
+
+The sign-in screen shows a "Continue with Google" button **only when the
+Supabase project has the Google provider switched on** (it reads the
+public `/auth/v1/settings` once per page and hides the button otherwise —
+today `external.google` is false, so nothing shows). Turning it on is
+owner-side, two consoles, about ten minutes:
+
+1. **Google Cloud Console** (console.cloud.google.com), any project:
+   *APIs & Services → OAuth consent screen* — External, app name
+   "contado", support email mail@getcontado.com, homepage
+   https://getcontado.com, privacy https://getcontado.com/privacy, terms
+   https://getcontado.com/terms, authorized domain `getcontado.com`;
+   scopes `openid`, `email`, `profile` only. Publish it (in "Testing" only
+   listed test users can sign in and Google shows a warning).
+   Then *Credentials → Create credentials → OAuth client ID → Web
+   application*: Authorized JavaScript origins `https://getcontado.com`;
+   Authorized redirect URI **exactly**
+   `https://xdvnnqiwanpkdwvjtsfk.supabase.co/auth/v1/callback`. Copy the
+   client ID and secret (never into chat or this repo).
+2. **Supabase** → Authentication → Providers → Google: enable, paste the
+   client ID and secret, save. Redirect URLs already contain the bare
+   origin, which is where the OAuth return lands; the landing forwards
+   the tokens (hash or query) to /app exactly as it does for magic links.
+3. Reload getcontado.com/app: the button appears by itself. Test with a
+   Google account; a new user's row is created on first sign-in.
+
+What changes for the data: GoTrue writes the profile Google returns into
+`user_metadata` (`full_name`, `avatar_url`, `picture`, `email`) next to
+our `lang` — the "only lang" rule in CLAUDE.md now reads "only lang FROM
+US"; nothing in the app reads those fields. The privacy page's processors
+paragraph already discloses the Google exchange (EN/ES/PT). A Google
+sign-in on a device set to Spanish still gets Spanish emails: the app
+re-stamps `lang` after any sign-in. Native app: SignInView has no Google
+button yet (needs ASWebAuthenticationSession + the contado:// redirect
+URL) — parity item.
+
 ## Owner analytics — /app/admin (2026-09-05)
 
 The owner's view across every account: money logged (business in / out,

@@ -518,9 +518,9 @@ export const messages = {
     pt: "Quem processa isso",
   },
   "site.privacyProcessorsBody": {
-    en: "Supabase runs our database and sends the sign-in emails, on servers in the United States. Vercel hosts the app and keeps short-lived request logs.",
-    es: "Supabase administra nuestra base de datos y envía los correos de inicio de sesión, en servidores en Estados Unidos. Vercel aloja la app y guarda registros de solicitudes de corta duración.",
-    pt: "A Supabase administra nosso banco de dados e envia os e-mails de login, em servidores nos Estados Unidos. A Vercel hospeda o app e mantém registros de requisições de curta duração.",
+    en: "Supabase runs our database and sends the sign-in emails, on servers in the United States. Vercel hosts the app and keeps short-lived request logs. If you sign in with Google, Google confirms who you are and gives us your name, email address and profile picture — nothing else — and Google knows you signed in.",
+    es: "Supabase administra nuestra base de datos y envía los correos de inicio de sesión, en servidores en Estados Unidos. Vercel aloja la app y guarda registros de solicitudes de corta duración. Si entras con Google, Google confirma quién eres y nos da tu nombre, tu correo y tu foto de perfil — nada más — y Google sabe que iniciaste sesión.",
+    pt: "A Supabase administra nosso banco de dados e envia os e-mails de login, em servidores nos Estados Unidos. A Vercel hospeda o app e mantém registros de requisições de curta duração. Se você entrar com o Google, o Google confirma quem você é e nos passa seu nome, seu e-mail e sua foto de perfil — nada mais — e o Google sabe que você fez login.",
   },
   "site.privacyProcessorsBody2": {
     en: "OpenAI reads your screenshots to extract the payment rows. OpenAI may keep the images it receives for up to 30 days to monitor for abuse and does not train its models on them; contado itself does not store the images it sends.",
