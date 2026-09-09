@@ -33,7 +33,6 @@ function extraction(options = {}) {
     '@/lib/extract/today':{resolveToday:()=> '2026-09-04'},
     '@/lib/supabase/server':{
       isSupabaseConfigured:options.configured??true,
-      isDemoAccount:()=>options.demo??false,
       verifyAccessToken:async token=>token==='valid'?{accountId:id,email:'local@example.invalid'}:null,
     },
     '@/lib/supabase/security':{
@@ -87,17 +86,11 @@ test('provider failure releases concurrency but does not request any refund',asy
   assert.equal(calls.finish[0],lease);
   assert.equal(calls.reserve.length,1);
 });
-test('real demo reserves; explicit demo mock is free; real users never receive mock',async()=>{
-  const real=extraction({demo:true});
-  assert.equal((await real.newInstance()(upload())).status,200);
-  assert.equal(real.calls.reserve.length,1);
-  const mock=extraction({demo:true,env:{DEMO_EXTRACTION:'mock'}});
-  assert.equal((await mock.newInstance()(upload())).status,200);
-  assert.equal(mock.calls.reserve.length,0);
-  assert.equal(mock.calls.provider[0][2],'mock');
+test('signed-in users never receive the mock; an unconfigured production deploy fails closed',async()=>{
   const user=extraction({provider:'mock'});
   assert.equal((await user.newInstance()(upload())).status,503);
   assert.equal(user.calls.provider.length,0);
+  assert.equal(user.calls.reserve.length,0);
   const missing=extraction({configured:false});
   assert.equal((await missing.newInstance()(upload())).status,503);
 });

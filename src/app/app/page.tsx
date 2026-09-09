@@ -15,9 +15,9 @@ export const metadata: Metadata = {
 /**
  * The app itself, moved from / to /app when the landing page took the
  * root (public surface, 2026-08-16). Everything else is unchanged: the
- * sign-in gate, the demo word, and anonymous in-memory mode all live
- * inside UploadScreen exactly as before — a logged-out visitor here sees
- * the sign-in screen, which IS the app's front door.
+ * sign-in gate and anonymous in-memory mode both live inside
+ * UploadScreen exactly as before — a logged-out visitor here sees the
+ * sign-in screen, which IS the app's front door.
  */
 export default function AppPage() {
   return (

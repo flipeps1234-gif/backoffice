@@ -34,7 +34,7 @@ import { messages as terms } from "./messages/terms";
  *   screenshots invites transcription errors.
  * - CSV exports. They go to a tax preparer, who works in English forms.
  * - console.error strings — developer-facing.
- * - API route error bodies (extract/demo-session). The server doesn't
+ * - API route error bodies (extract). The server doesn't
  *   know the device's language; the client keys its own fallbacks and
  *   passes server detail through in English. Fixing this properly means
  *   error CODES in the API contract — noted for a later pass, not

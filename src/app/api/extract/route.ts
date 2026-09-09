@@ -3,11 +3,7 @@ import type { ExtractionContext, ExtractionInput } from "@/lib/extract";
 import { IMAGE_TYPES } from "@/lib/extract/image-types";
 import { resolveToday } from "@/lib/extract/today";
 import { reserveExtraction, finishExtraction } from "@/lib/supabase/security";
-import {
-  isDemoAccount,
-  isSupabaseConfigured,
-  verifyAccessToken,
-} from "@/lib/supabase/server";
+import { isSupabaseConfigured, verifyAccessToken } from "@/lib/supabase/server";
 
 /**
  * Extraction runs here, not in the browser. When a real provider is plugged
@@ -15,8 +11,7 @@ import {
  *
  * This is a PUBLIC Vercel endpoint — every file under app/api is. The paid
  * provider path requires verified auth plus an atomic database reservation.
- * Anonymous production requests fail closed. The shared demo keeps real
- * extraction within its own quota unless DEMO_EXTRACTION=mock is selected.
+ * Anonymous production requests fail closed.
  */
 
 const MAX_FILES = 20;
@@ -192,22 +187,15 @@ export async function POST(request: Request) {
   // insights, the dashboard and the CSV that goes to a tax preparer.
   //
   // So the mock runs only when it was ASKED for, never as a fallback.
-  // The rule, stated once: where accounts exist, the ONLY caller who may
-  // receive the mock is the demo account. Not a missing key, not a stray
-  // EXTRACT_PROVIDER=mock, not a broken session.
+  // The rule, stated once: where accounts exist, NOBODY receives the mock.
+  // Not a missing key, not a stray EXTRACT_PROVIDER=mock, not a broken
+  // session.
   const provider = activeProviderName();
 
   if (isSupabaseConfigured) {
     // Auth (token presence + verifyAccessToken) already ran above, before
     // formData() — `verified` is non-null on every path that reaches here.
-    // The shared tester retains real extraction, bounded by a separate
-    // database quota below. The existing explicit mock opt-in stays free.
-    if (isDemoAccount(verified?.email ?? null) && process.env.DEMO_EXTRACTION === "mock") {
-      return await run("mock");
-    }
-
-    // The demo branch above is the only way out with "mock". Reaching here
-    // still holding it means OPENAI_API_KEY is missing, or someone set
+    // Holding "mock" now means OPENAI_API_KEY is missing, or someone set
     // EXTRACT_PROVIDER=mock against a real account system — either way this
     // is a real user, and inventing their financial records is not an option.
     if (provider === "mock") {
@@ -228,8 +216,7 @@ export async function POST(request: Request) {
 
   /**
    * The single exit that actually reads images. Declared here so every path
-   * above returns through one place — the demo branch included, which is the
-   * one legitimate way to reach the mock with a verified token.
+   * above returns through one place.
    */
   async function run(chosen: string) {
     let reservationId: string | null = null;

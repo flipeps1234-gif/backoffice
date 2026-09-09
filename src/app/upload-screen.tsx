@@ -154,7 +154,7 @@ type Stage = "upload" | "confirm" | "sort";
 
 /**
  * The session gate. The ledger below is keyed on the account, so switching
- * accounts — sign-in, sign-out, tester — REMOUNTS it with fresh state. One
+ * accounts — sign-in, sign-out — REMOUNTS it with fresh state. One
  * account's rows structurally cannot survive into another's session on a
  * shared device: the component holding them is gone.
  */
@@ -197,8 +197,7 @@ export default function UploadScreen() {
   // templates. The app's own UI language stays per-device (the documented
   // law) — this metadata exists only so the emails can localize. Missing
   // metadata is treated as "en" by the templates, so we only write when
-  // the value actually differs. The shared tester account is skipped:
-  // every visitor's device would fight over it.
+  // the value actually differs.
   // Keyed by account, not just language: on a shared device the second
   // account must still get its own stamp, even when both chose Spanish.
   //
@@ -223,7 +222,6 @@ export default function UploadScreen() {
       pushedLang.current = null;
       return;
     }
-    if (user.email?.split("@")[0]?.toLowerCase() === "tester") return;
     const stored =
       typeof user.user_metadata?.lang === "string"
         ? user.user_metadata.lang
@@ -276,8 +274,7 @@ export default function UploadScreen() {
     return <TermsGate onAccept={acceptTerms} />;
   }
 
-  // Configured but signed out: the ledger belongs to an account. Typing the
-  // demo word signs into the shared tester account — a real session.
+  // Configured but signed out: the ledger belongs to an account.
   if (isConfigured && !user) {
     return <SignIn />;
   }
@@ -288,9 +285,6 @@ export default function UploadScreen() {
       accountId={user?.id ?? null}
       email={user?.email ?? null}
       isConfigured={isConfigured}
-      // The tester account's email is created with local part "tester" —
-      // that's the whole convention. Anyone signed into it shares its data.
-      demoAccount={user?.email?.split("@")[0]?.toLowerCase() === "tester"}
     />
   );
 }
@@ -299,12 +293,10 @@ function Ledger({
   accountId,
   email,
   isConfigured,
-  demoAccount,
 }: {
   accountId: string | null;
   email: string | null;
   isConfigured: boolean;
-  demoAccount: boolean;
 }) {
   const { t, tag } = useLocale();
   const [status, setStatus] = useState<Status>("idle");
@@ -921,7 +913,7 @@ function Ledger({
     const chunks = chunkForUpload(usable);
 
     // The paid extraction path is gated on being signed in; the token proves
-    // it. Demo and unconfigured callers send none and get the free mock.
+    // it. Unconfigured local dev sends none and gets the free mock.
     const headers: Record<string, string> = {};
     const session = (await getSupabase()?.auth.getSession())?.data.session;
     if (session) headers.authorization = `Bearer ${session.access_token}`;
@@ -2108,7 +2100,6 @@ function Ledger({
       <SettingsPage
         signedIn={accountId !== null}
         email={email}
-        demoAccount={demoAccount}
         profile={profile}
         // Anonymous has nothing stored to protect; signed-in gates the
         // business Save until the stored profile actually loaded.
@@ -2279,25 +2270,15 @@ function Ledger({
               // fail RLS, and be dropped with its error banner unmounted —
               // silent loss at the exact moment no UI remains to report it.
               await writeChain.current;
-              // The demo account is ONE GoTrue user shared by every visitor,
-              // and auth-js's default scope is "global" — GoTrue deletes every
-              // session for the user, so one visitor's Sign out bounced every
-              // other visitor mid-demo. "local" revokes only this device's
-              // session. Real accounts keep the default: whether their sign-
-              // out should also be per-device is an owner call, not a fix.
-              await getSupabase()?.auth.signOut({
-                scope: demoAccount ? "local" : "global",
-              });
+              // "global" (auth-js's default, spelled out): GoTrue revokes
+              // every session for the account, not just this device's.
+              // Whether sign-out should be per-device instead is an owner
+              // call, not a fix.
+              await getSupabase()?.auth.signOut({ scope: "global" });
             }}
           >
             {t("home.signOut")}
           </button>
-        </p>
-      )}
-
-      {demoAccount && (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          {t("home.demoBanner")}
         </p>
       )}
 

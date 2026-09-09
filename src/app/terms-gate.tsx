@@ -80,7 +80,6 @@ export default function TermsGate({
         <Term title={t("terms.recordTitle")}>{t("terms.recordBody")}</Term>
         <Term title={t("terms.othersTitle")}>{t("terms.othersBody")}</Term>
         <Term title={t("terms.deleteTitle")}>{t("terms.deleteBody")}</Term>
-        <Term title={t("terms.demoTitle")}>{t("terms.demoBody")}</Term>
         <Term title={t("terms.yoursTitle")}>{t("terms.yoursBody")}</Term>
         <Term title={t("terms.earlyTitle")}>{t("terms.earlyBody")}</Term>
       </div>

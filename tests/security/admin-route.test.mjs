@@ -19,13 +19,11 @@ function load(file, imports, env = {}) {
 }
 const owner = { accountId: '22222222-2222-4222-8222-222222222222', email: 'Owner@Example.invalid' };
 const stranger = { accountId: '33333333-3333-4333-8333-333333333333', email: 'someone@example.invalid' };
-const tester = { accountId: '11111111-1111-4111-8111-111111111111', email: 'tester@demo.dem' };
 function route(options = {}) {
   const calls = { rpc: [] };
   const imports = {
     '@/lib/supabase/server': {
-      isDemoAccount: email => email === 'tester@demo.dem',
-      verifyAccessToken: async token => ({ owner, stranger, tester })[token] ?? null,
+      verifyAccessToken: async token => ({ owner, stranger })[token] ?? null,
     },
     '@/lib/supabase/security': {
       securityClient: () => options.noKey ? null : ({
@@ -51,10 +49,9 @@ test('unconfigured (no OWNER_EMAILS or no server key) → 503 for every signed-i
     assert.equal(calls.rpc.length, 0);
   }
 });
-test('signed-in non-owner and the demo account → 403; the RPC is never called', async () => {
-  const { GET, calls } = route({ env: { OWNER_EMAILS: 'owner@example.invalid,tester@demo.dem' } });
+test('signed-in non-owner → 403; the RPC is never called', async () => {
+  const { GET, calls } = route();
   assert.equal((await GET(get('stranger'))).status, 403);
-  assert.equal((await GET(get('tester'))).status, 403, 'listing the demo address must not make it the owner');
   assert.equal(calls.rpc.length, 0);
 });
 test('the owner (case-insensitive, any separator) gets the RPC payload, uncached', async () => {

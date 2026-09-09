@@ -75,16 +75,6 @@ export const messages = {
     es: "Un pago que registras se queda en tu libro — puedes corregirlo, pero no quitarlo uno por uno. Lo que SÍ puedes es borrar tu cuenta completa en Ajustes: todo se elimina para siempre 7 días después de pedirlo, y puedes arrepentirte dentro de esos 7 días.",
     pt: "Um pagamento registrado fica no seu livro — dá para corrigir, mas não remover um por um. O que dá SIM é apagar sua conta inteira em Configurações: tudo é eliminado de vez 7 dias depois do pedido, e você pode mudar de ideia dentro desses 7 dias.",
   },
-  "terms.demoTitle": {
-    en: "The test account is shared and public",
-    es: "La cuenta de prueba es compartida y pública",
-    pt: "A conta de teste é compartilhada e pública",
-  },
-  "terms.demoBody": {
-    en: "Signing in with the demo word puts you in one account that everybody else testing the app also uses. They can see what you put there. Put nothing real in it.",
-    es: "Entrar con la palabra demo te pone en una cuenta que también usan todos los demás que prueban la app. Pueden ver lo que pongas ahí. No pongas nada real.",
-    pt: "Entrar com a palavra demo coloca você numa conta que todo mundo que testa o app também usa. Eles podem ver o que você colocar lá. Não coloque nada de verdade.",
-  },
   "terms.yoursTitle": {
     en: "Your data is yours",
     es: "Tus datos son tuyos",

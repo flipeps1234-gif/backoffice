@@ -24,9 +24,3 @@ export const verifyAccessToken = async (
   if (error || !data.user) return null;
   return { accountId: data.user.id, email: data.user.email ?? null };
 };
-
-/** Identifies the shared demo account (see DEMO_EXTRACTION in the route). */
-export const isDemoAccount = (email: string | null): boolean => {
-  const demoEmail = process.env.DEMO_EMAIL;
-  return Boolean(demoEmail && email && email.toLowerCase() === demoEmail.toLowerCase());
-};

@@ -19,7 +19,6 @@ export const FAQ_KEYS: readonly { q: SiteKey; a: SiteKey }[] = [
   { q: "site.faq6Q", a: "site.faq6A" },
   { q: "site.faq7Q", a: "site.faq7A" },
   { q: "site.faq8Q", a: "site.faq8A" },
-  { q: "site.faq9Q", a: "site.faq9A" },
   { q: "site.faq10Q", a: "site.faq10A" },
   { q: "site.faq11Q", a: "site.faq11A" },
   { q: "site.faq12Q", a: "site.faq12A" },

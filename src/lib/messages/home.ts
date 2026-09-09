@@ -210,11 +210,6 @@ export const messages = {
     es: "Cerrar sesión",
     pt: "Sair",
   },
-  "home.demoBanner": {
-    en: "Shared test account — everyone who types the demo word sees what you save here. Try everything; don't put real numbers in.",
-    es: "Cuenta de prueba compartida — todos los que escriben la palabra demo ven lo que guardas aquí. Prueba todo; no pongas números reales.",
-    pt: "Conta de teste compartilhada — todo mundo que digita a palavra demo vê o que você salva aqui. Teste tudo; não coloque números reais.",
-  },
   "home.snap": {
     en: "Snap a receipt, check, or statement",
     es: "Toma foto de un recibo, cheque o estado de cuenta",

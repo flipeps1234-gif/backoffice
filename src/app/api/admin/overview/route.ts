@@ -1,5 +1,5 @@
 import { securityClient } from "@/lib/supabase/security";
-import { isDemoAccount, verifyAccessToken } from "@/lib/supabase/server";
+import { verifyAccessToken } from "@/lib/supabase/server";
 
 /**
  * The owner's analytics feed for /app/admin. A PUBLIC Vercel endpoint like
@@ -9,9 +9,6 @@ import { isDemoAccount, verifyAccessToken } from "@/lib/supabase/server";
  * does the server-only client call public.admin_overview() (migration
  * 0023) — a SECURITY DEFINER function executable by service_role alone,
  * which is how one caller can see across every account's RLS.
- *
- * The shared demo account can never be the owner, whatever the env says:
- * anyone who types the demo word holds a real tester session.
  *
  * Order matters for what a stranger learns: an unauthenticated probe gets
  * 401 whether or not the feature exists; a signed-in non-owner gets 403
@@ -45,7 +42,7 @@ export async function GET(request: Request) {
   }
 
   const email = verified.email?.toLowerCase() ?? "";
-  if (!email || isDemoAccount(email) || !owners.has(email)) {
+  if (!email || !owners.has(email)) {
     return Response.json({ error: "Not for this account." }, { status: 403 });
   }
 

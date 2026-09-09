@@ -5,7 +5,7 @@ import { useLocale } from "../use-locale";
 import type { MessageKey } from "@/lib/i18n";
 
 /**
- * The public read-only terms page — the SAME nine blocks, in the same
+ * The public read-only terms page — the SAME eight blocks, in the same
  * order, from the same i18n keys as the in-app terms gate (terms-gate
  * .tsx). One source: if a block changes there, this page changes with
  * it in the same commit, by construction.
@@ -18,7 +18,6 @@ const BLOCKS: [MessageKey, MessageKey][] = [
   ["terms.recordTitle", "terms.recordBody"],
   ["terms.othersTitle", "terms.othersBody"],
   ["terms.deleteTitle", "terms.deleteBody"],
-  ["terms.demoTitle", "terms.demoBody"],
   ["terms.yoursTitle", "terms.yoursBody"],
   ["terms.earlyTitle", "terms.earlyBody"],
 ];

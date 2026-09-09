@@ -461,12 +461,6 @@ export const messages = {
     es: "Siempre. Exporta todo en CSV cuando quieras, gratis. Borra tu cuenta en Ajustes y todo se elimina para siempre siete días después — puedes arrepentirte dentro de esos siete días.",
     pt: "Sempre. Exporte tudo em CSV quando quiser, grátis. Apague sua conta em Configurações e tudo é removido para sempre sete dias depois — você pode mudar de ideia dentro desses sete dias.",
   },
-  "site.faq9Q": { en: "Is there a way to try it without an account?", es: "¿Se puede probar sin cuenta?", pt: "Dá para testar sem conta?" },
-  "site.faq9A": {
-    en: "Yes — a shared demo account. Everyone who uses it sees the same test data, so try everything and put nothing real in. The help center explains how.",
-    es: "Sí — una cuenta de prueba compartida. Todos los que la usan ven los mismos datos de prueba, así que prueba todo y no pongas nada real. El centro de ayuda explica cómo.",
-    pt: "Sim — uma conta de teste compartilhada. Todo mundo que a usa vê os mesmos dados de teste, então teste tudo e não coloque nada real. A central de ajuda explica como.",
-  },
   "site.faq10Q": { en: "Who is contado for?", es: "¿Para quién es contado?", pt: "Para quem é o contado?" },
   "site.faq10A": {
     en: "Very small service businesses that get paid through apps and cash — cleaners, landscapers, barbers and anyone who works like them. One owner, one phone.",

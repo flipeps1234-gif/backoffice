@@ -27,7 +27,6 @@ export type OverviewTotals = {
   foundingSignups: number;
   uploads30d: number;
   images30d: number;
-  demoImages30d: number;
   deletionPending: number;
   profiles: number;
 };
@@ -48,7 +47,6 @@ export type AccountRow = {
   createdAt: string;
   lastSignInAt: string | null;
   lang: string;
-  isTester: boolean;
   transactions: number;
   moneyInCents: number;
   moneyOutCents: number;
@@ -121,7 +119,6 @@ export const parseOverview = (raw: unknown): Overview => {
       foundingSignups: num(t.founding_signups),
       uploads30d: num(t.uploads_30d),
       images30d: num(t.images_30d),
-      demoImages30d: num(t.demo_images_30d),
       deletionPending: num(t.deletion_pending),
       profiles: num(t.profiles),
     },
@@ -146,7 +143,6 @@ export const parseOverview = (raw: unknown): Overview => {
       createdAt: str(a.created_at) ?? "",
       lastSignInAt: str(a.last_sign_in_at),
       lang: str(a.lang) ?? "en",
-      isTester: bool(a.is_tester),
       transactions: num(a.transactions),
       moneyInCents: num(a.money_in_cents),
       moneyOutCents: num(a.money_out_cents),
@@ -255,7 +251,6 @@ export const sampleOverview = (now: Date): Overview => {
     createdAt: iso(90 - n * 7),
     lastSignInAt: iso(n),
     lang: ["en", "es", "pt"][n % 3],
-    isTester: false,
     transactions: 40 - n * 4,
     moneyInCents: 250000 - n * 21000,
     moneyOutCents: 42000 - n * 3000,
@@ -271,10 +266,9 @@ export const sampleOverview = (now: Date): Overview => {
   });
   const accounts = [
     ...Array.from({ length: 7 }, (_, i) => account(i + 1, {})),
-    account(8, { email: "tester@sample.example", isTester: true, lang: "en" }),
-    account(9, { deletionRequestedAt: iso(2), transactions: 3, moneyInCents: 9000 }),
+    account(8, { deletionRequestedAt: iso(2), transactions: 3, moneyInCents: 9000 }),
   ];
-  const totals = accounts.filter((a) => !a.isTester);
+  const totals = accounts;
   const sum = (pick: (a: AccountRow) => number) => totals.reduce((s, a) => s + pick(a), 0);
   return {
     generatedAt: now.toISOString(),
@@ -298,7 +292,6 @@ export const sampleOverview = (now: Date): Overview => {
       foundingSignups: 41,
       uploads30d: dailyUploads.reduce((s, d) => s + d.uploads, 0),
       images30d: dailyUploads.reduce((s, d) => s + d.images, 0),
-      demoImages30d: 9,
       deletionPending: 1,
       profiles: totals.filter((a) => a.hasProfile).length,
     },

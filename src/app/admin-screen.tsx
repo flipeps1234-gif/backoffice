@@ -74,8 +74,6 @@ export default function AdminScreen() {
   const sample = process.env.NODE_ENV !== "production" && params.get("sample") === "1";
   const [state, setState] = useState<State>({ kind: "idle" });
   const [sortKey, setSortKey] = useState<SortKey>("lastActivityAt");
-  const [showTester, setShowTester] = useState(false);
-
 
   // The fetch lives outside the component and RETURNS the next state; the
   // only setState runs inside .then — never synchronously in the effect
@@ -134,7 +132,7 @@ export default function AdminScreen() {
     return <p className="text-sm text-neutral-500">Loading…</p>;
   }
 
-  return <Overview data={state.data} fetchedAt={state.fetchedAt} onRefresh={refresh} sortKey={sortKey} onSort={setSortKey} showTester={showTester} onToggleTester={() => setShowTester((v) => !v)} />;
+  return <Overview data={state.data} fetchedAt={state.fetchedAt} onRefresh={refresh} sortKey={sortKey} onSort={setSortKey} />;
 }
 
 function Note({ children }: { children: React.ReactNode }) {
@@ -151,32 +149,27 @@ function Overview({
   onRefresh,
   sortKey,
   onSort,
-  showTester,
-  onToggleTester,
 }: {
   data: Overview;
   fetchedAt: Date;
   onRefresh: () => void;
   sortKey: SortKey;
   onSort: (key: SortKey) => void;
-  showTester: boolean;
-  onToggleTester: () => void;
 }) {
   const t = data.totals;
   const rows = useMemo(() => {
-    const visible = data.accounts.filter((a) => showTester || !a.isTester);
     const value = (a: AccountRow): number | string =>
       sortKey === "lastActivityAt"
         ? a.lastActivityAt ?? a.lastSignInAt ?? ""
         : sortKey === "createdAt"
           ? a.createdAt
           : a[sortKey];
-    return [...visible].sort((a, b) => {
+    return [...data.accounts].sort((a, b) => {
       const va = value(a);
       const vb = value(b);
       return va < vb ? 1 : va > vb ? -1 : 0;
     });
-  }, [data.accounts, sortKey, showTester]);
+  }, [data.accounts, sortKey]);
 
   const weeklyMoney = data.weekly.map((w) => w.moneyInCents);
   const weeklyAccounts = data.weekly.map((w) => w.newAccounts);
@@ -190,7 +183,7 @@ function Overview({
         <div>
           <h2 className="text-sm font-semibold">Analytics</h2>
           <p className="text-sm text-neutral-500">
-            Every account except the shared demo. Money is what your users logged, not revenue to you.
+            Every account. Money is what your users logged, not revenue to you.
           </p>
         </div>
         <button
@@ -212,7 +205,7 @@ function Overview({
         <Tile label="Owed across books" value={formatCents(t.owedCents)} tone="amber" note={`${t.salesOpen} open sales`} />
         <Tile label="Payments" value={String(t.transactions)} note={`${t.transactionsScreenshot} from screenshots · ${t.transactionsManual} typed`} />
         <Tile label="Sales" value={String(t.sales)} note={`${t.salesPaid} paid · ${t.salesExpected} expected · ${t.salesOpen} open`} />
-        <Tile label="Uploads, 30 days" value={String(t.uploads30d)} note={`${t.images30d} images · demo used ${t.demoImages30d}`} />
+        <Tile label="Uploads, 30 days" value={String(t.uploads30d)} note={`${t.images30d} images`} />
       </section>
 
       {/* Trends — two 12-week lines and a 30-day column chart. */}
@@ -225,7 +218,7 @@ function Overview({
           <Sparkline values={weeklyAccounts} className="text-foreground" />
           <Legend first={data.weekly[0]?.week} last={data.weekly.at(-1)?.week} />
         </Card>
-        <Card title="Images extracted per day" sub="last 30 days, demo included">
+        <Card title="Images extracted per day" sub="last 30 days">
           <div className="flex h-16 items-end gap-px" aria-hidden="true">
             {uploadBars.map((h, i) => (
               <div
@@ -295,10 +288,6 @@ function Overview({
                 {label}
               </button>
             ))}
-            <label className="ml-2 inline-flex items-center gap-1">
-              <input type="checkbox" checked={showTester} onChange={onToggleTester} />
-              show demo account
-            </label>
           </div>
         </div>
         <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
@@ -323,7 +312,6 @@ function Overview({
                   <td className="px-3 py-2">
                     <div className="truncate" title={a.id}>{a.email ?? "—"}</div>
                     <div className="flex gap-1 text-xs">
-                      {a.isTester && <Chip tone="amber">demo</Chip>}
                       {a.deletionRequestedAt && <Chip tone="red">deleting</Chip>}
                       {a.hasProfile && <Chip tone="neutral">profile</Chip>}
                       {a.recurringActive > 0 && <Chip tone="neutral">{a.recurringActive} recurring</Chip>}
@@ -351,8 +339,8 @@ function Overview({
       </section>
 
       <p className="text-xs text-neutral-500">
-        Generated {new Date(data.generatedAt).toLocaleString()} · totals exclude the shared demo account · a sale&apos;s
-        total is the sum of its lines · owed = open sales (expected counts as received, the app&apos;s law).
+        Generated {new Date(data.generatedAt).toLocaleString()} · a sale&apos;s total is the sum of its lines ·
+        owed = open sales (expected counts as received, the app&apos;s law).
       </p>
     </div>
   );

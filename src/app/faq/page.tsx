@@ -17,7 +17,6 @@ export const metadata: Metadata = pageMetadata({
     "contado faq",
     "is contado free",
     "contado questions",
-    "contado demo account",
     "bookkeeping app faq",
   ],
 });

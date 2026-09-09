@@ -17,7 +17,6 @@ const BLOCKS: [MessageKey, MessageKey][] = [
   ["terms.othersTitle", "terms.othersBody"],
   ["terms.yoursTitle", "terms.yoursBody"],
   ["terms.deleteTitle", "terms.deleteBody"],
-  ["terms.demoTitle", "terms.demoBody"],
 ];
 
 // The fuller disclosure: what we store, who processes it, how long,

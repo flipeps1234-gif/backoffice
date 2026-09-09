@@ -2,8 +2,8 @@
  * First-use acknowledgement.
  *
  * Stored per device, not per account, because the thing being acknowledged is
- * what happens on THIS device — images leaving it, a shared demo account on a
- * borrowed phone. It is also the only store available before sign-in, and the
+ * what happens on THIS device — images leaving it, on a phone that may be
+ * borrowed. It is also the only store available before sign-in, and the
  * disclosure has to come before the email does.
  *
  * Versioned so a material change can ask again. Bumping the version re-prompts

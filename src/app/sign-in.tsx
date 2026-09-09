@@ -23,11 +23,7 @@ import { useLocale } from "./use-locale";
  * owner-side template edit rather than a repo change. It stays reverted
  * until someone decides to make it. The home-screen-app caveat below is
  * the price of the link, and it is real.
- *
- * Typing the demo word instead signs into the shared TESTER account — a
- * real Supabase account with real saved data, no inbox round-trip.
  */
-const DEMO_WORD = "tester";
 
 /**
  * Supabase hands back the browser's own network error verbatim, and the
@@ -182,43 +178,6 @@ export default function SignIn() {
     };
   }, [cooldownUntil]);
 
-  async function enterDemo() {
-    const supabase = getSupabase();
-    if (!supabase) return;
-
-    setBusy(true);
-    setError("");
-
-    try {
-      // The server holds the tester credentials; the word is just the knock.
-      const response = await fetch("/api/demo-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ word: DEMO_WORD }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setError(data.error ?? t("signin.demoFailed"));
-        return;
-      }
-      // A real session: onAuthStateChange fires and the app opens signed in.
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-      });
-      // Same treatment as sendLink — setSession does its own network call,
-      // so it can fail the same way and used to print the same raw string.
-      if (sessionError) {
-        console.error("Demo sign-in failed:", sessionError);
-        setError(humanAuthError(sessionError.message, t, sessionError.code));
-      }
-    } catch {
-      setError(t("signin.demoUnreachable"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function sendLink() {
     const supabase = getSupabase();
     if (!supabase) return;
@@ -284,10 +243,6 @@ export default function SignIn() {
 
   async function submitEmail(event: React.FormEvent) {
     event.preventDefault();
-    if (email.trim().toLowerCase() === DEMO_WORD) {
-      await enterDemo();
-      return;
-    }
     setResent(false);
     await sendLink();
   }
@@ -384,12 +339,11 @@ export default function SignIn() {
         >
           {t("signin.emailLabel")}
         </label>
-        {/* type=text, not email: the browser's own validation would reject
-            the demo word before submit ever ran. Supabase still rejects
-            malformed real addresses server-side. */}
+        {/* The browser's own validation catches a malformed address before
+            an email is spent on it; Supabase still rejects server-side. */}
         <input
           id="email"
-          type="text"
+          type="email"
           inputMode="email"
           required
           autoComplete="email"

@@ -264,11 +264,6 @@ export const messages = {
     es: "Cancelar el borrado",
     pt: "Cancelar a exclusão",
   },
-  "settings.deleteDemo": {
-    en: "The shared test account can't be deleted.",
-    es: "La cuenta de prueba compartida no se puede borrar.",
-    pt: "A conta de teste compartilhada não pode ser apagada.",
-  },
   "settings.deleteFailed": {
     en: "That didn't go through. Check your connection and try again.",
     es: "No se pudo. Revisa tu conexión e inténtalo de nuevo.",

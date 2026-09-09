@@ -362,7 +362,6 @@ function BusinessForm({
 export default function SettingsPage({
   signedIn,
   email,
-  demoAccount,
   profile,
   profileReady,
   hasSaveError,
@@ -380,7 +379,6 @@ export default function SettingsPage({
 }: {
   signedIn: boolean;
   email: string | null;
-  demoAccount: boolean;
   profile: BusinessProfile;
   /** False until the stored profile actually LOADED — saving blank
    *  fields over an unloaded profile would wipe it (review catch). */
@@ -580,12 +578,7 @@ export default function SettingsPage({
             {t("settings.privacyPromise")}
           </p>
 
-          {signedIn && demoAccount && (
-            <p className="text-xs text-neutral-500">
-              {t("settings.deleteDemo")}
-            </p>
-          )}
-          {signedIn && !demoAccount && email && (
+          {signedIn && email && (
             <div className="rounded-lg border border-red-200 p-3 dark:border-red-900">
               {purgeDate ? (
                 <div className="space-y-2">

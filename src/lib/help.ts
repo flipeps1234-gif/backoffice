@@ -14,7 +14,6 @@ export const HELP_SLUGS = [
   "owed-and-matching",
   "taxes-and-exports",
   "account-and-privacy",
-  "demo-account",
 ] as const;
 
 export type HelpSlug = (typeof HELP_SLUGS)[number];

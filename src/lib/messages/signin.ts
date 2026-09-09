@@ -1,7 +1,6 @@
 /**
  * Sign-in screen: email field, magic-link sent state, and the human
- * rewrites of network errors. The demo word itself ("tester") is a
- * credential, not copy — it is never translated.
+ * rewrites of network errors.
  */
 export const messages = {
   "signin.emailLabel": {
@@ -92,16 +91,6 @@ export const messages = {
     en: "Something went wrong. Try again in a moment.",
     es: "Algo salió mal. Intenta de nuevo en un momento.",
     pt: "Algo deu errado. Tente de novo em um instante.",
-  },
-  "signin.demoFailed": {
-    en: "The test account couldn't sign in right now.",
-    es: "La cuenta de prueba no pudo entrar en este momento.",
-    pt: "A conta de teste não conseguiu entrar agora.",
-  },
-  "signin.demoUnreachable": {
-    en: "Couldn't reach the server. Check your connection and try again.",
-    es: "No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.",
-    pt: "Não deu para conectar ao servidor. Confira sua conexão e tente de novo.",
   },
   "signin.google": {
     en: "Continue with Google",
