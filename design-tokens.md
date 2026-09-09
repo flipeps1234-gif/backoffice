@@ -42,7 +42,6 @@ Warning amber (flags, owed-age, attention) — `amber`:
 - flagged input: `border-amber-500 ring-2 ring-amber-200` (sheet)
 - notice box: `bg-amber-50 border-amber-200 text-amber-900` (sheet)
 - owed line: `text-amber-700 dark:text-amber-400` (running-totals)
-- shared-account banner: `border-amber-300 bg-amber-50 text-amber-900` (upload-screen)
 
 Danger red (money out, destructive) — `red`:
 - `text-red-500` money-out amounts, `text-red-700 dark:text-red-400` negative net

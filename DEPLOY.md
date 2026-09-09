@@ -164,13 +164,12 @@ The owner's view across every account: money logged (business in / out,
 owed = OPEN sales), payments and sales counts, uploads and images per
 day, new accounts and money per week, languages, founding signups,
 deletions pending, storage against the 500 MB ceiling, and the account
-list (email, joined, last active, counts, money, flags). Totals exclude
-the shared demo account; it is listed, flagged, behind a checkbox.
+list (email, joined, last active, counts, money, flags).
 
 How it is gated — three checks in order, in `src/app/api/admin/overview`:
 a valid session token (else 401); the route configured (else 503); the
-session's email on **`OWNER_EMAILS`** and not the demo account (else
-403). Only then does the server-only client call
+session's email on **`OWNER_EMAILS`** (else 403). Only then does the
+server-only client call
 `public.admin_overview()` — migration **0023**, one read-only SECURITY
 DEFINER function executable by service_role alone, which returns
 aggregates and per-account counts and never memos, payers, customer
@@ -181,9 +180,9 @@ in Vercel Production (Secret; owner's choice, given in chat), applied
 by a redeploy and verified live: anonymous 401, a demo session 403
 (before the variable it was 503). Sign in to the app with that exact
 address and open /app/admin. To add or change an owner: edit the
-variable (comma-separated, case does not matter) and redeploy. Never
-list the demo address — it is refused anyway. The same `SUPABASE_SERVICE_ROLE_KEY`
-from the 0022 rollout is what the route reads with.
+variable (comma-separated, case does not matter) and redeploy. The same
+`SUPABASE_SERVICE_ROLE_KEY` from the 0022 rollout is what the route reads
+with.
 
 Verifying: signed out, `/app/admin` says sign in first; signed in as a
 non-owner it says the page is for the owner's account; `curl -s -o
@@ -287,7 +286,9 @@ apex (orange cloud, owner's choice) with SSL **Full (strict)** (Vercel
 presents a valid Let's Encrypt cert at the origin), minimum TLS **1.2**,
 Web Analytics auto-injection **off** (it was injecting a beacon the CSP
 blocks and the privacy page never disclosed), one rate-limit rule (5
-requests per 10 s per IP on `/api/demo-session` and `/api/founding`), and a
+requests per 10 s per IP on `/api/demo-session` and `/api/founding` — the
+demo-session route was removed 2026-09-08, so that half of the rule now
+guards a 404 and can be dropped at leisure), and a
 redirect rule sending `www.` to the apex (a proxied `www` CNAME exists for
 it). The routes read `cf-connecting-ip` before `x-forwarded-for` because
 Vercel overwrites the latter with the Cloudflare edge IP. DNS: DMARC
@@ -354,17 +355,7 @@ That is the custom URL scheme the iPhone app registers; the emailed
 magic link redirects there so the session lands in the app instead of
 dying in Safari. Same exact-match rule — the scheme plus that exact
 path, nothing wildcarded. Until this is added, native email sign-in
-sends the link but tapping it opens the website instead of the app;
-the demo word works regardless.
-
-### 3. Set `DEMO_EXTRACTION=mock` in Vercel — costs you nothing
-
-The shared tester account otherwise uses the real OpenAI provider, and the
-demo word ships in the public JavaScript bundle. The rate limiter is an
-in-memory `Map`, so it is per serverless instance and cannot hold a line.
-Anyone who views source can spend against your $50 cap.
-
-Setting this flips tester to the free mock with no code change.
+sends the link but tapping it opens the website instead of the app.
 
 ### Connecting Google Analytics (one time, ~5 minutes)
 
@@ -429,8 +420,6 @@ built against a Supabase host that no longer exists in DNS.
 | `NEXT_PUBLIC_SUPABASE_URL` | Vercel | No accounts; in production `/api/extract` returns 503 |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Vercel | Same |
 | `OPENAI_API_KEY` | Vercel | Uploads return 503 — deliberately, rather than inventing rows |
-| `DEMO_EMAIL` / `DEMO_PASSWORD` | Vercel, server-only | The demo word stops working. Migration 0019 makes the tester row's password/email/metadata read-only at the database (any visitor holds a real tester session and could otherwise reset its password from the console and lock every visitor out); to rotate `DEMO_PASSWORD` on purpose, run `update public.tester_lock set enabled = false;`, change it, then set `enabled = true` again (the SQL-editor role does not own `auth.users`, so the switch lives in a table it does own — never `disable trigger`) |
-| `DEMO_EXTRACTION=mock` | Vercel | Tester spends your OpenAI budget |
 | `NEXT_PUBLIC_SUPPORT_WHATSAPP` | Vercel, optional | Settings shows "Support line — coming soon" instead of the WhatsApp link. Digits only, country code first (e.g. `15551234567`); build-time inlined, so set it and redeploy |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` | Vercel, optional | The contact page and footer show no email link. Build-time inlined |
 | `NEXT_PUBLIC_SITE_URL` | Vercel, optional | Unset = `https://getcontado.com`, the real domain (primary on Vercel since 2026-08-22; the `*.vercel.app` origin 307s to it). Only set this if the domain ever changes — then redeploy, since every absolute URL on the site (canonicals, sitemap, robots, share cards, JSON-LD) reads it from `src/lib/site.ts` |
@@ -539,12 +528,11 @@ that were written while the bad version was live. The app has no delete.
 
 | Limit | Where it bites first |
 |---|---|
-| OpenAI $50/month | Uploads start failing; set `DEMO_EXTRACTION=mock` first |
+| OpenAI $50/month | Uploads start failing (503 — the route never invents rows) |
 | Vercel 4.5MB request body | Handled client-side by compression + chunking at 4 files |
 | **Vercel Hobby plan — BLOCKING before any launch push** | Hobby is licensed for non-commercial personal use only, and getcontado.com advertises a product: Vercel can pause the deployment (503 DEPLOYMENT_PAUSED) on policy alone. Separately, Hobby caps functions at 360 GB-hours/month: each `/api/extract` call holds a 2 GB function open for as long as OpenAI takes, so ~1,000 twenty-second calls/month (a few hundred active users) hits the wall and every function stops until the 30-day window resets. Upgrade the team to Pro (Settings → Billing) — it removes the licence exposure and turns the hard stop into billed usage with Spend Management |
 | Vercel function duration | A large batch is sequential model calls — long uploads. `/api/extract` now exports `maxDuration = 60` and aborts the OpenAI fetch at 55 s, so one stalled model call costs a minute of function time, not the 300 s platform default |
 | **Supabase auth emails — one project-wide bucket, 30/hour** | Every magic link, signup and "resend" tap draws one email from the same bucket (Auth → Rate Limits → "emails sent"; the GoTrue log shows it moving from 2/h to 30/h when custom SMTP went live). 30/h × 24 = 720 auth emails/day; Google Workspace allows 2,000/day per sending account, so Supabase binds first. It has already tripped: three 429s on launch night. The app now shows a localized "too many sign-in emails" message and a 60 s resend countdown instead of raw English. Owner side: raise the cap to 60–80/h (stays under Google's 2,000/day) and turn on Turnstile/hCaptcha for the OTP endpoint — anyone with curl and the public anon key can drain 30/h with 30 junk addresses in seconds |
 | Supabase 500MB database | **Photos.** Each sale photo is ~400KB of base64 IN the row (migration 0010), so 500MB is roughly **1,200–1,500 photos project-wide**, not "thousands of rows away". Text-only rows barely register. When photo volume becomes real, move bytes to Supabase Storage (1GB free, separate meter) — an architecture change to do deliberately |
 | Supabase egress (~5GB/month free) | Was the nearest cliff: the app re-downloaded every photo on every boot. Since the 2026-08-27 fix the boot pulls ids only and photo bytes load per client on demand, so egress now scales with photos actually viewed |
-| Supabase Auth /token per-IP rate limit (~30 per 5 min) | All demo sign-ins leave Vercel's shared egress IPs, so ~30 demo starts per 5 min site-wide trips it. The route now answers 429 "give it a minute" instead of a fake outage |
 | Supabase pausing after ~7 idle days | **Has already happened once (2026-08-12), with the cron in place.** Treat the ping as risk reduction, not a guarantee |

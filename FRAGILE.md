@@ -90,21 +90,15 @@ address, loses a payment.
 *Trigger:* two real payments, same payer, same amount, same day.
 *User sees:* one row. Their total is short and nothing says why.
 
-## 6. Anyone who learns the demo word spends your OpenAI budget
+## 6. Anyone who learned the demo word could spend your OpenAI budget — RESOLVED 2026-09-08
 
-[route.ts:125](src/app/api/extract/route.ts:125): the shared tester account
-gets the **real** provider. `DEMO_EXTRACTION=mock` flips it back, and that
-variable is not set.
-
-The rate limiter is an in-memory `Map`
-([route.ts:36](src/app/api/extract/route.ts:36)) — per serverless instance,
-so the real ceiling is 30/minute × however many instances Vercel spins up.
-The code says so honestly in its own comment; it is a brake on casual
-abuse, not a budget control.
-
-*Trigger:* the demo word reaching anyone who wants to burn $50.
-*You see:* an OpenAI bill, at the cap, with no per-user attribution.
-*Fix available today:* set `DEMO_EXTRACTION=mock` in Vercel. No code change.
+The shared tester login is gone from the code (`/api/demo-session`, the
+sign-in word and `DEMO_*` env vars were removed 2026-09-08; CLAUDE.md
+records it). Every `/api/extract` call now belongs to a real, verified
+account with its own database image quota (0022), and the OpenAI spend cap
+stays the money ceiling. The per-instance in-memory brake
+([route.ts:36](src/app/api/extract/route.ts:36)) is still only a brake on
+casual abuse, as its comment says — the quota is the control.
 
 ## 7. Venmo social-feed detection is one sentence of prompt
 

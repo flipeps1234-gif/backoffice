@@ -2,6 +2,26 @@
 
 # CLAUDE.md — read this before doing anything
 
+## Demo login REMOVED 2026-09-08
+
+The shared "tester" login is gone from the web code: `/api/demo-session`
+is deleted, the sign-in screen no longer recognizes a demo word (magic
+link + Google only), `isDemoAccount`, `DEMO_EMAIL`/`DEMO_PASSWORD`/
+`DEMO_WORD`/`DEMO_EXTRACTION` and every demo branch (extract mock
+opt-in, admin exclusion and checkbox, local-scope sign-out, banner,
+"can't be deleted" line, terms block, FAQ, help article) are removed,
+with their message keys in all three languages. Why: one public account
+shared by every visitor was the App Store readiness audit's top finding
+(a reviewer path that broke, a spend surface, and terms that had to
+disclose it); the landing playground (real components, nothing saved) is
+the try-before-you-sign-in surface now, and App Review gets Sign in with
+Apple on native. The DATABASE keeps its objects untouched for now —
+`tester_lock`, `protect_tester_identity`, `enforce_demo_cap`,
+`reset_demo_rows`, the `demo_images_daily` limit, `admin_overview`'s
+tester flag and the tester auth user — until a later migration retires
+them; migrations 0001–0023 are history and are never edited. Every demo
+mention below this section is a dated record of how things were.
+
 ## Security follow-up 2026-09-04 — DEPLOYED to production 2026-09-04 19:14–19:30 CDT
 
 Branch `fix/security-review-2026-09-04` fixes the review's remaining gaps.
@@ -98,11 +118,10 @@ screenshot/typed split, sales by state, uploads and images in 30 days),
 reach facts (clients, active recurring, profiles, founding signups,
 deletions pending), languages, storage against the 500 MB ceiling with
 the biggest tables, and a sortable account list (email, joined, last
-active, counts, money, demo/deleting/profile/recurring chips; the demo
-account behind a checkbox and excluded from every total). English only on
+active, counts, money, deleting/profile/recurring chips). English only on
 purpose — owner tooling behind `OWNER_EMAILS`, not a user surface, so it
 stays out of the trilingual dictionary. Data path: `/api/admin/overview`
-(token → 401, unconfigured → 503, non-owner or the demo account → 403)
+(token → 401, unconfigured → 503, non-owner → 403)
 calls `public.admin_overview()` (migration 0023, SECURITY DEFINER,
 service_role only, returns aggregates + per-account counts, never
 memos/payers/names/notes/photos) through the server-only client. Pure
@@ -286,8 +305,8 @@ already use. What shipped:
   (disallows /app and /api), opengraph-image.tsx drawn from the
   token palette. Everything prerenders static.
 - Deviation from the spec, on purpose: logged-out visitors to /app
-  see the app's own sign-in gate (which IS the front door — demo
-  word included), not a redirect to the landing; a redirect would
+  see the app's own sign-in gate (which IS the front door), not a
+  redirect to the landing; a redirect would
   kill the try-anonymously flow.
 - Landing/help/legal browser-verified EN + ES (PT is same-mechanism,
   same-authorship). Founding capture NOT tested against production —
