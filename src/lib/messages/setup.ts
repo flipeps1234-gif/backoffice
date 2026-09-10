@@ -11,6 +11,14 @@ export const messages = {
     es: "Te damos la bienvenida",
     pt: "Boas-vindas",
   },
+  // Review mode (Settings → "Show the welcome tour"): the account has
+  // been using the app, so the header names the tour rather than
+  // welcoming them again — same nouns as settings.showTour.
+  "setup.headerReview": {
+    en: "The welcome tour",
+    es: "El recorrido de bienvenida",
+    pt: "O tour de boas-vindas",
+  },
   "setup.stepOf": {
     en: "Step {current} of {total}",
     es: "Paso {current} de {total}",
@@ -67,12 +75,12 @@ export const messages = {
   "setup.welcomeHeadline": {
     en: "Your payment screenshots become real books.",
     es: "Tus capturas de pagos se vuelven libros de verdad.",
-    pt: "Seus prints de pagamentos viram um livro-caixa de verdade.",
+    pt: "Suas capturas de pagamentos viram um livro-caixa de verdade.",
   },
   "setup.welcome1": {
     en: "Upload screenshots of Venmo, Cash App or Zelle — every payment in them becomes a row.",
     es: "Sube capturas de Venmo, Cash App o Zelle — cada pago que aparece se vuelve una fila.",
-    pt: "Envie prints do Venmo, Cash App ou Zelle — cada pagamento que aparece vira uma linha.",
+    pt: "Envie capturas do Venmo, Cash App ou Zelle — cada pagamento que aparece vira uma linha.",
   },
   "setup.welcome2": {
     en: "Swipe each row: right is business, left is personal.",
@@ -146,7 +154,9 @@ export const messages = {
   "setup.done1": {
     en: "Upload screenshots — tap the box at the top to pick them, then confirm each row.",
     es: "Subir capturas — toca el recuadro de arriba para elegirlas y confirma cada fila.",
-    pt: "Enviar prints — toque no quadro de cima para escolher e confirme cada linha.",
+    // "capturas", not "prints": this line points at the hub's own box,
+    // whose label reads "Adicione capturas…" (shell.dropPrompt).
+    pt: "Enviar capturas — toque no quadro de cima para escolher e confirme cada linha.",
   },
   "setup.done2": {
     en: "Log an expense — a quick numpad for cash you spent.",

@@ -151,6 +151,10 @@ const localToday = (): string => {
 const READY_SHARE = 0.15;
 
 type Status = "idle" | "reading" | "error";
+/** Upper bound on the boot "Loading" line while the welcome-tour
+ *  decision waits on the three loads: past this, an unanswered request
+ *  resolves to "skip" and the hub (with its Sign out) renders. */
+const SETUP_DECISION_TIMEOUT_MS = 15_000;
 /** upload → confirm what we read → sort each one → totals. */
 type Stage = "upload" | "confirm" | "sort";
 
@@ -615,11 +619,13 @@ function Ledger({
     transactionsLoad
       .then((rows) => {
         if (cancelled) return;
-        // MERGE, never replace: on a slow connection the user can log an
-        // expense in the seconds before this snapshot lands, and the
-        // snapshot predates that insert — assignment would vanish the
-        // entry from every total and invite a re-enter (a permanent
-        // duplicate money row). Same rule for sales/services/clients.
+        // MERGE, never replace: a signed-in boot now waits on the tour
+        // decision before the hub renders, but a review opened from
+        // Settings, anonymous mode and a boot the decision timer released
+        // early can all have a row logged in memory before this snapshot
+        // lands — assignment would vanish the entry from every total and
+        // invite a re-enter (a permanent duplicate money row). Same rule
+        // for sales/services/clients.
         setTransactions((current) => {
           const seen = new Set(rows.map((r) => r.id));
           return [...current.filter((tx) => !seen.has(tx.id)), ...rows];
@@ -676,15 +682,41 @@ function Ledger({
       })
       .catch((cause) => console.error("Profile load failed:", cause));
 
-    // The welcome-tour decision, once: every fact loaded → the rule;
-    // any load failed → no tour (the hub must never be held back by a
-    // bad connection, and an unloaded ledger must never read as empty).
-    // Server row counts, not the arrays — recurring generation may add
-    // instances in memory before this settles.
+    // The welcome-tour decision, once, LATCHED (every write below goes
+    // through the updater and only replaces "pending"): the first fact
+    // that rules the tour out — a profile row, any ledger row — decides
+    // "skip" the moment it lands, so an existing account is not held
+    // behind the slowest load (a few thousand transactions page in at
+    // 1000 a call); only the all-empty case waits for all three. A
+    // failed load → skip; a load that neither resolves nor rejects
+    // (paginate has no timeout) is bounded by the timer below, so a
+    // stalled request can never hold "Loading" — and hide Sign out —
+    // forever. Server row counts, not the arrays: recurring generation
+    // may add instances in memory before this settles.
+    const latch = (decision: "show" | "skip") =>
+      setSetupDecision((current) => (current === "pending" ? decision : current));
+    // Each short-circuit is its own chain: the loads' real failure
+    // handlers are attached above/below, and the Promise.all catch is
+    // the one that turns a rejection into "skip".
+    profileLoad
+      .then((row) => {
+        if (!cancelled && row !== null) latch("skip");
+      })
+      .catch(() => {});
+    transactionsLoad
+      .then((rows) => {
+        if (!cancelled && rows.length > 0) latch("skip");
+      })
+      .catch(() => {});
+    salesLoad
+      .then((rows) => {
+        if (!cancelled && rows.length > 0) latch("skip");
+      })
+      .catch(() => {});
     Promise.all([transactionsLoad, salesLoad, profileLoad])
       .then(([txRows, saleRows, row]) => {
         if (cancelled) return;
-        setSetupDecision(
+        latch(
           needsSetup({
             profileExists: row !== null,
             transactionCount: txRows.length,
@@ -695,8 +727,11 @@ function Ledger({
         );
       })
       .catch(() => {
-        if (!cancelled) setSetupDecision("skip");
+        if (!cancelled) latch("skip");
       });
+    const decisionTimer = setTimeout(() => {
+      if (!cancelled) latch("skip");
+    }, SETUP_DECISION_TIMEOUT_MS);
 
     loadDeletionRequest()
       .then((requestedAt) => {
@@ -865,6 +900,7 @@ function Ledger({
 
     return () => {
       cancelled = true;
+      clearTimeout(decisionTimer);
     };
   }, [accountId, persist]);
 
@@ -1918,6 +1954,16 @@ function Ledger({
     }
   }
 
+  /** ONE update path, likewise: Products' tap-to-edit and the tour's
+   *  services step (a typo'd name or a 12.00 that should be 120.00 is
+   *  fixed where it was typed, not discovered later under Products). */
+  function updateService(service: Service) {
+    setServices((current) =>
+      current.map((old) => (old.id === service.id ? service : old)),
+    );
+    void persist(() => saveService(service));
+  }
+
   function routeLogAgain(prefill: LogAgainPrefill) {
     // Same guard as openClientFromSearch: on desktop the rail stays
     // interactive while a takeover holds a half-typed entry, and this
@@ -2111,12 +2157,7 @@ function Ledger({
       <ProductsPage
         services={services}
         onCreate={createService}
-        onUpdate={(service) => {
-          setServices((current) =>
-            current.map((old) => (old.id === service.id ? service : old)),
-          );
-          void persist(() => saveService(service));
-        }}
+        onUpdate={updateService}
         onClose={() => setShowProducts(false)}
       />
     );
@@ -2260,6 +2301,14 @@ function Ledger({
         // seed blank fields whose Finish could overwrite a real row.
         onShowTour={() => {
           setShowSettings(false);
+          // The tour branch renders the hub's lost-write banner (a
+          // service saved on step 3 goes through the persist queue). A
+          // transient earlier failure must not paint over the review;
+          // a STICKY one (saveFailed: an unsaved batch) must stay up.
+          if (!saveFailed) {
+            setStatus("idle");
+            setError("");
+          }
           setTourOpen(true);
         }}
         onClose={() => setShowSettings(false)}
@@ -2289,7 +2338,11 @@ function Ledger({
   const accountLine = accountId && (
     <p className="flex items-center justify-between text-xs text-neutral-500">
       <span>{email}</span>
-      <button type="button" className="hover:underline" onClick={signOut}>
+      {/* min-h-11: inside the tour this is the ONLY exit that does not
+          stamp the account "tour done" — a full tap target, not a
+          16px text line (design-tokens.md). The row is flex/items-center,
+          so the hub's layout does not move. */}
+      <button type="button" className="min-h-11 px-2 hover:underline" onClick={signOut}>
         {t("home.signOut")}
       </button>
     </p>
@@ -2801,7 +2854,12 @@ function Ledger({
       next.businessName !== profile.businessName ||
       next.ownerName !== profile.ownerName ||
       next.usState !== profile.usState;
-    if (profileExists && !changed) {
+    // The no-op is about the MODE, not the row: a review never writes
+    // without a change (an account with ledger rows but no profile row
+    // — one that never touched Settings — reaches the wizard only this
+    // way, and "Close" must not create a blank row behind copy that
+    // says it just closes). First use always creates the row.
+    if ((profileExists || tourOpen) && !changed) {
       setSetupError("");
       setTourOpen(false);
       return;
@@ -2853,10 +2911,22 @@ function Ledger({
             {setupError}
           </p>
         )}
+        {/* The hub's lost-write banner, here too: a service saved on
+            step 3 goes through the persist queue, whose failures report
+            to `status`/`error` — and the hub return below never renders
+            while the tour is up. Without this an offline Save shows a
+            card under copy that says it is saved, and the red line
+            appears only after Finish, about nothing on screen. */}
+        {status === "error" && (
+          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+            {error}
+          </p>
+        )}
         <SetupWizard
           profile={profile}
           services={services}
           onCreateService={createService}
+          onUpdateService={updateService}
           onFinish={endSetup}
           onSkip={endSetup}
           saving={setupSaving}

@@ -12,12 +12,18 @@ no business_profiles row AND zero transactions AND zero sales — all
 three LOADED facts, never assumed (a failed loadProfile still throws
 and is never read as "no row"). THE DECISION IS LATCHED AT BOOT
 (review fix, same day): a signed-in Ledger shows the boot "Loading"
-line — not the hub — until the transaction, sale and profile loads
-have all landed, then decides ONCE from the server row counts
-(`setupDecision` pending → show | skip); any of the three failing
-resolves to skip, so a bad connection never holds the hub back, and
-nothing that empties the in-memory ledger later can re-summon the
-tour. A new account therefore meets the tour first, never hub → tour
+line — not the hub — until the decision lands, decided ONCE from the
+server row counts and latched (`setupDecision` pending → show | skip,
+every write through an updater that only replaces "pending"). Second
+review fix: the decision SHORT-CIRCUITS — the first fact that rules
+the tour out (a profile row, any transaction, any sale) decides
+"skip" the moment it lands, so an existing account is never held
+behind the slowest load (transactions page in 1000 a call); only the
+all-empty case waits for all three; any of the three failing resolves
+to skip; and a 15 s timer (SETUP_DECISION_TIMEOUT_MS) resolves a
+stalled request to skip so "Loading" can never hide the hub — or
+Sign out — forever. Nothing that empties the in-memory ledger later
+can re-summon the tour. A new account therefore meets the tour first, never hub → tour
 → hub. Anonymous mode never decides (no account). THE ROW'S MEANING:
 the tour ends by writing the business_profiles row (Finish and Skip
 alike, blank fields included) — the row's existence IS "tour done",
@@ -36,7 +42,11 @@ trimming/uppercasing as Settings, held in wizard state and written
 only at the end — a reload mid-tour restarts it losing nothing),
 services (the Products page's EditForm, now a named export, saving
 through the hub's ONE `createService` handler — services are real rows
-the moment they're saved, on purpose), try (the landing page's
+the moment they're saved, on purpose; each card is tap-to-edit through
+the hub's ONE `updateService` handler, so a typo or a 12.00-for-120.00
+is fixed where it was typed; the form autofocuses its name field and
+closing it refocuses the step heading, so focus never drops to
+<body>; the pricing chips and the tour's Sign out are min-h-11), try (the landing page's
 SwipePlayground on fixture rows, captioned as practice, nothing
 persisted; the playground takes the tour's own caption and "Start
 over" wording so one caption, not two, frames the deck), done (the
@@ -49,7 +59,14 @@ direct await, not the persist queue — on failure the TOUR'S OWN alert
 (setup.saveFailed, cleared on every attempt and on success — the hub's
 shared `status` is reset only by the upload flow and would carry a
 stale alert into the hub or into a review) shows, the wizard stays on
-its step with the fields typed, and Finish/Skip retry. While a service
+its step with the fields typed, and Finish/Skip retry. The hub's
+lost-write banner (`status === "error"`) renders in the tour branch
+TOO: a service saved on step 3 goes through the persist queue, whose
+failures report there, and the hub return is not reached while the
+tour is up — without it an offline Save showed a card under copy
+that says it is saved. Opening a review clears a transient
+`status`/`error` (never a sticky `saveFailed`) so an unrelated
+earlier failure does not paint over it. While a service
 form is open on the services step, Back/Continue/Skip are hidden —
 its own Save/Cancel are the exits, as on Products, so a half-typed
 service is never silently dropped. The step count is spoken: it rides
@@ -58,8 +75,12 @@ aria-hidden dot row was never reached). RE-ENTRY: Settings → Help &
 about → "Show the welcome tour" (settings.showTour; the
 settings.profileLoading hint shows while the row is gated) reopens the
 same screens prefilled with the exit link labelled "Close"
-(setup.close) instead of "Skip for now"; Finish/Close writes the
-profile only if a field changed; the row is gated on profileReady like
+(setup.close) instead of "Skip for now" and the header reading
+setup.headerReview instead of "Welcome"; Finish/Close writes the
+profile only if a field changed — the no-op is about the MODE
+(`tourOpen`), not the row, so an account with ledger rows but no
+profile row (never touched Settings) can Close without creating a
+blank row the copy denies; the row is gated on profileReady like
 the business Save (a tour seeded from an unloaded profile could
 overwrite a real row). FLOW.md's gate order is
 now terms → sign-in → welcome tour when needsSetup → hub. NATIVE

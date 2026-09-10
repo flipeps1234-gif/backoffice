@@ -26,7 +26,9 @@ import { useLocale } from "./use-locale";
  *
  * Keyboard: every control is a real <button>, inputs are labelled by
  * htmlFor, and focus lands on the step heading whenever the step changes
- * (tabIndex -1 + focus() — no state is set in that effect).
+ * (tabIndex -1 + focus() — no state is set in that effect). On the
+ * services step, opening a form focuses its name field and closing one
+ * (Save or Cancel) refocuses the heading — focus never drops to <body>.
  */
 
 const fieldClass =
@@ -50,6 +52,7 @@ export default function SetupWizard({
   profile,
   services,
   onCreateService,
+  onUpdateService,
   onFinish,
   onSkip,
   saving,
@@ -60,6 +63,9 @@ export default function SetupWizard({
   services: Service[];
   /** The hub's Products create handler — a service saved here IS a row. */
   onCreateService: (service: Service) => void;
+  /** The hub's Products update handler — a card here opens the same
+   *  form on tap, so a typo or a wrong price is fixed where it was typed. */
+  onUpdateService: (service: Service) => void;
   /** "Go to my books" on the last step. */
   onFinish: (profile: BusinessProfile) => void;
   /** "Skip for now" on any other step — saves whatever was typed so far. */
@@ -78,6 +84,10 @@ export default function SetupWizard({
   const [ownerName, setOwnerName] = useState(profile.ownerName);
   const [usState, setUsState] = useState(profile.usState);
   const [addingService, setAddingService] = useState(false);
+  /** The service whose card was tapped — its EditForm replaces the list's
+   *  "Add a service" button under the same nav-hiding rule. */
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const serviceFormOpen = addingService || editingId !== null;
 
   // Focus follows the step: a screen-reader user hears the new title
   // instead of the button they just pressed vanishing under them.
@@ -85,6 +95,15 @@ export default function SetupWizard({
   useEffect(() => {
     headingRef.current?.focus();
   }, [step]);
+
+  /** A service form closes (Save or Cancel unmounts the focused button):
+   *  focus goes back to the step heading, not to <body>. Event handlers,
+   *  not an effect. */
+  const closeServiceForm = () => {
+    setAddingService(false);
+    setEditingId(null);
+    headingRef.current?.focus();
+  };
 
   /** Same trimming and uppercasing as the Settings form — one profile shape. */
   const draft = (): BusinessProfile => ({
@@ -159,27 +178,53 @@ export default function SetupWizard({
           {services.length === 0 && !addingService && (
             <p className="text-sm text-neutral-500">{t("setup.noServicesYet")}</p>
           )}
-          {services.map((service) => (
-            <ProductCard key={service.id} service={service} />
-          ))}
+          {/* Tap a card to edit it — the same form Products opens. While
+              one is being edited, its card gives way to the form (as on
+              Products, one form at a time). */}
+          {services.map((service) =>
+            service.id === editingId ? (
+              <EditForm
+                key={service.id}
+                initial={service}
+                services={services}
+                autoFocusName
+                onSave={(next) => {
+                  onUpdateService(next);
+                  closeServiceForm();
+                }}
+                onCancel={closeServiceForm}
+              />
+            ) : (
+              <ProductCard
+                key={service.id}
+                service={service}
+                onTap={serviceFormOpen ? undefined : () => setEditingId(service.id)}
+              />
+            ),
+          )}
           {addingService ? (
             <EditForm
               initial={null}
               services={services}
+              // "Add a service" unmounts itself to mount this form:
+              // focus goes into the name field, not to <body>.
+              autoFocusName
               onSave={(service) => {
                 onCreateService(service);
-                setAddingService(false);
+                closeServiceForm();
               }}
-              onCancel={() => setAddingService(false)}
+              onCancel={closeServiceForm}
             />
           ) : (
-            <button
-              type="button"
-              className="w-full rounded-xl border border-neutral-400 px-4 py-4 text-base font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-900"
-              onClick={() => setAddingService(true)}
-            >
-              {t("setup.addService")}
-            </button>
+            editingId === null && (
+              <button
+                type="button"
+                className="w-full rounded-xl border border-neutral-400 px-4 py-4 text-base font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-900"
+                onClick={() => setAddingService(true)}
+              >
+                {t("setup.addService")}
+              </button>
+            )
           )}
         </div>
       );
@@ -213,7 +258,9 @@ export default function SetupWizard({
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold tracking-tight">{t("setup.header")}</h2>
+        <h2 className="text-lg font-semibold tracking-tight">
+          {t(review ? "setup.headerReview" : "setup.header")}
+        </h2>
         {/* The step count rides INSIDE the focused heading as hidden
             text: focus lands here on every step change, so "Step 2 of 5"
             is spoken with the title. A label on the dots' container was
@@ -246,10 +293,11 @@ export default function SetupWizard({
 
       {body}
 
-      {/* While a service form is open its own Save/Cancel are the only
-          exits (as on the Products page): Back, Continue and Skip would
-          unmount the form and vaporize a half-typed name and price. */}
-      {step === "services" && addingService ? null : (
+      {/* While a service form is open (new or editing a card) its own
+          Save/Cancel are the only exits (as on the Products page): Back,
+          Continue and Skip would unmount the form and vaporize a
+          half-typed name and price. */}
+      {step === "services" && serviceFormOpen ? null : (
         <div className="space-y-3">
           {step === "welcome" && (
             <button type="button" className={primaryClass} onClick={next}>

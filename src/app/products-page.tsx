@@ -36,12 +36,17 @@ export function EditForm({
   services,
   onSave,
   onCancel,
+  autoFocusName = false,
 }: {
   /** null = creating a new product. */
   initial: Service | null;
   services: Service[];
   onSave: (service: Service) => void;
   onCancel: () => void;
+  /** Focus the name field on mount. The tour turns this on: "Add a
+   *  service" unmounts itself to mount this form, and focus must land
+   *  somewhere spoken, not on <body>. Products keeps it off. */
+  autoFocusName?: boolean;
 }) {
   const { t } = useLocale();
   const [name, setName] = useState(initial?.name ?? "");
@@ -90,6 +95,7 @@ export function EditForm({
           id="prod-name"
           className={fieldClass}
           placeholder={t("products.namePlaceholder")}
+          autoFocus={autoFocusName}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
@@ -107,7 +113,9 @@ export function EditForm({
               // neutral-900). Hard-coded white made them near-identical to
               // the selected chip in dark mode, where the foreground fill
               // is itself light — the owner could not tell which was on.
-              className={`rounded-lg px-2 py-2 text-sm font-medium ${
+              // min-h-11: the tap-target law; on the tour this row is the
+              // first thing a new user taps one-handed.
+              className={`min-h-11 rounded-lg px-2 text-sm font-medium ${
                 pricing === choice
                   ? "bg-foreground text-background"
                   : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
