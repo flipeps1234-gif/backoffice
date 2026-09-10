@@ -375,6 +375,7 @@ export default function SettingsPage({
   onExportEverything,
   onOpenProducts,
   onOpenClients,
+  onShowTour,
   onClose,
 }: {
   signedIn: boolean;
@@ -398,6 +399,9 @@ export default function SettingsPage({
   onExportEverything: () => void;
   onOpenProducts: () => void;
   onOpenClients: () => void;
+  /** Reopens the welcome tour in review mode (prefilled; writes the
+   *  profile only if a field changed). */
+  onShowTour: () => void;
   onClose: () => void;
 }) {
   const { t, tag } = useLocale();
@@ -712,6 +716,20 @@ export default function SettingsPage({
             </div>
           )}
           {linkRow(t("settings.viewTerms"), () => setShowTerms(true))}
+          {/* Same gate as the business Save: before the stored profile
+              loaded, the tour would seed blank fields whose Finish could
+              overwrite a real row. */}
+          <button
+            type="button"
+            disabled={!profileReady}
+            className="flex w-full items-center justify-between rounded-lg border border-neutral-300 px-3 py-3 text-sm font-medium hover:bg-neutral-50 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
+            onClick={onShowTour}
+          >
+            {t("settings.showTour")}
+            <span aria-hidden="true" className="text-neutral-400">
+              ›
+            </span>
+          </button>
           <p className="px-1 text-xs text-neutral-500">
             {t("settings.version", { version: APP_VERSION })}
           </p>

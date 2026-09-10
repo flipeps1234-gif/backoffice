@@ -70,6 +70,22 @@ Two invariants the chart encodes, restated in words:
    └───────────────────────────────────────┘
 ```
 
+Gate order before the hub (2026-09-10 — the welcome tour joined it):
+
+```
+  TERMS GATE  ─►  SIGN-IN  ─►  WELCOME TOUR (only when needsSetup)  ─►  HUB
+  per device      account       once per account: no business_profiles
+  (localStorage)                row AND no transactions AND no sales,
+                                all three loaded; Finish or Skip writes
+                                the profile row, which is what "done"
+                                means. Settings reopens it as a review.
+```
+
+The tour never touches the chart below: the services it saves are the
+same catalog rows the Products page writes, its swipe stage is the
+landing playground (fixtures, nothing persisted), and no sale, payment
+or client is created by it.
+
 Decisions made at build time (owner-confirmed, 2026-08-12):
 
 - Totals **show both**: received (PAID + EXPECTED sales, plus unmatched

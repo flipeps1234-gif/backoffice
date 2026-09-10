@@ -301,6 +301,11 @@ export const messages = {
     es: "Línea de ayuda — muy pronto",
     pt: "Canal de ajuda — em breve",
   },
+  "settings.showTour": {
+    en: "Show the welcome tour",
+    es: "Ver el recorrido de bienvenida",
+    pt: "Ver o tour de boas-vindas",
+  },
   "settings.viewTerms": {
     en: "Terms",
     es: "Términos",

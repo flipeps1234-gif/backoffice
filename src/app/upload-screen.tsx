@@ -22,6 +22,7 @@ import QuickAdd from "./quick-add";
 import RunningTotals from "./running-totals";
 import SearchPanel from "./search-panel";
 import SettingsPage from "./settings-page";
+import SetupWizard from "./setup-wizard";
 import SignIn from "./sign-in";
 import SwipeDeck from "./swipe-deck";
 import TermsGate, { useAcceptedTerms } from "./terms-gate";
@@ -31,6 +32,7 @@ import { downloadCsv } from "./download";
 import { everythingCsv } from "@/lib/csv";
 import { EMPTY_PROFILE, type BusinessProfile } from "@/lib/profile";
 import { dueRecap, inTaxSeason } from "@/lib/recap";
+import { needsSetup } from "@/lib/setup";
 import {
   dismissTaxNote,
   markRecapShown,
@@ -384,6 +386,20 @@ function Ledger({
    *  its fields reseed, WITHOUT remounting on every save (a save-time
    *  remount ate the "Saved." flash). */
   const [profileLoaded, setProfileLoaded] = useState(false);
+  /** Does a business_profiles ROW exist? null until loadProfile succeeds.
+   *  The row's existence is the welcome tour's "done" marker
+   *  (src/lib/profile.ts), so it is tracked apart from the fields. */
+  const [profileExists, setProfileExists] = useState<boolean | null>(null);
+  /** Settings → "Show the welcome tour": the same wizard, prefilled. */
+  const [tourOpen, setTourOpen] = useState(false);
+  /** The tour's profile write is in flight (direct, not queued — the
+   *  wizard needs the outcome to know whether it may close). */
+  const [setupSaving, setSetupSaving] = useState(false);
+  /** The two ledger loads the tour rule reads. An account that already
+   *  logged money must never see the tour, and before these land an
+   *  empty in-memory ledger is indistinguishable from a truly empty one. */
+  const [transactionsLoaded, setTransactionsLoaded] = useState(false);
+  const [salesLoaded, setSalesLoaded] = useState(false);
   /** WhatsApp alert prefs (SPIKE, dark) — same load-gate discipline. */
   const [notifyPrefs, setNotifyPrefs] = useState<NotificationPrefs>(
     EMPTY_NOTIFICATION_PREFS,
@@ -425,6 +441,28 @@ function Ledger({
   /** One line of good news after a sale/match, with undo where honest. */
   const [saleNotice, setSaleNotice] = useState("");
 
+  /**
+   * Is the welcome tour on screen? First use: the pure rule over three
+   * LOADED facts (a failed or pending load never reads as "no row" or
+   * "no rows" — that is the same discipline the Settings form keeps).
+   * Anonymous mode never sees it on its own: there is no account to
+   * remember it for. Review: the Settings button, signed in or not
+   * (anonymous edits stay in memory, as Settings' own form does).
+   * Either way it replaces the hub — see the render at the bottom.
+   */
+  const setupUp =
+    tourOpen ||
+    (accountId !== null &&
+      profileLoaded &&
+      profileExists !== null &&
+      transactionsLoaded &&
+      salesLoaded &&
+      needsSetup({
+        profileExists,
+        transactionCount: transactions.length,
+        saleCount: sales.length,
+      }));
+
   // The header's brand link (brand-home.tsx) asks for the hub. Same guard
   // as openClientFromSearch: a half-typed sale, expense, service or
   // profile edit is never vaporized by navigation — the notice says why
@@ -435,6 +473,12 @@ function Ledger({
   useEffect(() => {
     const goHome = (ask: Event) => {
       ask.preventDefault();
+      // The welcome tour is not a screen to leave: the brand click just
+      // returns to its top. It closes only by Finish or Skip.
+      if (setupUp) {
+        window.scrollTo({ top: 0 });
+        return;
+      }
       if (quickAdd || logAgain || showNewSale || showProducts || showSettings) {
         setSaleNotice(t("home.finishEntryFirst"));
         return;
@@ -449,7 +493,7 @@ function Ledger({
     };
     window.addEventListener(HOME_EVENT, goHome);
     return () => window.removeEventListener(HOME_EVENT, goHome);
-  }, [quickAdd, logAgain, showNewSale, showProducts, showSettings, t]);
+  }, [quickAdd, logAgain, showNewSale, showProducts, showSettings, setupUp, t]);
   /** Auto-link undo: everything needed to put both sides back. */
   const [matchUndo, setMatchUndo] = useState<
     {
@@ -573,6 +617,7 @@ function Ledger({
         // Un-triaged rows go back to the sheet, not straight to the deck —
         // if you closed the tab mid-confirm, you still get to check them.
         if (rows.some((tx) => tx.business === null)) setStage("confirm");
+        setTransactionsLoaded(true);
       })
       .catch((cause) => {
         console.error("Load failed:", cause);
@@ -615,7 +660,9 @@ function Ledger({
     loadProfile()
       .then((row) => {
         if (cancelled) return;
-        setProfile(row);
+        // null = no row: blank fields for the form, "not done" for the tour.
+        setProfile(row ?? EMPTY_PROFILE);
+        setProfileExists(row !== null);
         setProfileLoaded(true);
       })
       .catch((cause) => console.error("Profile load failed:", cause));
@@ -782,6 +829,7 @@ function Ledger({
             translate(currentLocale(), "home.noticeRecurringPaused"),
           );
         }
+        setSalesLoaded(true);
       })
       .catch((cause) => console.error("Sales load failed:", cause));
 
@@ -1827,6 +1875,19 @@ function Ledger({
    * line holding the amount, the payer as client. The old income numpad
    * path is gone on purpose: sales own money in now.
    */
+  /**
+   * ONE create path for services: the Products page, the expense numpad's
+   * "save as a service?" and the welcome tour's services step all land
+   * here, so a service typed anywhere is the same catalog row, persisted
+   * the same way.
+   */
+  function createService(service: Service) {
+    setServices((current) => [...current, service]);
+    if (accountId) {
+      void persist(() => insertService(service, accountId));
+    }
+  }
+
   function routeLogAgain(prefill: LogAgainPrefill) {
     // Same guard as openClientFromSearch: on desktop the rail stays
     // interactive while a takeover holds a half-typed entry, and this
@@ -2019,12 +2080,7 @@ function Ledger({
     takeover = (
       <ProductsPage
         services={services}
-        onCreate={(service) => {
-          setServices((current) => [...current, service]);
-          if (accountId) {
-            void persist(() => insertService(service, accountId));
-          }
-        }}
+        onCreate={createService}
         onUpdate={(service) => {
           setServices((current) =>
             current.map((old) => (old.id === service.id ? service : old)),
@@ -2052,12 +2108,7 @@ function Ledger({
             void persist(() => insertTransactions([tx], accountId));
           }
         }}
-        onCreateService={(service) => {
-          setServices((current) => [...current, service]);
-          if (accountId) {
-            void persist(() => insertService(service, accountId));
-          }
-        }}
+        onCreateService={createService}
         onLinkService={(txId, serviceId) => {
           updateTransaction(txId, { serviceId });
           void persist(() => saveTransaction(txId, { serviceId }));
@@ -2112,6 +2163,8 @@ function Ledger({
         hasSaveError={saveFailed}
         onSaveProfile={(next) => {
           setProfile(next);
+          // A Settings save creates the row too, so the tour is done.
+          setProfileExists(true);
           if (accountId) void persist(() => saveProfile(next, accountId));
         }}
         notifyPrefs={notifyPrefs}
@@ -2171,6 +2224,13 @@ function Ledger({
           setShowSettings(false);
           setClientsFocus(null);
           setShowClients(true);
+        }}
+        // Review mode: same screens, prefilled. Gated on profileReady
+        // above — reopening it before the stored profile loaded would
+        // seed blank fields whose Finish could overwrite a real row.
+        onShowTour={() => {
+          setShowSettings(false);
+          setTourOpen(true);
         }}
         onClose={() => setShowSettings(false)}
       />
@@ -2436,7 +2496,8 @@ function Ledger({
                 if (!profileLoaded) {
                   loadProfile()
                     .then((row) => {
-                      setProfile(row);
+                      setProfile(row ?? EMPTY_PROFILE);
+                      setProfileExists(row !== null);
                       setProfileLoaded(true);
                     })
                     .catch(() => {});
@@ -2685,6 +2746,66 @@ function Ledger({
       )}
     </div>
   );
+
+  /**
+   * The tour ends: write the profile row, THEN leave. First use always
+   * writes (a row, blank or not, is what "done" means); a review writes
+   * only when a field changed. A direct await rather than the persist
+   * queue because the wizard must stay up until the row exists — on a
+   * failure the banner shows (same key persist uses), the fields stay
+   * typed, and Finish/Skip can be tried again.
+   */
+  function endSetup(next: BusinessProfile) {
+    const changed =
+      next.businessName !== profile.businessName ||
+      next.ownerName !== profile.ownerName ||
+      next.usState !== profile.usState;
+    if (profileExists && !changed) {
+      setTourOpen(false);
+      return;
+    }
+    if (!accountId) {
+      // Unreachable on first use (setupUp needs an account); a review in
+      // anonymous mode edits the in-memory fields like Settings does.
+      setProfile(next);
+      setTourOpen(false);
+      return;
+    }
+    setSetupSaving(true);
+    saveProfile(next, accountId)
+      .then(() => {
+        setProfile(next);
+        setProfileExists(true);
+        setProfileLoaded(true);
+        setTourOpen(false);
+      })
+      .catch((cause) => {
+        console.error("Profile save failed:", cause);
+        setError(translate(currentLocale(), "home.errSaveFailed"));
+        setStatus("error");
+      })
+      .finally(() => setSetupSaving(false));
+  }
+
+  if (setupUp) {
+    return (
+      <div className="mx-auto w-full max-w-lg">
+        {status === "error" && (
+          <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+            {error}
+          </p>
+        )}
+        <SetupWizard
+          profile={profile}
+          services={services}
+          onCreateService={createService}
+          onFinish={endSetup}
+          onSkip={endSetup}
+          saving={setupSaving}
+        />
+      </div>
+    );
+  }
 
   // Desktop gets what the big screen is for: the flow on the left, and the
   // dashboard + history always visible in a rail — the sit-down view. On a

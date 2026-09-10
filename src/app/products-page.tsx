@@ -27,7 +27,11 @@ const PRICING_LABEL_KEYS = {
   sqft: "products.perSqft",
 } as const;
 
-function EditForm({
+/**
+ * Exported (not copied) for the welcome tour's services step, which saves
+ * through the same hub handler Products does — one form, one validation.
+ */
+export function EditForm({
   initial,
   services,
   onSave,

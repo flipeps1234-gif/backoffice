@@ -2,6 +2,48 @@
 
 # CLAUDE.md — read this before doing anything
 
+## Welcome tour — 2026-09-10
+
+A five-step setup wizard (src/app/setup-wizard.tsx; copy in
+src/lib/messages/setup.ts, `setup.*`, EN/ES/PT) shown ONCE per account,
+after sign-in and before the hub. THE RULE is pure and unit-tested
+(src/lib/setup.ts, tests/unit/setup.test.mjs): `needsSetup` =
+no business_profiles row AND zero transactions AND zero sales — all
+three LOADED facts, never assumed (a failed loadProfile still throws
+and is never read as "no row"; the hub also waits for the transaction
+and sale loads, so an existing account is never mistaken for a new one
+while its ledger is still in flight). Anonymous mode never sees it.
+THE ROW'S MEANING: the tour ends by writing the business_profiles row
+(Finish and Skip alike, blank fields included) — the row's existence
+IS "tour done", cross-device, no per-device marker, no migration
+(src/lib/profile.ts; `loadProfile` now returns `null` for no row, and
+the hub maps null→EMPTY_PROFILE for the form while tracking
+`profileExists` separately). A Settings business save creates the row
+too. Steps: welcome (what the app does today: screenshots→rows,
+swipe business/personal, owed jobs + tax CSV; nothing about
+notifications/SMS/Google), business (the three profile fields, same
+trimming/uppercasing as Settings, held in wizard state and written
+only at the end — a reload mid-tour restarts it losing nothing),
+services (the Products page's EditForm, now a named export, saving
+through the hub's ONE `createService` handler — services are real rows
+the moment they're saved, on purpose), try (the landing page's
+SwipePlayground on fixture rows, captioned as practice, nothing
+persisted), done (the hub's three ways to log money). Wiring: the
+wizard REPLACES the hub (both columns, no rail); the brand click
+scrolls to top and does not close it; the profile write is a direct
+await, not the persist queue — on failure the save-failed banner
+shows, the wizard stays on its step with the fields typed, and
+Finish/Skip retry. RE-ENTRY: Settings → Help & about → "Show the
+welcome tour" (settings.showTour) reopens the same screens prefilled;
+Finish/Skip writes the profile only if a field changed; the row is
+gated on profileReady like the business Save (a tour seeded from an
+unloaded profile could overwrite a real row). FLOW.md's gate order is
+now terms → sign-in → welcome tour when needsSetup → hub. NATIVE
+PARITY: not yet — the native lane mirrors setup.ts names (needsSetup,
+SETUP_STEPS), a nil-returning loadProfile, profileExists on AppStore,
+SetupWizardView between sign-in and HomeView, and the Settings row;
+messages.json regenerated from this commit carries the setup.* keys.
+
 ## Demo login REMOVED 2026-09-08
 
 The shared "tester" login is gone from the web code: `/api/demo-session`

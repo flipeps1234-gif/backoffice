@@ -1,5 +1,5 @@
 import { getSupabase } from "./client";
-import { EMPTY_PROFILE, type BusinessProfile } from "@/lib/profile";
+import type { BusinessProfile } from "@/lib/profile";
 
 type Row = {
   business_name: string;
@@ -7,9 +7,16 @@ type Row = {
   us_state: string;
 };
 
-export const loadProfile = async (): Promise<BusinessProfile> => {
+/**
+ * null = the account has NO business_profiles row yet. Callers map that
+ * to EMPTY_PROFILE for the form and keep the distinction for the welcome
+ * tour, whose "done" marker is the row itself (src/lib/profile.ts).
+ * Unconfigured (no Supabase) reads as "no row" too — nothing there can
+ * ever hold one.
+ */
+export const loadProfile = async (): Promise<BusinessProfile | null> => {
   const supabase = getSupabase();
-  if (!supabase) return EMPTY_PROFILE;
+  if (!supabase) return null;
 
   const { data, error } = await supabase
     .from("business_profiles")
@@ -20,7 +27,7 @@ export const loadProfile = async (): Promise<BusinessProfile> => {
   // real profile would wipe it (review catch). Throw; the caller keeps
   // the form gated until a load actually succeeds.
   if (error) throw new Error(error.message);
-  if (!data) return EMPTY_PROFILE;
+  if (!data) return null;
   return {
     businessName: typeof data.business_name === "string" ? data.business_name : "",
     ownerName: typeof data.owner_name === "string" ? data.owner_name : "",
