@@ -10,7 +10,11 @@
  * with a row, even an all-empty one, is never asked again on any
  * device. loadProfile returns null when there is no row; the form maps
  * that to EMPTY_PROFILE, the tour rule (src/lib/setup.ts) reads it as
- * "not done". Nothing else reads the row's mere existence.
+ * "not done". Nothing else reads the row's mere existence. The tour's
+ * first-use write is a create-if-absent (insertProfileIfAbsent), never
+ * an upsert: a second device still in the tour must not blank a row
+ * the first one just wrote. Settings and the tour's review mode keep
+ * the plain upsert (saveProfile) — the row exists, the fields changed.
  */
 
 export type BusinessProfile = {

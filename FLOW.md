@@ -76,9 +76,14 @@ Gate order before the hub (2026-09-10 — the welcome tour joined it):
   TERMS GATE  ─►  SIGN-IN  ─►  WELCOME TOUR (only when needsSetup)  ─►  HUB
   per device      account       once per account: no business_profiles
   (localStorage)                row AND no transactions AND no sales,
-                                all three loaded; Finish or Skip writes
-                                the profile row, which is what "done"
-                                means. Settings reopens it as a review.
+                                decided once at boot after all three
+                                loads land (a failed load = no tour;
+                                the hub is not shown before the
+                                decision); Finish or Skip creates the
+                                profile row (create-if-absent), which
+                                is what "done" means. Sign out stays
+                                reachable from the tour. Settings
+                                reopens it as a review.
 ```
 
 The tour never touches the chart below: the services it saves are the

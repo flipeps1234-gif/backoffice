@@ -47,16 +47,27 @@ export function SheetPlayground() {
   );
 }
 
-/** "What we found" plus the deck: swipe, then undo, until the pile is empty. */
-export function SwipePlayground({ insightsBelow }: { insightsBelow: boolean }) {
+/** "What we found" plus the deck: swipe, then undo, until the pile is empty.
+ *  The welcome tour mounts this inside the signed-in app and passes its
+ *  own caption and reset wording (the landing's "demo" is the wrong word
+ *  there); the landing keeps the defaults. */
+export function SwipePlayground({
+  insightsBelow,
+  label,
+  resetLabel,
+}: {
+  insightsBelow: boolean;
+  label?: string;
+  resetLabel?: string;
+}) {
   const { t } = useLocale();
   const [pending, setPending] = useState<Transaction[]>(fresh);
   const [decided, setDecided] = useState<{ tx: Transaction; business: boolean }[]>([]);
   const reset = () => { setPending(fresh()); setDecided([]); };
   return (
     <TryFrame
-      label={t("landing.tryIt")}
-      resetLabel={t("landing.resetDemo")}
+      label={label ?? t("landing.tryIt")}
+      resetLabel={resetLabel ?? t("landing.resetDemo")}
       onReset={decided.length > 0 ? reset : undefined}
     >
       <div className="space-y-4">

@@ -46,6 +46,18 @@ export const messages = {
     es: "Guardando…",
     pt: "Salvando…",
   },
+  "setup.saveFailed": {
+    en: "Couldn't save to your account. Check your connection and try again.",
+    es: "No se pudo guardar en tu cuenta. Revisa tu conexión e inténtalo de nuevo.",
+    pt: "Não deu para salvar na sua conta. Verifique sua conexão e tente de novo.",
+  },
+  // Review mode (Settings → "Show the welcome tour"): the same exit
+  // button, but there is no setup to skip — it just closes.
+  "setup.close": {
+    en: "Close",
+    es: "Cerrar",
+    pt: "Fechar",
+  },
   // ---- 1. welcome ----
   "setup.welcomeTitle": {
     en: "What contado does",
@@ -107,13 +119,18 @@ export const messages = {
   // ---- 4. try ----
   "setup.tryTitle": {
     en: "Try a swipe",
-    es: "Prueba a deslizar",
+    es: "Prueba deslizar",
     pt: "Experimente deslizar",
   },
   "setup.tryCaption": {
     en: "These rows are practice — nothing here is saved to your books.",
     es: "Estas filas son de práctica — nada de esto se guarda en tu libro.",
     pt: "Estas linhas são de treino — nada aqui é salvo no seu livro.",
+  },
+  "setup.tryReset": {
+    en: "Start over",
+    es: "Empezar de nuevo",
+    pt: "Recomeçar",
   },
   // ---- 5. done ----
   "setup.doneTitle": {
@@ -127,9 +144,9 @@ export const messages = {
     pt: "Três formas de registrar dinheiro, todas na tela inicial:",
   },
   "setup.done1": {
-    en: "Upload screenshots — drop them in the box at the top and confirm each row.",
-    es: "Subir capturas — déjalas en el recuadro de arriba y confirma cada fila.",
-    pt: "Enviar prints — solte no quadro de cima e confirme cada linha.",
+    en: "Upload screenshots — tap the box at the top to pick them, then confirm each row.",
+    es: "Subir capturas — toca el recuadro de arriba para elegirlas y confirma cada fila.",
+    pt: "Enviar prints — toque no quadro de cima para escolher e confirme cada linha.",
   },
   "setup.done2": {
     en: "Log an expense — a quick numpad for cash you spent.",

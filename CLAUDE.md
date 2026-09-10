@@ -10,16 +10,26 @@ after sign-in and before the hub. THE RULE is pure and unit-tested
 (src/lib/setup.ts, tests/unit/setup.test.mjs): `needsSetup` =
 no business_profiles row AND zero transactions AND zero sales — all
 three LOADED facts, never assumed (a failed loadProfile still throws
-and is never read as "no row"; the hub also waits for the transaction
-and sale loads, so an existing account is never mistaken for a new one
-while its ledger is still in flight). Anonymous mode never sees it.
-THE ROW'S MEANING: the tour ends by writing the business_profiles row
-(Finish and Skip alike, blank fields included) — the row's existence
-IS "tour done", cross-device, no per-device marker, no migration
-(src/lib/profile.ts; `loadProfile` now returns `null` for no row, and
-the hub maps null→EMPTY_PROFILE for the form while tracking
-`profileExists` separately). A Settings business save creates the row
-too. Steps: welcome (what the app does today: screenshots→rows,
+and is never read as "no row"). THE DECISION IS LATCHED AT BOOT
+(review fix, same day): a signed-in Ledger shows the boot "Loading"
+line — not the hub — until the transaction, sale and profile loads
+have all landed, then decides ONCE from the server row counts
+(`setupDecision` pending → show | skip); any of the three failing
+resolves to skip, so a bad connection never holds the hub back, and
+nothing that empties the in-memory ledger later can re-summon the
+tour. A new account therefore meets the tour first, never hub → tour
+→ hub. Anonymous mode never decides (no account). THE ROW'S MEANING:
+the tour ends by writing the business_profiles row (Finish and Skip
+alike, blank fields included) — the row's existence IS "tour done",
+cross-device, no per-device marker, no migration (src/lib/profile.ts;
+`loadProfile` now returns `null` for no row, and the hub maps
+null→EMPTY_PROFILE for the form while tracking `profileExists`
+separately). The FIRST-USE write is `insertProfileIfAbsent` (ON
+CONFLICT DO NOTHING on account_id) followed by a readback — two
+devices can both be in the tour on one new account, and the second to
+finish must never blank the first one's fields; review mode and the
+Settings business save keep the plain upsert (the row exists, the
+fields changed). Steps: welcome (what the app does today: screenshots→rows,
 swipe business/personal, owed jobs + tax CSV; nothing about
 notifications/SMS/Google), business (the three profile fields, same
 trimming/uppercasing as Settings, held in wizard state and written
@@ -28,16 +38,30 @@ services (the Products page's EditForm, now a named export, saving
 through the hub's ONE `createService` handler — services are real rows
 the moment they're saved, on purpose), try (the landing page's
 SwipePlayground on fixture rows, captioned as practice, nothing
-persisted), done (the hub's three ways to log money). Wiring: the
-wizard REPLACES the hub (both columns, no rail); the brand click
-scrolls to top and does not close it; the profile write is a direct
-await, not the persist queue — on failure the save-failed banner
-shows, the wizard stays on its step with the fields typed, and
-Finish/Skip retry. RE-ENTRY: Settings → Help & about → "Show the
-welcome tour" (settings.showTour) reopens the same screens prefilled;
-Finish/Skip writes the profile only if a field changed; the row is
-gated on profileReady like the business Save (a tour seeded from an
-unloaded profile could overwrite a real row). FLOW.md's gate order is
+persisted; the playground takes the tour's own caption and "Start
+over" wording so one caption, not two, frames the deck), done (the
+hub's three ways to log money, worded as the hub's tap-to-pick box).
+Wiring: the wizard REPLACES the hub (both columns, no rail) but keeps
+the email + Sign out line above it, so a wrong-address sign-in can
+leave without Finish/Skip stamping that account "done"; the brand
+click scrolls to top and does not close it; the profile write is a
+direct await, not the persist queue — on failure the TOUR'S OWN alert
+(setup.saveFailed, cleared on every attempt and on success — the hub's
+shared `status` is reset only by the upload flow and would carry a
+stale alert into the hub or into a review) shows, the wizard stays on
+its step with the fields typed, and Finish/Skip retry. While a service
+form is open on the services step, Back/Continue/Skip are hidden —
+its own Save/Cancel are the exits, as on Products, so a half-typed
+service is never silently dropped. The step count is spoken: it rides
+as sr-only text inside the focused step heading (an aria-label on an
+aria-hidden dot row was never reached). RE-ENTRY: Settings → Help &
+about → "Show the welcome tour" (settings.showTour; the
+settings.profileLoading hint shows while the row is gated) reopens the
+same screens prefilled with the exit link labelled "Close"
+(setup.close) instead of "Skip for now"; Finish/Close writes the
+profile only if a field changed; the row is gated on profileReady like
+the business Save (a tour seeded from an unloaded profile could
+overwrite a real row). FLOW.md's gate order is
 now terms → sign-in → welcome tour when needsSetup → hub. NATIVE
 PARITY: not yet — the native lane mirrors setup.ts names (needsSetup,
 SETUP_STEPS), a nil-returning loadProfile, profileExists on AppStore,

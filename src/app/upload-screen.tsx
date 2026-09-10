@@ -39,7 +39,7 @@ import {
   recapShownFor,
   taxNoteDismissedFor,
 } from "@/lib/settings";
-import { loadProfile, saveProfile } from "@/lib/supabase/profile";
+import { insertProfileIfAbsent, loadProfile, saveProfile } from "@/lib/supabase/profile";
 import {
   EMPTY_NOTIFICATION_PREFS,
   type NotificationPrefs,
@@ -395,11 +395,26 @@ function Ledger({
   /** The tour's profile write is in flight (direct, not queued — the
    *  wizard needs the outcome to know whether it may close). */
   const [setupSaving, setSetupSaving] = useState(false);
-  /** The two ledger loads the tour rule reads. An account that already
-   *  logged money must never see the tour, and before these land an
-   *  empty in-memory ledger is indistinguishable from a truly empty one. */
-  const [transactionsLoaded, setTransactionsLoaded] = useState(false);
-  const [salesLoaded, setSalesLoaded] = useState(false);
+  /** The tour's own save-failed line. Not the hub's `status`/`error`:
+   *  that pair is reset only by the upload flow, so a failed Finish
+   *  followed by a successful retry would carry the red alert into the
+   *  hub, and an unrelated earlier failure would paint it over a review
+   *  opened from Settings. Cleared before every attempt and on success. */
+  const [setupError, setSetupError] = useState("");
+  /**
+   * Whether this account gets the welcome tour — decided ONCE, at boot,
+   * from the three loaded facts, and latched. "pending" until the
+   * transaction, sale and profile loads have all landed (the hub is not
+   * rendered before then: a brand-new account must meet the tour, not
+   * hub → tour → hub); a failed load resolves to "skip" so a bad
+   * connection can never hold the hub back forever. Latched, not
+   * derived from the live arrays, so nothing that empties the ledger
+   * mid-session can re-summon it. Anonymous mode never decides (no
+   * account to remember it for) — the gate below is scoped to accounts.
+   */
+  const [setupDecision, setSetupDecision] = useState<"pending" | "show" | "skip">(
+    "pending",
+  );
   /** WhatsApp alert prefs (SPIKE, dark) — same load-gate discipline. */
   const [notifyPrefs, setNotifyPrefs] = useState<NotificationPrefs>(
     EMPTY_NOTIFICATION_PREFS,
@@ -442,26 +457,14 @@ function Ledger({
   const [saleNotice, setSaleNotice] = useState("");
 
   /**
-   * Is the welcome tour on screen? First use: the pure rule over three
-   * LOADED facts (a failed or pending load never reads as "no row" or
-   * "no rows" — that is the same discipline the Settings form keeps).
-   * Anonymous mode never sees it on its own: there is no account to
-   * remember it for. Review: the Settings button, signed in or not
+   * Is the welcome tour on screen? First use: the boot decision above
+   * (the pure rule over three LOADED facts — a failed or pending load
+   * never reads as "no row" or "no rows", the same discipline the
+   * Settings form keeps). Review: the Settings button, signed in or not
    * (anonymous edits stay in memory, as Settings' own form does).
    * Either way it replaces the hub — see the render at the bottom.
    */
-  const setupUp =
-    tourOpen ||
-    (accountId !== null &&
-      profileLoaded &&
-      profileExists !== null &&
-      transactionsLoaded &&
-      salesLoaded &&
-      needsSetup({
-        profileExists,
-        transactionCount: transactions.length,
-        saleCount: sales.length,
-      }));
+  const setupUp = tourOpen || setupDecision === "show";
 
   // The header's brand link (brand-home.tsx) asks for the hub. Same guard
   // as openClientFromSearch: a half-typed sale, expense, service or
@@ -602,7 +605,14 @@ function Ledger({
     if (!accountId) return;
     let cancelled = false;
 
-    loadTransactions()
+    // The three loads the tour rule reads are kept as promises so the
+    // decision below can wait on all of them; each still has its own
+    // handlers, so a rejection is handled in both places.
+    const transactionsLoad = loadTransactions();
+    const salesLoad = loadSales();
+    const profileLoad = loadProfile();
+
+    transactionsLoad
       .then((rows) => {
         if (cancelled) return;
         // MERGE, never replace: on a slow connection the user can log an
@@ -617,7 +627,6 @@ function Ledger({
         // Un-triaged rows go back to the sheet, not straight to the deck —
         // if you closed the tab mid-confirm, you still get to check them.
         if (rows.some((tx) => tx.business === null)) setStage("confirm");
-        setTransactionsLoaded(true);
       })
       .catch((cause) => {
         console.error("Load failed:", cause);
@@ -657,7 +666,7 @@ function Ledger({
       })
       .catch((cause) => console.error("Photo ids load failed:", cause));
 
-    loadProfile()
+    profileLoad
       .then((row) => {
         if (cancelled) return;
         // null = no row: blank fields for the form, "not done" for the tour.
@@ -666,6 +675,28 @@ function Ledger({
         setProfileLoaded(true);
       })
       .catch((cause) => console.error("Profile load failed:", cause));
+
+    // The welcome-tour decision, once: every fact loaded → the rule;
+    // any load failed → no tour (the hub must never be held back by a
+    // bad connection, and an unloaded ledger must never read as empty).
+    // Server row counts, not the arrays — recurring generation may add
+    // instances in memory before this settles.
+    Promise.all([transactionsLoad, salesLoad, profileLoad])
+      .then(([txRows, saleRows, row]) => {
+        if (cancelled) return;
+        setSetupDecision(
+          needsSetup({
+            profileExists: row !== null,
+            transactionCount: txRows.length,
+            saleCount: saleRows.length,
+          })
+            ? "show"
+            : "skip",
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setSetupDecision("skip");
+      });
 
     loadDeletionRequest()
       .then((requestedAt) => {
@@ -684,7 +715,7 @@ function Ledger({
     // Sales and templates load together because generation needs BOTH:
     // whether an instance already exists (idempotency) and whether its
     // predecessor is still open (misses) both live in the sales list.
-    Promise.all([loadSales(), loadTemplates()])
+    Promise.all([salesLoad, loadTemplates()])
       .then(([saleRows, templateRows]) => {
         if (cancelled) return;
 
@@ -829,7 +860,6 @@ function Ledger({
             translate(currentLocale(), "home.noticeRecurringPaused"),
           );
         }
-        setSalesLoaded(true);
       })
       .catch((cause) => console.error("Sales load failed:", cause));
 
@@ -2237,6 +2267,34 @@ function Ledger({
     );
   }
 
+  async function signOut() {
+    // Drain the write queue BEFORE revoking the session: signOut
+    // removes the local JWT immediately, so a queued-but-unstarted
+    // write (the sale you just settled) would run unauthenticated,
+    // fail RLS, and be dropped with its error banner unmounted —
+    // silent loss at the exact moment no UI remains to report it.
+    await writeChain.current;
+    // "global" (auth-js's default, spelled out): GoTrue revokes
+    // every session for the account, not just this device's.
+    // Whether sign-out should be per-device instead is an owner
+    // call, not a fix.
+    await getSupabase()?.auth.signOut({ scope: "global" });
+  }
+
+  /** The email + Sign out line. Shared by the hub and the welcome tour:
+   *  someone who signed in with the wrong address must be able to leave
+   *  from the tour WITHOUT Finish/Skip writing a profile row (= "tour
+   *  done") on that wrong account. Ledger is keyed on the user id, so
+   *  signing out mid-tour unmounts it with nothing written. */
+  const accountLine = accountId && (
+    <p className="flex items-center justify-between text-xs text-neutral-500">
+      <span>{email}</span>
+      <button type="button" className="hover:underline" onClick={signOut}>
+        {t("home.signOut")}
+      </button>
+    </p>
+  );
+
   // The main loop: totals, the upload targets, the sheet, the swipe deck.
   const mainLoop = (
     <div className="space-y-6">
@@ -2317,30 +2375,7 @@ function Ledger({
           </div>
         )}
 
-      {accountId && (
-        <p className="flex items-center justify-between text-xs text-neutral-500">
-          <span>{email}</span>
-          <button
-            type="button"
-            className="hover:underline"
-            onClick={async () => {
-              // Drain the write queue BEFORE revoking the session: signOut
-              // removes the local JWT immediately, so a queued-but-unstarted
-              // write (the sale you just settled) would run unauthenticated,
-              // fail RLS, and be dropped with its error banner unmounted —
-              // silent loss at the exact moment no UI remains to report it.
-              await writeChain.current;
-              // "global" (auth-js's default, spelled out): GoTrue revokes
-              // every session for the account, not just this device's.
-              // Whether sign-out should be per-device instead is an owner
-              // call, not a fix.
-              await getSupabase()?.auth.signOut({ scope: "global" });
-            }}
-          >
-            {t("home.signOut")}
-          </button>
-        </p>
-      )}
+      {accountLine}
 
       {stage === "upload" && (
         <DropZone busy={status === "reading"} onFiles={handleFiles} />
@@ -2749,11 +2784,17 @@ function Ledger({
 
   /**
    * The tour ends: write the profile row, THEN leave. First use always
-   * writes (a row, blank or not, is what "done" means); a review writes
-   * only when a field changed. A direct await rather than the persist
-   * queue because the wizard must stay up until the row exists — on a
-   * failure the banner shows (same key persist uses), the fields stay
-   * typed, and Finish/Skip can be tried again.
+   * writes (a row, blank or not, is what "done" means) — as a CREATE-IF-
+   * ABSENT, never an upsert: two devices on the same new account can
+   * both be in the tour, and the second to finish must not blank the
+   * first one's fields (src/lib/supabase/profile.ts); the row is read
+   * back so memory holds whichever fields actually landed. A review
+   * (the row exists) writes only when a field changed, through the same
+   * upsert Settings uses. A direct await rather than the persist queue
+   * because the wizard must stay up until the row exists — on a failure
+   * the tour's own alert shows, the fields stay typed, and Finish/Skip
+   * can be tried again (a retry's create no-ops if the first one did
+   * land, and the readback still closes the tour).
    */
   function endSetup(next: BusinessProfile) {
     const changed =
@@ -2761,38 +2802,55 @@ function Ledger({
       next.ownerName !== profile.ownerName ||
       next.usState !== profile.usState;
     if (profileExists && !changed) {
+      setSetupError("");
       setTourOpen(false);
       return;
     }
     if (!accountId) {
-      // Unreachable on first use (setupUp needs an account); a review in
-      // anonymous mode edits the in-memory fields like Settings does.
+      // Unreachable on first use (the decision needs an account); a
+      // review in anonymous mode edits the in-memory fields like
+      // Settings does.
       setProfile(next);
+      setSetupError("");
       setTourOpen(false);
       return;
     }
+    setSetupError("");
     setSetupSaving(true);
-    saveProfile(next, accountId)
-      .then(() => {
-        setProfile(next);
+    const write = profileExists
+      ? saveProfile(next, accountId).then(() => next)
+      : insertProfileIfAbsent(next, accountId)
+          .then(() => loadProfile())
+          .then((row) => row ?? next);
+    write
+      .then((stored) => {
+        setProfile(stored);
         setProfileExists(true);
         setProfileLoaded(true);
+        setSetupDecision("skip");
         setTourOpen(false);
       })
       .catch((cause) => {
         console.error("Profile save failed:", cause);
-        setError(translate(currentLocale(), "home.errSaveFailed"));
-        setStatus("error");
+        setSetupError(translate(currentLocale(), "setup.saveFailed"));
       })
       .finally(() => setSetupSaving(false));
   }
 
+  // Before the hub, the decision — a signed-in boot shows the same line
+  // the session check does until the three loads have landed (or one
+  // has failed), so a first-use account meets the tour and nothing else.
+  if (accountId !== null && setupDecision === "pending") {
+    return <p className="text-sm text-neutral-500">{t("home.loading")}</p>;
+  }
+
   if (setupUp) {
     return (
-      <div className="mx-auto w-full max-w-lg">
-        {status === "error" && (
-          <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-            {error}
+      <div className="mx-auto w-full max-w-lg space-y-6">
+        {accountLine}
+        {setupError && (
+          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+            {setupError}
           </p>
         )}
         <SetupWizard
@@ -2802,6 +2860,7 @@ function Ledger({
           onFinish={endSetup}
           onSkip={endSetup}
           saving={setupSaving}
+          review={tourOpen}
         />
       </div>
     );

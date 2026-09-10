@@ -169,7 +169,10 @@ export function TryFrame({
       <figcaption className="mt-2 flex items-center justify-center gap-3 text-center text-xs text-neutral-500">
         <span>{label}</span>
         {onReset && (
-          <button type="button" onClick={onReset} className="underline">
+          /* min-h-11: the welcome tour mounts this inside the app, where
+             every real button meets the tap-target law; the figcaption
+             is a flex row, so the landing's layout does not move. */
+          <button type="button" onClick={onReset} className="min-h-11 px-2 underline">
             {resetLabel}
           </button>
         )}

@@ -73,3 +73,19 @@ test('the step titles the wizard renders exist for every step', () => {
     assert.ok(`setup.${step}Title` in messages, `setup.${step}Title`);
   }
 });
+
+test('every setup.* key the wizard and the hub reference exists', () => {
+  const sources = ['../../src/app/setup-wizard.tsx', '../../src/app/upload-screen.tsx'];
+  const referenced = new Set();
+  for (const relative of sources) {
+    const text = readFileSync(new URL(relative, import.meta.url), 'utf8');
+    for (const m of text.matchAll(/"(setup\.[A-Za-z0-9]+)"/g)) referenced.add(m[1]);
+  }
+  assert.ok(referenced.size >= 10, `only ${referenced.size} setup keys referenced`);
+  for (const key of referenced) {
+    assert.ok(key in messages, `${key} is referenced but not defined`);
+  }
+  // The review-mode exit and the tour's own failure line are wired.
+  assert.ok(referenced.has('setup.close'));
+  assert.ok(referenced.has('setup.saveFailed'));
+});

@@ -730,6 +730,11 @@ export default function SettingsPage({
               ›
             </span>
           </button>
+          {/* Same hint the business Save shows while gated — a disabled
+              row with no reason reads as broken. */}
+          {signedIn && !profileReady && (
+            <p className="px-1 text-xs text-neutral-500">{t("settings.profileLoading")}</p>
+          )}
           <p className="px-1 text-xs text-neutral-500">
             {t("settings.version", { version: APP_VERSION })}
           </p>

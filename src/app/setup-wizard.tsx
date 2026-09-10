@@ -53,6 +53,7 @@ export default function SetupWizard({
   onFinish,
   onSkip,
   saving,
+  review,
 }: {
   /** Seeds the business fields: EMPTY on first use, the stored row in review. */
   profile: BusinessProfile;
@@ -66,6 +67,9 @@ export default function SetupWizard({
   /** The hub is writing the profile row; buttons wait so a double tap
    *  can't queue two writes, and a failed write leaves the step as is. */
   saving: boolean;
+  /** Reopened from Settings: there is no setup to skip, so the exit
+   *  link reads "Close" (same handler — writes only if a field changed). */
+  review: boolean;
 }) {
   const { t } = useLocale();
   const [index, setIndex] = useState(0);
@@ -181,11 +185,14 @@ export default function SetupWizard({
       );
       break;
     case "try":
+      // The playground's own caption carries the practice line — one
+      // caption, not two saying the same thing around the deck.
       body = (
-        <div className="space-y-3">
-          <p className="text-sm text-neutral-500">{t("setup.tryCaption")}</p>
-          <SwipePlayground insightsBelow={false} />
-        </div>
+        <SwipePlayground
+          insightsBelow={false}
+          label={t("setup.tryCaption")}
+          resetLabel={t("setup.tryReset")}
+        />
       );
       break;
     case "done":
@@ -207,24 +214,28 @@ export default function SetupWizard({
     <div className="space-y-6">
       <div className="space-y-2">
         <h2 className="text-lg font-semibold tracking-tight">{t("setup.header")}</h2>
+        {/* The step count rides INSIDE the focused heading as hidden
+            text: focus lands here on every step change, so "Step 2 of 5"
+            is spoken with the title. A label on the dots' container was
+            never reached — an aria-hidden-only group has nothing to
+            read, so screen readers skip it. */}
         <h3
           ref={headingRef}
           tabIndex={-1}
           className="text-base font-semibold focus:outline-none"
         >
           {t(TITLE_KEYS[step])}
+          <span className="sr-only">
+            {", "}
+            {t("setup.stepOf", { current: index + 1, total: SETUP_STEPS.length })}
+          </span>
         </h3>
-        {/* Five dots, the current one in the foreground color; the label
-            carries the count for anyone who can't see the dots. */}
-        <div
-          role="group"
-          aria-label={t("setup.stepOf", { current: index + 1, total: SETUP_STEPS.length })}
-          className="flex gap-2"
-        >
+        {/* Five dots, the current one in the foreground color — purely
+            visual; the heading above carries the count. */}
+        <div aria-hidden="true" className="flex gap-2">
           {SETUP_STEPS.map((name, i) => (
             <span
               key={name}
-              aria-hidden="true"
               className={`h-2 w-2 rounded-full ${
                 i === index ? "bg-foreground" : "bg-neutral-300 dark:bg-neutral-700"
               }`}
@@ -235,52 +246,57 @@ export default function SetupWizard({
 
       {body}
 
-      <div className="space-y-3">
-        {step === "welcome" && (
-          <button type="button" className={primaryClass} onClick={next}>
-            {t("setup.start")}
-          </button>
-        )}
-        {(step === "business" || step === "services" || step === "try") && (
-          <div className="flex gap-2">
-            <button type="button" className={secondaryClass} onClick={back}>
-              {t("setup.back")}
+      {/* While a service form is open its own Save/Cancel are the only
+          exits (as on the Products page): Back, Continue and Skip would
+          unmount the form and vaporize a half-typed name and price. */}
+      {step === "services" && addingService ? null : (
+        <div className="space-y-3">
+          {step === "welcome" && (
+            <button type="button" className={primaryClass} onClick={next}>
+              {t("setup.start")}
             </button>
+          )}
+          {(step === "business" || step === "services" || step === "try") && (
+            <div className="flex gap-2">
+              <button type="button" className={secondaryClass} onClick={back}>
+                {t("setup.back")}
+              </button>
+              <button
+                type="button"
+                className="h-11 flex-1 rounded-lg bg-foreground px-4 text-base font-medium text-background hover:opacity-90"
+                onClick={next}
+              >
+                {t("setup.continue")}
+              </button>
+            </div>
+          )}
+          {step === "done" && (
+            <div className="flex gap-2">
+              <button type="button" className={secondaryClass} disabled={saving} onClick={back}>
+                {t("setup.back")}
+              </button>
+              <button
+                type="button"
+                className="h-11 flex-1 rounded-lg bg-foreground px-4 text-base font-medium text-background hover:opacity-90 disabled:opacity-40"
+                disabled={saving}
+                onClick={() => onFinish(draft())}
+              >
+                {saving ? t("setup.saving") : t("setup.finish")}
+              </button>
+            </div>
+          )}
+          {step !== "done" && (
             <button
               type="button"
-              className="h-11 flex-1 rounded-lg bg-foreground px-4 text-base font-medium text-background hover:opacity-90"
-              onClick={next}
-            >
-              {t("setup.continue")}
-            </button>
-          </div>
-        )}
-        {step === "done" && (
-          <div className="flex gap-2">
-            <button type="button" className={secondaryClass} disabled={saving} onClick={back}>
-              {t("setup.back")}
-            </button>
-            <button
-              type="button"
-              className="h-11 flex-1 rounded-lg bg-foreground px-4 text-base font-medium text-background hover:opacity-90 disabled:opacity-40"
+              className="h-11 w-full text-sm text-neutral-500 hover:underline disabled:opacity-40"
               disabled={saving}
-              onClick={() => onFinish(draft())}
+              onClick={() => onSkip(draft())}
             >
-              {saving ? t("setup.saving") : t("setup.finish")}
+              {saving ? t("setup.saving") : review ? t("setup.close") : t("setup.skip")}
             </button>
-          </div>
-        )}
-        {step !== "done" && (
-          <button
-            type="button"
-            className="h-11 w-full text-sm text-neutral-500 hover:underline disabled:opacity-40"
-            disabled={saving}
-            onClick={() => onSkip(draft())}
-          >
-            {saving ? t("setup.saving") : t("setup.skip")}
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

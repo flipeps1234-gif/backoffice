@@ -51,3 +51,34 @@ export const saveProfile = async (
   });
   if (error) throw new Error(error.message);
 };
+
+/**
+ * The welcome tour's FIRST-USE write: create the row only if none exists
+ * (ON CONFLICT DO NOTHING on the account_id primary key). Two devices
+ * signed into the same brand-new account can both pass needsSetup —
+ * both loaded "no row" before either finished — and with a plain upsert
+ * the second one to end (a Skip with blank fields, say) would overwrite
+ * the first one's real fields. "A tour must never save a blank profile
+ * over an existing one" is a law, so the first-use write can only
+ * create. Callers re-run loadProfile afterwards to learn which row
+ * actually exists. Review mode (a row already exists) keeps saveProfile.
+ */
+export const insertProfileIfAbsent = async (
+  profile: BusinessProfile,
+  accountId: string,
+): Promise<void> => {
+  const supabase = getSupabase();
+  if (!supabase) return;
+
+  const { error } = await supabase.from("business_profiles").upsert(
+    {
+      account_id: accountId,
+      business_name: profile.businessName,
+      owner_name: profile.ownerName,
+      us_state: profile.usState,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "account_id", ignoreDuplicates: true },
+  );
+  if (error) throw new Error(error.message);
+};
