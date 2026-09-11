@@ -47,11 +47,21 @@ CONFLICT DO NOTHING on account_id) followed by a readback — two
 devices can both be in the tour on one new account, and the second to
 finish must never blank the first one's fields; review mode and the
 Settings business save keep the plain upsert (the row exists, the
-fields changed). Steps: welcome (what the app does today: screenshots→rows,
-swipe business/personal, owed jobs + tax CSV; nothing about
-notifications/SMS/Google), business (the three profile fields, same
-trimming/uppercasing as Settings, held in wizard state and written
-only at the end — a reload mid-tour restarts it losing nothing),
+fields changed). REVIEW FIX 2026-09-11 (second write): Continue
+resolves with the row that ACTUALLY landed (`saveSetupProfile` →
+`writeSetupProfile` → `BusinessProfile | null`) and the wizard
+reseeds its three fields from it — two devices in the tour on one new
+account, the other one's create won, this device's later Finish/Skip
+would otherwise upsert its stale blank draft over the real fields;
+reseeded, draft() equals the stored row, the exit hits the no-op, and
+first use makes exactly one create-if-absent write. Continue's no-op
+is the SAME rule as Finish/Close (`setupHasNothingToWrite`: unchanged
+AND (row exists OR review)), so a review's Continue never creates a
+blank row either. Steps: business (the three profile fields, same
+trimming/uppercasing as Settings; Continue writes the row right then
+via saveSetupProfile and advances only once it landed, Enter in any
+field is Continue, only the pressed button reads "Saving…", a failed
+Continue refocuses the button; "Not now" ends the tour like Skip),
 services (the Products page's EditForm, now a named export, saving
 through the hub's ONE `createService` handler — services are real rows
 the moment they're saved, on purpose; each card is tap-to-edit through

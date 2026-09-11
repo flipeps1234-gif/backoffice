@@ -78,10 +78,13 @@ export const messages = {
     es: "Configura tu negocio",
     pt: "Configure seu negócio",
   },
+  // This is the first sentence a new account reads (there is no welcome
+  // screen before it), so it names its subject and what the two exports
+  // are — nothing here may lean on a screen that no longer exists.
   "setup.businessIntro": {
-    en: "Goes on top of the tax CSV and the proof of income — nothing else reads it. Everything here is optional, and Settings has it later.",
-    es: "Va al inicio del CSV de impuestos y del comprobante de ingresos — nada más lo usa. Todo aquí es opcional, y luego lo encuentras en Ajustes.",
-    pt: "Vai no topo do CSV de impostos e do comprovante de renda — nada mais usa isso. Tudo aqui é opcional, e depois fica em Configurações.",
+    en: "Your name and state go on top of the tax-ready CSV and the proof of income you can export later — nothing else uses them. Everything here is optional; you can change it in Settings.",
+    es: "Tu nombre y tu estado van al inicio del CSV para impuestos y del comprobante de ingresos que puedes exportar después — nada más los usa. Todo es opcional, y luego lo cambias en Ajustes.",
+    pt: "Seu nome e seu estado vão no topo do CSV de impostos e do comprovante de renda que você pode exportar depois — nada mais usa isso. Tudo é opcional, e depois dá para mudar em Configurações.",
   },
   // ---- 2. services ----
   "setup.servicesTitle": {

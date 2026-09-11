@@ -83,12 +83,14 @@ Gate order before the hub (2026-09-10 — the welcome tour joined it):
                                 loads, a failed load = no tour, and a
                                 15 s bound releases the hub if a load
                                 stalls (the hub is not shown before the
-                                decision); Finish or Skip creates the
+                                decision); Continue on the business
+                                step (or Not now / Skip) creates the
                                 profile row (create-if-absent), which
-                                is what "done" means. Sign out stays
+                                is what "done" means; Finish then just
+                                ends the tour. Sign out stays
                                 reachable from the tour. Settings
-                                reopens it as a review (Close writes
-                                only if a field changed).
+                                reopens it as a review (Continue and
+                                Close write only if a field changed).
 ```
 
 The tour never touches the chart below: the services it saves are the

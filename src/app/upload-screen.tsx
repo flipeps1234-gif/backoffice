@@ -2849,17 +2849,27 @@ function Ledger({
    * can be tried again (a retry's create no-ops if the first one did
    * land, and the readback still closes the tour).
    */
-  function endSetup(next: BusinessProfile) {
+  /**
+   * ONE no-op rule for every tour exit and for Continue: nothing to
+   * write when the fields match the hub's profile AND either the row
+   * exists or this is a review. The no-op is about the MODE, not the
+   * row: a review never writes without a change (an account with ledger
+   * rows but no profile row — one that never touched Settings — reaches
+   * the wizard only this way, and neither "Close" nor a review's
+   * Continue may create a blank row behind copy that says it just
+   * closes). First use always creates the row. Shared so the two
+   * comparisons cannot drift apart again (review catch).
+   */
+  function setupHasNothingToWrite(next: BusinessProfile): boolean {
     const changed =
       next.businessName !== profile.businessName ||
       next.ownerName !== profile.ownerName ||
       next.usState !== profile.usState;
-    // The no-op is about the MODE, not the row: a review never writes
-    // without a change (an account with ledger rows but no profile row
-    // — one that never touched Settings — reaches the wizard only this
-    // way, and "Close" must not create a blank row behind copy that
-    // says it just closes). First use always creates the row.
-    if ((profileExists || tourOpen) && !changed) {
+    return (profileExists || tourOpen) && !changed;
+  }
+
+  function endSetup(next: BusinessProfile) {
+    if (setupHasNothingToWrite(next)) {
       setSetupError("");
       // First use reaches here too since 2026-09-11: the business step's
       // Continue already wrote the row, so Finish has nothing to write —
@@ -2877,8 +2887,8 @@ function Ledger({
       setTourOpen(false);
       return;
     }
-    void writeSetupProfile(next, accountId).then((saved) => {
-      if (saved) {
+    void writeSetupProfile(next, accountId).then((stored) => {
+      if (stored) {
         setSetupDecision("skip");
         setTourOpen(false);
       }
@@ -2890,25 +2900,27 @@ function Ledger({
    * the moment the person moves past that step, not at the end of the
    * tour, so a reload after it lands in the hub with the fields kept
    * (the row now exists, which is what "done" means; the steps after it
-   * are practice). The tour stays up either way. Resolves true when the
-   * row is there (a review with nothing changed counts — there is
-   * nothing to write), false on a failed write: the tour's alert shows,
-   * the fields stay typed, and Continue can be tried again.
+   * are practice). The tour stays up either way. Resolves with the row
+   * that is there once it is — the readback's fields, which are another
+   * device's if ITS create-if-absent won; the wizard reseeds from them
+   * so its later Finish/Skip hand up what is stored and hit the no-op
+   * (a stale blank draft could otherwise be upserted over the other
+   * device's real fields — the exact overwrite insertProfileIfAbsent
+   * exists to prevent). A review with nothing changed resolves with the
+   * hub's own profile (nothing to write). Null on a failed write: the
+   * tour's alert shows, the fields stay typed, Continue can be tried
+   * again.
    */
-  function saveSetupProfile(next: BusinessProfile): Promise<boolean> {
-    const changed =
-      next.businessName !== profile.businessName ||
-      next.ownerName !== profile.ownerName ||
-      next.usState !== profile.usState;
-    if (profileExists && !changed) {
+  function saveSetupProfile(next: BusinessProfile): Promise<BusinessProfile | null> {
+    if (setupHasNothingToWrite(next)) {
       setSetupError("");
-      return Promise.resolve(true);
+      return Promise.resolve(profile);
     }
     if (!accountId) {
       // Anonymous review: in-memory fields, like Settings.
       setProfile(next);
       setSetupError("");
-      return Promise.resolve(true);
+      return Promise.resolve(next);
     }
     return writeSetupProfile(next, accountId);
   }
@@ -2921,9 +2933,14 @@ function Ledger({
    * so memory holds whichever fields actually landed), the same upsert
    * Settings uses once it does. A direct await rather than the persist
    * queue because the wizard must stay up until the row exists.
+   * Resolves with the stored row (what memory now holds), null when the
+   * write failed or one is already in flight.
    */
-  function writeSetupProfile(next: BusinessProfile, account: string): Promise<boolean> {
-    if (setupSaving) return Promise.resolve(false);
+  function writeSetupProfile(
+    next: BusinessProfile,
+    account: string,
+  ): Promise<BusinessProfile | null> {
+    if (setupSaving) return Promise.resolve(null);
     setSetupError("");
     setSetupSaving(true);
     const write = profileExists
@@ -2936,12 +2953,12 @@ function Ledger({
         setProfile(stored);
         setProfileExists(true);
         setProfileLoaded(true);
-        return true;
+        return stored;
       })
       .catch((cause: unknown) => {
         console.error("Profile save failed:", cause);
         setSetupError(translate(currentLocale(), "setup.saveFailed"));
-        return false;
+        return null;
       })
       .finally(() => setSetupSaving(false));
   }

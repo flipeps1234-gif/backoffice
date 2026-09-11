@@ -257,7 +257,7 @@ export default function SignIn() {
   // door rather than a form pinned to the left edge of a wide column.
   if (sent) {
     return (
-      <div className="mx-auto w-full max-w-sm space-y-4 pt-4 text-center sm:pt-10">
+      <div className="mx-auto w-full max-w-sm space-y-4 pt-4 text-center lg:pt-10">
         <div>
           <h2 className="text-sm font-semibold">{t("signin.checkEmail")}</h2>
           <p className="mt-1 text-sm text-neutral-500">
@@ -285,10 +285,12 @@ export default function SignIn() {
           {t("signin.nothingYet")}
         </p>
 
-        <div className="flex justify-center gap-6 text-sm text-neutral-500">
+        {/* Two exit links side by side: each is a real min-h-11 target
+            (design-tokens.md), not a 20px line of text. */}
+        <div className="flex items-center justify-center gap-6 text-sm text-neutral-500">
           <button
             type="button"
-            className="hover:underline"
+            className="min-h-11 px-2 hover:underline"
             disabled={busy}
             onClick={() => {
               setSent(false);
@@ -300,7 +302,7 @@ export default function SignIn() {
           </button>
           <button
             type="button"
-            className="hover:underline disabled:no-underline disabled:opacity-60"
+            className="min-h-11 px-2 hover:underline disabled:no-underline disabled:opacity-60"
             disabled={busy || cooldown > 0}
             onClick={resend}
           >
@@ -317,7 +319,7 @@ export default function SignIn() {
 
   return (
     <form
-      className="mx-auto w-full max-w-sm space-y-4 pt-4 text-center sm:pt-10"
+      className="mx-auto w-full max-w-sm space-y-4 pt-4 text-center lg:pt-10"
       onSubmit={submitEmail}
     >
       {googleReady && (

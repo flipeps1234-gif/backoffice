@@ -21,9 +21,13 @@ import { useLocale } from "./use-locale";
  * that step writes the profile row right then (the hub's
  * onSaveProfile), and only advances once the write has landed; a reload
  * afterwards lands in the hub with the fields kept, because the row is
- * what "done" means. On the later steps the fields are already stored;
- * Finish and Skip hand them up again and the hub writes only if
- * something changed. Services go through the hub's own create handler
+ * what "done" means. The hub resolves with the row that ACTUALLY landed
+ * and the fields are reseeded from it: two devices can both be in the
+ * tour on one new account, and if the other one's Continue won the
+ * create-if-absent, this device now shows and holds ITS fields — so
+ * Finish/Skip later hand up exactly what is stored, the hub sees no
+ * change, and a blank draft can never be upserted over a real row
+ * (src/lib/supabase/profile.ts). Services go through the hub's own create handler
  * the moment each is saved, exactly like the Products page, so a
  * service typed here is a real catalog row and never a draft. The swipe
  * step is the landing page's playground — fixture rows, page-local
@@ -34,6 +38,10 @@ import { useLocale } from "./use-locale";
  * (tabIndex -1 + focus() — no state is set in that effect). On the
  * services step, opening a form focuses its name field and closing one
  * (Save or Cancel) refocuses the heading — focus never drops to <body>.
+ * A FAILED Continue puts focus back on the Continue button (the browser
+ * blurred it the moment `saving` disabled it), so a keyboard user can
+ * retry without tabbing from the top of the page. Enter in any of the
+ * three business fields is Continue, as on the sign-in gate.
  */
 
 const fieldClass =
@@ -63,7 +71,9 @@ export default function SetupWizard({
   saving,
   review,
 }: {
-  /** Seeds the business fields: EMPTY on first use, the stored row in review. */
+  /** Seeds the business fields: EMPTY on first use, the stored row in
+   *  review. After Continue the fields are reseeded from what
+   *  onSaveProfile resolves, not from this prop. */
   profile: BusinessProfile;
   services: Service[];
   /** The hub's Products create handler — a service saved here IS a row. */
@@ -72,10 +82,11 @@ export default function SetupWizard({
    *  form on tap, so a typo or a wrong price is fixed where it was typed. */
   onUpdateService: (service: Service) => void;
   /** Continue on the business step: the hub writes the profile row NOW
-   *  and resolves true once it landed (false on a failed write — the
-   *  hub shows its alert, the fields stay typed, Continue can be tried
-   *  again). The step advances only on true. */
-  onSaveProfile: (profile: BusinessProfile) => Promise<boolean>;
+   *  and resolves with the row that actually landed (another device's
+   *  fields if its create won), or null on a failed write — the hub
+   *  shows its alert, the fields stay typed, Continue can be tried
+   *  again. The step advances only on a row. */
+  onSaveProfile: (profile: BusinessProfile) => Promise<BusinessProfile | null>;
   /** "Go to my books" on the last step. */
   onFinish: (profile: BusinessProfile) => void;
   /** "Not now" on the business step and "Skip for now" on the others —
@@ -94,6 +105,13 @@ export default function SetupWizard({
   const [businessName, setBusinessName] = useState(profile.businessName);
   const [ownerName, setOwnerName] = useState(profile.ownerName);
   const [usState, setUsState] = useState(profile.usState);
+  /** Which of the two business-step buttons is waiting on the hub's
+   *  write: only THAT one reads "Saving…" — the other is not saving
+   *  anything, and two stacked "Saving…" labels would say it is. */
+  const [exitPressed, setExitPressed] = useState(false);
+  /** Bumped on every failed Continue; the effect below refocuses the
+   *  button once it is enabled again. */
+  const [saveFailures, setSaveFailures] = useState(0);
   const [addingService, setAddingService] = useState(false);
   /** The service whose card was tapped — its EditForm replaces the list's
    *  "Add a service" button under the same nav-hiding rule. */
@@ -106,6 +124,17 @@ export default function SetupWizard({
   useEffect(() => {
     headingRef.current?.focus();
   }, [step]);
+
+  // A failed Continue: the pressed button was `disabled` while the hub
+  // wrote (browsers blur it right then), and the step did not change, so
+  // nothing refocused the heading — document.activeElement is <body>.
+  // Focus goes back to Continue AFTER the render that re-enables it (a
+  // disabled button refuses focus), which is why this is an effect and
+  // not a line in the handler; it sets no state.
+  const continueRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (saveFailures > 0) continueRef.current?.focus();
+  }, [saveFailures]);
 
   /** A service form closes (Save or Cancel unmounts the focused button):
    *  focus goes back to the step heading, not to <body>. Event handlers,
@@ -128,11 +157,33 @@ export default function SetupWizard({
 
   /** Business step's Continue: the row is written first, then the step
    *  moves on — never the other way round, so what the person typed is
-   *  never a draft the next screen could lose. */
+   *  never a draft the next screen could lose. The fields are reseeded
+   *  from the row the hub says landed: from here on draft() IS the
+   *  stored profile, so Finish/Skip have nothing to write and the tour's
+   *  only first-use write stays the create-if-absent one. */
   const saveAndContinue = () => {
-    void onSaveProfile(draft()).then((saved) => {
-      if (saved) next();
+    if (saving) return;
+    setExitPressed(false);
+    void onSaveProfile(draft()).then((stored) => {
+      if (stored) {
+        setBusinessName(stored.businessName);
+        setOwnerName(stored.ownerName);
+        setUsState(stored.usState);
+        next();
+      } else {
+        setSaveFailures((n) => n + 1);
+      }
     });
+  };
+
+  /** Enter in a business field is Continue — the sign-in gate one screen
+   *  earlier submits on Enter, and bare inputs that swallow it read as a
+   *  broken button. */
+  const enterContinues = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveAndContinue();
+    }
   };
 
   let body: React.ReactNode;
@@ -150,6 +201,7 @@ export default function SetupWizard({
               className={fieldClass}
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
+              onKeyDown={enterContinues}
             />
           </div>
           <div>
@@ -161,6 +213,7 @@ export default function SetupWizard({
               className={fieldClass}
               value={ownerName}
               onChange={(e) => setOwnerName(e.target.value)}
+              onKeyDown={enterContinues}
             />
           </div>
           <div>
@@ -174,6 +227,7 @@ export default function SetupWizard({
               maxLength={2}
               value={usState}
               onChange={(e) => setUsState(e.target.value)}
+              onKeyDown={enterContinues}
             />
           </div>
         </div>
@@ -270,7 +324,7 @@ export default function SetupWizard({
           {t(review ? "setup.headerReview" : "setup.header")}
         </h2>
         {/* The step count rides INSIDE the focused heading as hidden
-            text: focus lands here on every step change, so "Step 2 of 5"
+            text: focus lands here on every step change, so "Step 2 of 4"
             is spoken with the title. A label on the dots' container was
             never reached — an aria-hidden-only group has nothing to
             read, so screen readers skip it. */}
@@ -285,8 +339,9 @@ export default function SetupWizard({
             {t("setup.stepOf", { current: index + 1, total: SETUP_STEPS.length })}
           </span>
         </h3>
-        {/* Five dots, the current one in the foreground color — purely
-            visual; the heading above carries the count. */}
+        {/* One dot per SETUP_STEPS entry, the current one in the
+            foreground color — purely visual; the heading above carries
+            the count. */}
         <div aria-hidden="true" className="flex gap-2">
           {SETUP_STEPS.map((name, i) => (
             <span
@@ -312,12 +367,13 @@ export default function SetupWizard({
             // Continue writes the row (the hub's alert reports a failed
             // write); "Not now" below ends the tour instead.
             <button
+              ref={continueRef}
               type="button"
               className={primaryClass}
               disabled={saving}
               onClick={saveAndContinue}
             >
-              {saving ? t("setup.saving") : t("setup.continue")}
+              {saving && !exitPressed ? t("setup.saving") : t("setup.continue")}
             </button>
           )}
           {(step === "services" || step === "try") && (
@@ -357,9 +413,12 @@ export default function SetupWizard({
               type="button"
               className="h-11 w-full text-sm text-neutral-500 hover:underline disabled:opacity-40"
               disabled={saving}
-              onClick={() => onSkip(draft())}
+              onClick={() => {
+                setExitPressed(true);
+                onSkip(draft());
+              }}
             >
-              {saving
+              {saving && exitPressed
                 ? t("setup.saving")
                 : review
                   ? t("setup.close")
