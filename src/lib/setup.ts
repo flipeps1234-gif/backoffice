@@ -30,10 +30,17 @@ export const needsSetup = ({
 }: SetupFacts): boolean =>
   !profileExists && transactionCount === 0 && saleCount === 0;
 
-/** The five screens, in order. The wizard walks this list; the step
- *  indicator draws one dot per entry. */
+/** The four screens, in order. The wizard walks this list; the step
+ *  indicator draws one dot per entry.
+ *
+ *  2026-09-11: the business profile comes FIRST — the moment an account
+ *  exists it is asked for its business, with "Not now" as the way out.
+ *  The welcome screen that used to precede it is gone; what the app does
+ *  is shown, not told, by the steps that follow. Continue on the
+ *  business step writes the profile row right then (not at the end), so
+ *  a reload after it lands in the hub with the fields kept — the row is
+ *  what "done" means, and the remaining steps are practice. */
 export const SETUP_STEPS = [
-  "welcome",
   "business",
   "services",
   "try",

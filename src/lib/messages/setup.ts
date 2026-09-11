@@ -1,9 +1,11 @@
 /**
- * The welcome tour (setup-wizard.tsx) — 2026-09-10. Five screens shown
- * once per account. Every line here describes what the app does TODAY:
- * screenshots become rows, rows get swiped, owed jobs and a tax CSV.
- * Nothing about notifications, SMS or Google — those are dark or off,
- * and a tour that promises them is a broken promise on the first screen.
+ * The welcome tour (setup-wizard.tsx) — 2026-09-10, reshaped 2026-09-11:
+ * four screens shown once per account, the business profile FIRST with
+ * "Not now" as the exit. Every line here describes what the app does
+ * TODAY: screenshots become rows, rows get swiped, owed jobs and a tax
+ * CSV. Nothing about notifications, SMS or Google — those are dark or
+ * off, and a tour that promises them is a broken promise on the first
+ * screen.
  */
 export const messages = {
   "setup.header": {
@@ -24,10 +26,14 @@ export const messages = {
     es: "Paso {current} de {total}",
     pt: "Passo {current} de {total}",
   },
-  "setup.start": {
-    en: "Start",
-    es: "Empezar",
-    pt: "Começar",
+  // The business step's way out: no profile today, straight to the
+  // books. Ends the tour like Skip does (the row is created, blank or
+  // with whatever was typed), so the question is asked once, not on
+  // every open; Settings has the tour again.
+  "setup.notNow": {
+    en: "Not now",
+    es: "Ahora no",
+    pt: "Agora não",
   },
   "setup.continue": {
     en: "Continue",
@@ -66,44 +72,18 @@ export const messages = {
     es: "Cerrar",
     pt: "Fechar",
   },
-  // ---- 1. welcome ----
-  "setup.welcomeTitle": {
-    en: "What contado does",
-    es: "Qué hace contado",
-    pt: "O que o contado faz",
-  },
-  "setup.welcomeHeadline": {
-    en: "Your payment screenshots become real books.",
-    es: "Tus capturas de pagos se vuelven libros de verdad.",
-    pt: "Suas capturas de pagamentos viram um livro-caixa de verdade.",
-  },
-  "setup.welcome1": {
-    en: "Upload screenshots of Venmo, Cash App or Zelle — every payment in them becomes a row.",
-    es: "Sube capturas de Venmo, Cash App o Zelle — cada pago que aparece se vuelve una fila.",
-    pt: "Envie capturas do Venmo, Cash App ou Zelle — cada pagamento que aparece vira uma linha.",
-  },
-  "setup.welcome2": {
-    en: "Swipe each row: right is business, left is personal.",
-    es: "Desliza cada fila: a la derecha es negocio, a la izquierda es personal.",
-    pt: "Deslize cada linha: para a direita é negócio, para a esquerda é pessoal.",
-  },
-  "setup.welcome3": {
-    en: "Keep track of jobs you're still owed, and export a tax-ready CSV whenever you like.",
-    es: "Lleva la cuenta de los trabajos que aún te deben y exporta un CSV listo para impuestos cuando quieras.",
-    pt: "Acompanhe os serviços que ainda devem a você e exporte um CSV pronto para o imposto quando quiser.",
-  },
-  // ---- 2. business ----
+  // ---- 1. business (the first thing a new account sees) ----
   "setup.businessTitle": {
-    en: "Your business",
-    es: "Tu negocio",
-    pt: "Seu negócio",
+    en: "Set up your business",
+    es: "Configura tu negocio",
+    pt: "Configure seu negócio",
   },
   "setup.businessIntro": {
     en: "Goes on top of the tax CSV and the proof of income — nothing else reads it. Everything here is optional, and Settings has it later.",
     es: "Va al inicio del CSV de impuestos y del comprobante de ingresos — nada más lo usa. Todo aquí es opcional, y luego lo encuentras en Ajustes.",
     pt: "Vai no topo do CSV de impostos e do comprovante de renda — nada mais usa isso. Tudo aqui é opcional, e depois fica em Configurações.",
   },
-  // ---- 3. services ----
+  // ---- 2. services ----
   "setup.servicesTitle": {
     en: "What do you charge for?",
     es: "¿Qué cobras?",
@@ -124,7 +104,7 @@ export const messages = {
     es: "Nada todavía — no pasa nada, puedes continuar sin ninguno.",
     pt: "Nada ainda — tudo bem, você pode continuar sem nenhum.",
   },
-  // ---- 4. try ----
+  // ---- 3. try ----
   "setup.tryTitle": {
     en: "Try a swipe",
     es: "Prueba deslizar",
@@ -140,7 +120,7 @@ export const messages = {
     es: "Empezar de nuevo",
     pt: "Recomeçar",
   },
-  // ---- 5. done ----
+  // ---- 4. done ----
   "setup.doneTitle": {
     en: "You're set",
     es: "Todo listo",

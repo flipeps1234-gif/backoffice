@@ -252,9 +252,12 @@ export default function SignIn() {
     await sendLink();
   }
 
+  // Both screens sit centered on the page (2026-09-11): one narrow
+  // column in the middle, text centered, so the gate reads as a front
+  // door rather than a form pinned to the left edge of a wide column.
   if (sent) {
     return (
-      <div className="space-y-4">
+      <div className="mx-auto w-full max-w-sm space-y-4 pt-4 text-center sm:pt-10">
         <div>
           <h2 className="text-sm font-semibold">{t("signin.checkEmail")}</h2>
           <p className="mt-1 text-sm text-neutral-500">
@@ -282,7 +285,7 @@ export default function SignIn() {
           {t("signin.nothingYet")}
         </p>
 
-        <div className="flex justify-between text-sm text-neutral-500">
+        <div className="flex justify-center gap-6 text-sm text-neutral-500">
           <button
             type="button"
             className="hover:underline"
@@ -313,7 +316,10 @@ export default function SignIn() {
   }
 
   return (
-    <form className="space-y-4" onSubmit={submitEmail}>
+    <form
+      className="mx-auto w-full max-w-sm space-y-4 pt-4 text-center sm:pt-10"
+      onSubmit={submitEmail}
+    >
       {googleReady && (
         <>
           <button
@@ -347,7 +353,7 @@ export default function SignIn() {
           inputMode="email"
           required
           autoComplete="email"
-          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-3 text-base text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none"
+          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-3 text-center text-base text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none"
           placeholder={t("signin.emailPlaceholder")}
           value={email}
           onChange={(event) => setEmail(event.target.value)}

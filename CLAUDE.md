@@ -2,11 +2,23 @@
 
 # CLAUDE.md — read this before doing anything
 
-## Welcome tour — 2026-09-10
+## Welcome tour — 2026-09-10, reshaped 2026-09-11
 
-A five-step setup wizard (src/app/setup-wizard.tsx; copy in
+A four-step setup wizard (src/app/setup-wizard.tsx; copy in
 src/lib/messages/setup.ts, `setup.*`, EN/ES/PT) shown ONCE per account,
-after sign-in and before the hub. THE RULE is pure and unit-tested
+after sign-in and before the hub. 2026-09-11 (owner): THE BUSINESS
+PROFILE COMES FIRST — the moment an account exists it is asked for its
+business, with "Not now" (setup.notNow) as the way out; the welcome
+screen was dropped (SETUP_STEPS = business, services, try, done). The
+business step's Continue WRITES THE ROW RIGHT THEN (hub
+`saveSetupProfile` → `writeSetupProfile`, the same create-if-absent /
+upsert split endSetup uses) and advances only once the write landed, so
+a reload after it lands in the hub with the fields kept; Finish then
+has nothing to write and just ends the tour (endSetup's no-op branch
+sets the decision to skip). "Not now" ends the tour like Skip: the row
+is created, blank or with whatever was typed, so the question is asked
+once. The sign-in gate was centered the same day (sign-in.tsx: one
+`max-w-sm` column, `text-center`, both screens). THE RULE is pure and unit-tested
 (src/lib/setup.ts, tests/unit/setup.test.mjs): `needsSetup` =
 no business_profiles row AND zero transactions AND zero sales — all
 three LOADED facts, never assumed (a failed loadProfile still throws

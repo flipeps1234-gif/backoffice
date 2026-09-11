@@ -39,8 +39,8 @@ test('needsSetup: a blank row still counts as done (Skip creates one)', () => {
   assert.equal(needsSetup({ profileExists: true, transactionCount: 0, saleCount: 0 }), false);
 });
 
-test('the five steps, in order', () => {
-  assert.deepEqual([...SETUP_STEPS], ['welcome', 'business', 'services', 'try', 'done']);
+test('the four steps, in order — the business profile comes first', () => {
+  assert.deepEqual([...SETUP_STEPS], ['business', 'services', 'try', 'done']);
 });
 
 const placeholders = (text) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
@@ -85,7 +85,14 @@ test('every setup.* key the wizard and the hub reference exists', () => {
   for (const key of referenced) {
     assert.ok(key in messages, `${key} is referenced but not defined`);
   }
-  // The review-mode exit and the tour's own failure line are wired.
+  // The review-mode exit, the business step's "Not now" and the tour's
+  // own failure line are wired.
   assert.ok(referenced.has('setup.close'));
+  assert.ok(referenced.has('setup.notNow'));
   assert.ok(referenced.has('setup.saveFailed'));
+  // The welcome screen is gone: nothing may still reference its copy.
+  for (const gone of ['setup.start', 'setup.welcomeTitle', 'setup.welcome1']) {
+    assert.ok(!referenced.has(gone), `${gone} is referenced but was removed`);
+    assert.ok(!(gone in messages), `${gone} is still defined`);
+  }
 });

@@ -10,19 +10,24 @@ import { EditForm } from "./products-page";
 import { useLocale } from "./use-locale";
 
 /**
- * The welcome tour — 2026-09-10. Five screens between sign-in and the
- * hub, once per account (the rule is src/lib/setup.ts; the hub decides
- * when to mount this). The hub also reopens it from Settings, prefilled,
- * as a review.
+ * The welcome tour — 2026-09-10, reshaped 2026-09-11. Four screens
+ * between sign-in and the hub, once per account (the rule is
+ * src/lib/setup.ts; the hub decides when to mount this). The hub also
+ * reopens it from Settings, prefilled, as a review.
  *
- * What is saved, and when: the business fields live in THIS component's
- * state until the tour ends — Finish and Skip both hand them up, and the
- * hub writes the profile row then (a reload mid-tour restarts it; nothing
- * was lost because nothing was written). Services are the exception on
- * purpose: each one goes through the hub's own create handler the moment
- * it is saved, exactly like the Products page, so a service typed here
- * is a real catalog row and never a draft. The swipe step is the landing
- * page's playground — fixture rows, page-local state, nothing persisted.
+ * The business profile comes FIRST: the moment an account exists it is
+ * asked for its business, and "Not now" is the way out — it ends the
+ * tour the way Skip does, so the question is asked once. Continue on
+ * that step writes the profile row right then (the hub's
+ * onSaveProfile), and only advances once the write has landed; a reload
+ * afterwards lands in the hub with the fields kept, because the row is
+ * what "done" means. On the later steps the fields are already stored;
+ * Finish and Skip hand them up again and the hub writes only if
+ * something changed. Services go through the hub's own create handler
+ * the moment each is saved, exactly like the Products page, so a
+ * service typed here is a real catalog row and never a draft. The swipe
+ * step is the landing page's playground — fixture rows, page-local
+ * state, nothing persisted.
  *
  * Keyboard: every control is a real <button>, inputs are labelled by
  * htmlFor, and focus lands on the step heading whenever the step changes
@@ -41,7 +46,6 @@ const secondaryClass =
   "h-11 flex-1 rounded-lg border border-neutral-300 px-4 text-base font-medium hover:bg-neutral-50 disabled:opacity-40 dark:border-neutral-600 dark:hover:bg-neutral-900";
 
 const TITLE_KEYS = {
-  welcome: "setup.welcomeTitle",
   business: "setup.businessTitle",
   services: "setup.servicesTitle",
   try: "setup.tryTitle",
@@ -53,6 +57,7 @@ export default function SetupWizard({
   services,
   onCreateService,
   onUpdateService,
+  onSaveProfile,
   onFinish,
   onSkip,
   saving,
@@ -66,9 +71,15 @@ export default function SetupWizard({
   /** The hub's Products update handler — a card here opens the same
    *  form on tap, so a typo or a wrong price is fixed where it was typed. */
   onUpdateService: (service: Service) => void;
+  /** Continue on the business step: the hub writes the profile row NOW
+   *  and resolves true once it landed (false on a failed write — the
+   *  hub shows its alert, the fields stay typed, Continue can be tried
+   *  again). The step advances only on true. */
+  onSaveProfile: (profile: BusinessProfile) => Promise<boolean>;
   /** "Go to my books" on the last step. */
   onFinish: (profile: BusinessProfile) => void;
-  /** "Skip for now" on any other step — saves whatever was typed so far. */
+  /** "Not now" on the business step and "Skip for now" on the others —
+   *  ends the tour, saving whatever was typed so far. */
   onSkip: (profile: BusinessProfile) => void;
   /** The hub is writing the profile row; buttons wait so a double tap
    *  can't queue two writes, and a failed write leaves the step as is. */
@@ -115,20 +126,17 @@ export default function SetupWizard({
   const next = () => setIndex((i) => Math.min(i + 1, SETUP_STEPS.length - 1));
   const back = () => setIndex((i) => Math.max(i - 1, 0));
 
+  /** Business step's Continue: the row is written first, then the step
+   *  moves on — never the other way round, so what the person typed is
+   *  never a draft the next screen could lose. */
+  const saveAndContinue = () => {
+    void onSaveProfile(draft()).then((saved) => {
+      if (saved) next();
+    });
+  };
+
   let body: React.ReactNode;
   switch (step) {
-    case "welcome":
-      body = (
-        <div className="space-y-4">
-          <p className="text-base font-semibold">{t("setup.welcomeHeadline")}</p>
-          <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
-            <li>{t("setup.welcome1")}</li>
-            <li>{t("setup.welcome2")}</li>
-            <li>{t("setup.welcome3")}</li>
-          </ol>
-        </div>
-      );
-      break;
     case "business":
       body = (
         <div className="space-y-3">
@@ -299,12 +307,20 @@ export default function SetupWizard({
           half-typed name and price. */}
       {step === "services" && serviceFormOpen ? null : (
         <div className="space-y-3">
-          {step === "welcome" && (
-            <button type="button" className={primaryClass} onClick={next}>
-              {t("setup.start")}
+          {step === "business" && (
+            // The first screen has no Back: there is nothing before it.
+            // Continue writes the row (the hub's alert reports a failed
+            // write); "Not now" below ends the tour instead.
+            <button
+              type="button"
+              className={primaryClass}
+              disabled={saving}
+              onClick={saveAndContinue}
+            >
+              {saving ? t("setup.saving") : t("setup.continue")}
             </button>
           )}
-          {(step === "business" || step === "services" || step === "try") && (
+          {(step === "services" || step === "try") && (
             <div className="flex gap-2">
               <button type="button" className={secondaryClass} onClick={back}>
                 {t("setup.back")}
@@ -334,13 +350,22 @@ export default function SetupWizard({
             </div>
           )}
           {step !== "done" && (
+            // The business step says "Not now" (no profile today, straight
+            // to the books); the later steps say "Skip for now". Same
+            // handler, same meaning: the tour ends. A review just closes.
             <button
               type="button"
               className="h-11 w-full text-sm text-neutral-500 hover:underline disabled:opacity-40"
               disabled={saving}
               onClick={() => onSkip(draft())}
             >
-              {saving ? t("setup.saving") : review ? t("setup.close") : t("setup.skip")}
+              {saving
+                ? t("setup.saving")
+                : review
+                  ? t("setup.close")
+                  : step === "business"
+                    ? t("setup.notNow")
+                    : t("setup.skip")}
             </button>
           )}
         </div>
