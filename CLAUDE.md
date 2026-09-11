@@ -37,8 +37,9 @@ stalled request to skip so "Loading" can never hide the hub — or
 Sign out — forever. Nothing that empties the in-memory ledger later
 can re-summon the tour. A new account therefore meets the tour first, never hub → tour
 → hub. Anonymous mode never decides (no account). THE ROW'S MEANING:
-the tour ends by writing the business_profiles row (Finish and Skip
-alike, blank fields included) — the row's existence IS "tour done",
+the tour writes the business_profiles row on the business step's
+Continue or on Not now / Skip (blank fields included; Finish normally
+has nothing left to write) — the row's existence IS "tour done",
 cross-device, no per-device marker, no migration (src/lib/profile.ts;
 `loadProfile` now returns `null` for no row, and the hub maps
 null→EMPTY_PROFILE for the form while tracking `profileExists`

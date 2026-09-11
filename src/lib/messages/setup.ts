@@ -83,7 +83,10 @@ export const messages = {
   // are — nothing here may lean on a screen that no longer exists.
   "setup.businessIntro": {
     en: "Your name and state go on top of the tax-ready CSV and the proof of income you can export later — nothing else uses them. Everything here is optional; you can change it in Settings.",
-    es: "Tu nombre y tu estado van al inicio del CSV para impuestos y del comprobante de ingresos que puedes exportar después — nada más los usa. Todo es opcional, y luego lo cambias en Ajustes.",
+    // "el estado donde trabajas", not "tu estado" (which reads as status
+    // or mood before the field label is in view), and "CSV de impuestos"
+    // — the name the Settings hint uses for the same file.
+    es: "Tu nombre y el estado donde trabajas van al inicio del CSV de impuestos y del comprobante de ingresos que puedes exportar después — nada más los usa. Todo es opcional, y luego lo cambias en Ajustes.",
     pt: "Seu nome e seu estado vão no topo do CSV de impostos e do comprovante de renda que você pode exportar depois — nada mais usa isso. Tudo é opcional, e depois dá para mudar em Configurações.",
   },
   // ---- 2. services ----

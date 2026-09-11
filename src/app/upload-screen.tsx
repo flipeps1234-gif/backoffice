@@ -2868,7 +2868,7 @@ function Ledger({
     return (profileExists || tourOpen) && !changed;
   }
 
-  function endSetup(next: BusinessProfile) {
+  function endSetup(next: BusinessProfile): Promise<BusinessProfile | null> {
     if (setupHasNothingToWrite(next)) {
       setSetupError("");
       // First use reaches here too since 2026-09-11: the business step's
@@ -2876,7 +2876,7 @@ function Ledger({
       // but the tour still has to end.
       setSetupDecision("skip");
       setTourOpen(false);
-      return;
+      return Promise.resolve(profile);
     }
     if (!accountId) {
       // Unreachable on first use (the decision needs an account); a
@@ -2885,13 +2885,17 @@ function Ledger({
       setProfile(next);
       setSetupError("");
       setTourOpen(false);
-      return;
+      return Promise.resolve(next);
     }
-    void writeSetupProfile(next, accountId).then((stored) => {
+    // Resolves like saveSetupProfile does (the row, or null on a failed
+    // write) so the wizard can put focus back on the button that was
+    // pressed when the write fails and the step does not change.
+    return writeSetupProfile(next, accountId).then((stored) => {
       if (stored) {
         setSetupDecision("skip");
         setTourOpen(false);
       }
+      return stored;
     });
   }
 

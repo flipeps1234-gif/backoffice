@@ -38,10 +38,11 @@ import { useLocale } from "./use-locale";
  * (tabIndex -1 + focus() — no state is set in that effect). On the
  * services step, opening a form focuses its name field and closing one
  * (Save or Cancel) refocuses the heading — focus never drops to <body>.
- * A FAILED Continue puts focus back on the Continue button (the browser
- * blurred it the moment `saving` disabled it), so a keyboard user can
- * retry without tabbing from the top of the page. Enter in any of the
- * three business fields is Continue, as on the sign-in gate.
+ * A FAILED write puts focus back on the button that was pressed —
+ * Continue, Not now / Skip, or Finish (the browser blurred it the moment
+ * `saving` disabled it), so a keyboard user can retry without tabbing
+ * from the top of the page. Enter in any of the three business fields
+ * is Continue, as on the sign-in gate.
  */
 
 const fieldClass =
@@ -87,11 +88,13 @@ export default function SetupWizard({
    *  shows its alert, the fields stay typed, Continue can be tried
    *  again. The step advances only on a row. */
   onSaveProfile: (profile: BusinessProfile) => Promise<BusinessProfile | null>;
-  /** "Go to my books" on the last step. */
-  onFinish: (profile: BusinessProfile) => void;
+  /** "Go to my books" on the last step. Resolves like onSaveProfile
+   *  (the row, or null on a failed write) — the tour has ended when it
+   *  resolves with a row. */
+  onFinish: (profile: BusinessProfile) => Promise<BusinessProfile | null>;
   /** "Not now" on the business step and "Skip for now" on the others —
-   *  ends the tour, saving whatever was typed so far. */
-  onSkip: (profile: BusinessProfile) => void;
+   *  ends the tour, saving whatever was typed so far. Same resolution. */
+  onSkip: (profile: BusinessProfile) => Promise<BusinessProfile | null>;
   /** The hub is writing the profile row; buttons wait so a double tap
    *  can't queue two writes, and a failed write leaves the step as is. */
   saving: boolean;
@@ -105,12 +108,13 @@ export default function SetupWizard({
   const [businessName, setBusinessName] = useState(profile.businessName);
   const [ownerName, setOwnerName] = useState(profile.ownerName);
   const [usState, setUsState] = useState(profile.usState);
-  /** Which of the two business-step buttons is waiting on the hub's
-   *  write: only THAT one reads "Saving…" — the other is not saving
-   *  anything, and two stacked "Saving…" labels would say it is. */
-  const [exitPressed, setExitPressed] = useState(false);
-  /** Bumped on every failed Continue; the effect below refocuses the
-   *  button once it is enabled again. */
+  /** Which button is waiting on the hub's write: only THAT one reads
+   *  "Saving…" — the others are not saving anything, and two stacked
+   *  "Saving…" labels would say they are. It is also the button a
+   *  failed write hands focus back to. */
+  const [pressed, setPressed] = useState<"continue" | "exit" | "finish">("continue");
+  /** Bumped on every failed write; the effect below refocuses the
+   *  pressed button once it is enabled again. */
   const [saveFailures, setSaveFailures] = useState(0);
   const [addingService, setAddingService] = useState(false);
   /** The service whose card was tapped — its EditForm replaces the list's
@@ -125,16 +129,35 @@ export default function SetupWizard({
     headingRef.current?.focus();
   }, [step]);
 
-  // A failed Continue: the pressed button was `disabled` while the hub
+  // A failed write: the pressed button was `disabled` while the hub
   // wrote (browsers blur it right then), and the step did not change, so
   // nothing refocused the heading — document.activeElement is <body>.
-  // Focus goes back to Continue AFTER the render that re-enables it (a
-  // disabled button refuses focus), which is why this is an effect and
-  // not a line in the handler; it sets no state.
+  // Focus goes back to that button AFTER the render that re-enables it
+  // (a disabled button refuses focus), which is why this is an effect
+  // and not a line in the handler; it sets no state.
   const continueRef = useRef<HTMLButtonElement>(null);
+  const exitRef = useRef<HTMLButtonElement>(null);
+  const finishRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (saveFailures > 0) continueRef.current?.focus();
-  }, [saveFailures]);
+    if (saveFailures === 0) return;
+    const target =
+      pressed === "continue" ? continueRef : pressed === "exit" ? exitRef : finishRef;
+    target.current?.focus();
+  }, [saveFailures, pressed]);
+
+  /** The exit (Not now / Skip / Close) and Finish both end the tour
+   *  through the hub; a null resolution is a failed write, and the
+   *  button that was pressed gets focus back. */
+  const endWith = (
+    which: "exit" | "finish",
+    handler: (profile: BusinessProfile) => Promise<BusinessProfile | null>,
+  ) => {
+    if (saving) return;
+    setPressed(which);
+    void handler(draft()).then((stored) => {
+      if (!stored) setSaveFailures((n) => n + 1);
+    });
+  };
 
   /** A service form closes (Save or Cancel unmounts the focused button):
    *  focus goes back to the step heading, not to <body>. Event handlers,
@@ -163,7 +186,7 @@ export default function SetupWizard({
    *  only first-use write stays the create-if-absent one. */
   const saveAndContinue = () => {
     if (saving) return;
-    setExitPressed(false);
+    setPressed("continue");
     void onSaveProfile(draft()).then((stored) => {
       if (stored) {
         setBusinessName(stored.businessName);
@@ -373,7 +396,7 @@ export default function SetupWizard({
               disabled={saving}
               onClick={saveAndContinue}
             >
-              {saving && !exitPressed ? t("setup.saving") : t("setup.continue")}
+              {saving && pressed === "continue" ? t("setup.saving") : t("setup.continue")}
             </button>
           )}
           {(step === "services" || step === "try") && (
@@ -396,12 +419,13 @@ export default function SetupWizard({
                 {t("setup.back")}
               </button>
               <button
+                ref={finishRef}
                 type="button"
                 className="h-11 flex-1 rounded-lg bg-foreground px-4 text-base font-medium text-background hover:opacity-90 disabled:opacity-40"
                 disabled={saving}
-                onClick={() => onFinish(draft())}
+                onClick={() => endWith("finish", onFinish)}
               >
-                {saving ? t("setup.saving") : t("setup.finish")}
+                {saving && pressed === "finish" ? t("setup.saving") : t("setup.finish")}
               </button>
             </div>
           )}
@@ -410,15 +434,13 @@ export default function SetupWizard({
             // to the books); the later steps say "Skip for now". Same
             // handler, same meaning: the tour ends. A review just closes.
             <button
+              ref={exitRef}
               type="button"
               className="h-11 w-full text-sm text-neutral-500 hover:underline disabled:opacity-40"
               disabled={saving}
-              onClick={() => {
-                setExitPressed(true);
-                onSkip(draft());
-              }}
+              onClick={() => endWith("exit", onSkip)}
             >
-              {saving && exitPressed
+              {saving && pressed === "exit"
                 ? t("setup.saving")
                 : review
                   ? t("setup.close")

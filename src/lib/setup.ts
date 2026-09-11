@@ -6,8 +6,9 @@
  * The rule is a pure function of three server facts so every device
  * agrees without a per-device marker: no business_profiles row AND no
  * ledger rows at all. The profile row is what "tour done" means — the
- * hub CREATES it when the tour ends (Finish or Skip), even with every
- * field blank (see src/lib/profile.ts). Accounts that already logged
+ * hub CREATES it on the business step's Continue (or on Not now / Skip),
+ * even with every field blank (see src/lib/profile.ts); Finish then only
+ * ends the tour. Accounts that already logged
  * money predate the tour and never see it; the empty-ledger check is
  * what protects them, not a migration.
  *

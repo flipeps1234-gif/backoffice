@@ -5,8 +5,9 @@
  * into any calculation (no tax logic — the boundary stands).
  *
  * The ROW has a second meaning since the welcome tour (2026-09-10): its
- * existence is "this account finished the tour". The tour's Finish and
- * Skip both save the profile — blank fields included — so an account
+ * existence is "this account finished the tour". The tour's Continue on
+ * its first step, Not now and Skip all save the profile — blank fields
+ * included (Finish normally has nothing left to write) — so an account
  * with a row, even an all-empty one, is never asked again on any
  * device. loadProfile returns null when there is no row; the form maps
  * that to EMPTY_PROFILE, the tour rule (src/lib/setup.ts) reads it as
