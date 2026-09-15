@@ -23,6 +23,20 @@ Theme pair (CSS vars, globals.css):
 Dark mode keys on the `.dark` CLASS (set pre-paint by the layout
 script) — never `@media (prefers-color-scheme)` in markup.
 
+**Marketing site surface (owner's call, 2026-09-14)** — the one
+deliberate exception to "public pages use only the app's look". Public
+pages sit on a grey page under a black top banner:
+
+| Token | Light | Dark | Where |
+|---|---|---|---|
+| page ground (`--background` on public pages) | `#e5e5e5` (neutral-200) | `#171717` (neutral-900) | globals.css, keyed on `[data-site-header]` |
+| top banner | `#000` | `#000` | public-shell.tsx `<header data-site-header>` |
+
+Inside the banner the theme pair is pinned to the dark one (`--background`
+`#000`, `--foreground` `#ededed`), secondary links are `text-neutral-400`
+and outlined controls use `border-neutral-600` / `hover:bg-neutral-900`
+in both themes. `/app` keeps the white / `#0a0a0a` ground above.
+
 Neutrals — Tailwind `neutral` scale only (no gray/slate/zinc):
 - `text-neutral-500` secondary text, labels, kickers (everywhere)
 - `text-neutral-400` placeholders, disabled-ish (`placeholder:text-neutral-400`)

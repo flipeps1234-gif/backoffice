@@ -16,7 +16,17 @@ const LABELS: Record<Locale, string> = {
   pt: "Português",
 };
 
-export default function LocalePicker({ compact }: { compact?: boolean }) {
+export default function LocalePicker({
+  compact,
+  onDark,
+}: {
+  compact?: boolean;
+  /** Sitting on the marketing site's black banner (public-shell.tsx):
+   *  the unselected labels and their hover need the dark pair in BOTH
+   *  themes. The selected pill already follows the banner's pinned
+   *  --foreground / --background. */
+  onDark?: boolean;
+}) {
   const { locale, t } = useLocale();
   return (
     <div
@@ -32,7 +42,9 @@ export default function LocalePicker({ compact }: { compact?: boolean }) {
           className={`rounded-md px-2 py-1 text-xs font-medium ${
             locale === option
               ? "bg-foreground text-background"
-              : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+              : onDark
+                ? "text-neutral-400 hover:bg-neutral-900"
+                : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900"
           }`}
           onClick={() => {
             setLocale(option);

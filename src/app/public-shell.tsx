@@ -83,7 +83,7 @@ function NavLinks() {
             href={item.href}
             aria-current={current ? "page" : undefined}
             className={
-              current ? "font-medium" : "text-neutral-500 hover:underline"
+              current ? "font-medium" : "text-neutral-400 hover:underline"
             }
           >
             {t(item.key)}
@@ -98,7 +98,19 @@ export function PublicHeader() {
   const { t } = useLocale();
   useLangSync();
   return (
-    <header className="mb-10 space-y-4 lg:space-y-0">
+    // The black banner (owner, 2026-09-14): the header paints itself
+    // full-bleed without leaving the page column — a 100vmax box-shadow in
+    // black, clipped at the header's bottom edge, reaches the viewport's
+    // sides and top (over the page's own top padding) and never adds
+    // scrollable overflow the way a 100vw box would. The theme variables
+    // are pinned to the dark pair INSIDE it, so the mark's cut-out card
+    // (fill var(--background)), the selected language pill and the brand
+    // read correctly on black in both themes. data-site-header also tells
+    // globals.css this is the marketing site (the grey page).
+    <header
+      data-site-header
+      className="mb-10 space-y-4 bg-black pb-5 text-foreground shadow-[0_0_0_100vmax_#000] [--background:#000] [--foreground:#ededed] [clip-path:inset(-100vmax_-100vmax_0_-100vmax)] lg:space-y-0"
+    >
       <div className="flex items-center justify-between gap-6">
         <div className="flex items-center gap-10">
           {/* Bigger than the app's header on purpose (owner's call): the
@@ -125,7 +137,7 @@ export function PublicHeader() {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <LocalePicker compact />
+          <LocalePicker compact onDark />
           {/* A full-document navigation on purpose (not <Link>): the
               public site's analytics tag must not ride a client-side
               transition into the app. 44px tall — the tokens' secondary
@@ -135,7 +147,7 @@ export function PublicHeader() {
             // beacon transport: this is a full-document navigation, so a
             // plain event could be lost as the page unloads.
             onClick={() => trackEvent("open_app_click", { transport_type: "beacon" })}
-            className="inline-flex h-11 items-center rounded-lg border border-neutral-300 px-4 text-sm font-medium transition-colors hover:bg-neutral-100 dark:border-neutral-600 dark:hover:bg-neutral-900"
+            className="inline-flex h-11 items-center rounded-lg border border-neutral-600 px-4 text-sm font-medium transition-colors hover:bg-neutral-900"
           >
             {t("landing.openApp")}
           </a>

@@ -2,6 +2,19 @@
 
 # CLAUDE.md — read this before doing anything
 
+## Marketing site surface — 2026-09-14
+
+Owner-approved from a mockup (Option B in both themes): every public page
+is a GREY page (`#e5e5e5` light, `#171717` dark) under a full-width BLACK
+top banner holding the brand, nav, language picker and "Open the app".
+The banner is the existing `<header data-site-header>` in public-shell.tsx
+painting itself full-bleed (black 100vmax box-shadow clipped at its bottom
+edge — no 100vw overflow); globals.css switches `--background` on pages
+that contain it via `:has([data-site-header])`, so `/app` is untouched.
+design-tokens.md records the exception. Shipped from main on its own
+(the fix/security-review-2026-09-04 batch and its unapplied 0024 stayed
+out).
+
 ## Welcome tour — 2026-09-10, reshaped 2026-09-11
 
 A four-step setup wizard (src/app/setup-wizard.tsx; copy in

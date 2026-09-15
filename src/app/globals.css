@@ -24,6 +24,19 @@
   --foreground: #ededed;
 }
 
+/* The marketing site's surface (owner, 2026-09-14): a grey page under a
+   black top banner. Keyed on the public header's presence
+   (public-shell.tsx, data-site-header) so /app keeps the app's own
+   white / near-black ground. Order matters: both rules weigh the same,
+   so the dark one must come second. A browser without :has() keeps the
+   old look — cosmetic only, nothing breaks. */
+:root:has([data-site-header]) {
+  --background: #e5e5e5;
+}
+.dark:has([data-site-header]) {
+  --background: #171717;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
