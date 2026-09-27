@@ -2094,11 +2094,15 @@ function Ledger({
     setSaleSeq((n) => n + 1);
     setShowRecentSales(false);
     setShowOwed(false);
-    setShowClients(false);
-    // Leaving a search-focused client page for the sale flow: forget the
-    // focus, or the Clients BUTTON later reopens that client's detail
-    // instead of the list (review catch).
-    setClientsFocus(null);
+    // /app: the sale flow replaces the Clients takeover, and leaving a
+    // search-focused client page must forget the focus, or the Clients
+    // BUTTON later reopens that client's detail instead of the list
+    // (review catch). Desktop keeps Clients mounted (hidden) so a
+    // half-typed client note survives — only the section changes.
+    if (!desktop) {
+      setShowClients(false);
+      setClientsFocus(null);
+    }
     setShowNewSale(true);
   }
 
@@ -2360,8 +2364,12 @@ function Ledger({
       }}
       onOpenClients={() => {
         setShowSettings(false);
-        setClientsFocus(null);
-        setShowClients(true);
+        // Desktop: an already-open Clients page keeps its focus and drafts
+        // (same rule as the sidebar); /app never has it open here.
+        if (!(desktop && showClients)) {
+          setClientsFocus(null);
+          setShowClients(true);
+        }
         setSection("clients");
       }}
       // Review mode: same screens, prefilled. Gated on profileReady
@@ -3197,7 +3205,12 @@ function Ledger({
             cash" far down a long Owed list must still SHOW its failed save
             (on /app the banner sits in the sticky flow column). */}
         {status === "error" && (
-          <p role="alert" className="sticky top-2 z-20 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+          <p
+            role="alert"
+            // Not on Upload: the sort stage's RunningTotals is itself
+            // sticky at the top, and the banner would cover the totals.
+            className={`${show("upload") ? "" : "sticky top-2 z-20 "}rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900`}
+          >
             {error}
           </p>
         )}

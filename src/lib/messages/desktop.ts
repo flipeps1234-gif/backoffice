@@ -106,6 +106,11 @@ export const messages = {
     es: "Clasifica los pagos que esperan revisión y aparecen aquí.",
     pt: "Classifique os pagamentos que esperam conferência e eles aparecem aqui.",
   },
+  "desktop.loadWaiting": {
+    en: "Your totals show here once your saved payments load. Reload the page to try again.",
+    es: "Tus totales aparecen aquí cuando carguen tus pagos guardados. Recarga la página para intentarlo de nuevo.",
+    pt: "Seus totais aparecem aqui quando seus pagamentos salvos carregarem. Recarregue a página para tentar de novo.",
+  },
   "desktop.emptyExpected": {
     en: "Sales paid by app show up here once their payment is matched — upload the screenshot of it.",
     es: "Las ventas pagadas por app aparecen aquí cuando su pago coincide — sube la captura del pago.",

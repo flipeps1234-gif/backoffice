@@ -79,6 +79,21 @@ money existed ("no business money"); LOW: the chart callout overflowed
 for five-figure ES/PT amounts (236px, clamped inside the plot).
 Severity trend: P1 11 (2 HIGH) → P2 4 (2 MED) → P3 6 (1 MED, rest
 lower) — P3's MEDIUM came from a NEW lens, not a regression.
+PASS 4 (newcode over pass 3): 4 findings, none above MED-LOW, all
+fixed — pickSaleAgain and Settings' "Open clients" still unmounted or
+refocused a mounted-hidden Clients page (both now desktop-aware: only
+/app closes/refocuses it); the sticky save banner covered the sort
+stage's sticky RunningTotals (not sticky on Upload); the overview card
+repeated the load error under the banner (now desktop.loadWaiting).
+LOOP STOPPED after pass 4 by the skill's stop conditions: no open
+CRITICAL/HIGH/MEDIUM, every finding fixed with browser or harness
+evidence, severity falling (P1 2 HIGH → P2 2 MED → P3 1 MED from a new
+lens → P4 MED-LOW/LOW, all follow-ups of the mounted-hidden design).
+Lenses run on this branch: newcode ×4, state-machine, product
+semantics, authz/exposure, copy-vs-behavior, a11y, resilience. NEVER
+run here: concurrency (two devices), privacy/data lifecycle,
+performance/bundle measurement, schema-drift — none touched by this
+branch (same Ledger, same writes), which is why they were not spent.
 
 ## Marketing site surface — 2026-09-14
 

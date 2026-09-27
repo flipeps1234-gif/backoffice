@@ -339,10 +339,10 @@ export default function DesktopOverview({
     // Hooks above always run; only the drawing is withheld. A $0.00 year
     // after a network failure would read as the truth.
     return (
+      // The red "couldn't load" banner above says what went wrong; this
+      // card only says why its totals are missing.
       <section className={`${card} p-6`}>
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-          {t("home.errLoadFailed")}
-        </p>
+        <p className="py-10 text-center text-sm text-neutral-500">{t("desktop.loadWaiting")}</p>
       </section>
     );
   }
