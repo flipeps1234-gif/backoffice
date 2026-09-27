@@ -64,7 +64,7 @@ function Chart({
   seriesLabel,
   title,
   year,
-  lastIsPartial,
+  partialIndex,
   active,
   onActive,
 }: {
@@ -77,7 +77,8 @@ function Chart({
   seriesLabel: string;
   title: string;
   year: number;
-  lastIsPartial: boolean;
+  /** Index of the month still in progress (today's), or -1. */
+  partialIndex: number;
   active: number;
   onActive: (i: number) => void;
 }) {
@@ -115,7 +116,7 @@ function Chart({
   const bx = active > (n - 1) / 2 ? x(active) - boxW - 16 : x(active) + 16;
   const by = Math.min(Math.max(y(values[active]) - 84, T), T + ph - 76);
   const monthTitle =
-    lastIsPartial && active === n - 1
+    active === partialIndex
       ? t("desktop.chart.soFar", { month: monthNames[active] })
       : monthNames[active];
 
@@ -206,7 +207,7 @@ function Chart({
           // The name carries the value, so a screen reader hears the
           // month's figure on focus, not just "Show March".
           aria-label={t("desktop.chart.point", {
-            month: lastIsPartial && i === n - 1 ? t("desktop.chart.soFar", { month: monthNames[i] }) : monthNames[i],
+            month: i === partialIndex ? t("desktop.chart.soFar", { month: monthNames[i] }) : monthNames[i],
             amount: money(values[i]),
             series: seriesLabel,
           })}
@@ -284,7 +285,10 @@ export default function DesktopOverview({
   const [year, setYear] = useState(thisYear);
   const [series, setSeries] = useState<Series>("kept");
   const monthCount = seriesMonths(transactions, year, thisYear, thisMonth);
-  const [active, setActive] = useState(Math.max(0, monthCount - 1));
+  // The month the chart opens on: today's for this year (a row dated
+  // ahead extends the series but must not steal focus), December before.
+  const homeMonth = (y: number) => (y === thisYear ? thisMonth - 1 : 11);
+  const [active, setActive] = useState(homeMonth(thisYear));
   const safeActive = Math.min(active, monthCount - 1);
 
   const monthKey = (i: number) => `${year}-${String(i + 1).padStart(2, "0")}`;
@@ -365,7 +369,7 @@ export default function DesktopOverview({
               value={year}
               onChange={(y) => {
                 setYear(y);
-                setActive(seriesMonths(transactions, y, thisYear, thisMonth) - 1);
+                setActive(homeMonth(y));
                 setPicked(0);
               }}
               options={years.map((y) => ({ value: y, label: String(y) }))}
@@ -402,7 +406,7 @@ export default function DesktopOverview({
             seriesLabel={seriesLabel}
             title={chartTitle}
             year={year}
-            lastIsPartial={year === thisYear && monthCount === thisMonth}
+            partialIndex={year === thisYear ? thisMonth - 1 : -1}
             active={safeActive}
             onActive={setActive}
           />
@@ -410,9 +414,11 @@ export default function DesktopOverview({
           <p className="py-16 text-center text-sm text-neutral-500">
             {pendingCount > 0
               ? t("desktop.emptyPending")
-              : year === thisYear && owedCents > 0
-                ? t("desktop.emptyOwed")
-                : t("desktop.empty", { year })}
+              : expectedCents > 0
+                ? t("desktop.emptyExpected")
+                : year === thisYear && owedCents > 0
+                  ? t("desktop.emptyOwed")
+                  : t("desktop.empty", { year })}
           </p>
         )}
       </section>

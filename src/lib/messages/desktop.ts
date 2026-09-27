@@ -106,6 +106,11 @@ export const messages = {
     es: "Clasifica los pagos que esperan revisión y aparecen aquí.",
     pt: "Classifique os pagamentos que esperam conferência e eles aparecem aqui.",
   },
+  "desktop.emptyExpected": {
+    en: "Sales paid by app show up here once their payment is matched — upload the screenshot of it.",
+    es: "Las ventas pagadas por app aparecen aquí cuando su pago coincide — sube la captura del pago.",
+    pt: "As vendas pagas por app aparecem aqui quando o pagamento é conferido — envie a captura dele.",
+  },
   "desktop.emptyOwed": {
     en: "Sales show up here once they’re paid. What’s owed is in Owed.",
     es: "Las ventas aparecen aquí cuando se pagan. Lo que te deben está en Por cobrar.",
@@ -188,9 +193,9 @@ export const messages = {
     pt: "{title}, {year}. {month}: {amount}.",
   },
   "desktop.empty": {
-    en: "Nothing logged in {year} yet. Upload screenshots or log a sale and this fills in.",
-    es: "Todavía no hay nada registrado en {year}. Sube capturas o registra una venta y esto se llena.",
-    pt: "Ainda não há nada registrado em {year}. Envie capturas ou registre uma venda e isto se preenche.",
+    en: "No money in or out in {year} yet. Upload screenshots, log a cash sale or an expense, and this fills in.",
+    es: "Todavía no hay dinero que entró o salió en {year}. Sube capturas, registra una venta en efectivo o un gasto, y esto se llena.",
+    pt: "Ainda não há dinheiro que entrou ou saiu em {year}. Envie capturas, registre uma venda em dinheiro ou um gasto, e isto se preenche.",
   },
   "desktop.serviceDetail": {
     en: "{name} · {jobs} · avg {amount}",

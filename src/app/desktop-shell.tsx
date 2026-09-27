@@ -119,6 +119,7 @@ export default function DesktopShell({
   email,
   signedIn,
   onSignOut,
+  locked = false,
   children,
 }: {
   section: DesktopSection;
@@ -129,6 +130,9 @@ export default function DesktopShell({
   email: string | null;
   signedIn: boolean;
   onSignOut: () => void;
+  /** True while the welcome tour is up: the section links go inert (the
+   *  tour is modal); language and sign-out stay usable. */
+  locked?: boolean;
   children: ReactNode;
 }) {
   const { t } = useLocale();
@@ -149,6 +153,7 @@ export default function DesktopShell({
 
         <button
           type="button"
+          inert={locked}
           onClick={() => onNavigate("upload")}
           aria-current={section === "upload" ? "page" : undefined}
           className={`hidden h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors lg:flex ${
@@ -162,7 +167,7 @@ export default function DesktopShell({
           <ToCheckBadge count={toCheck} />
         </button>
 
-        <ul className="-mx-3 flex gap-1 overflow-x-auto px-3 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-0">
+        <ul inert={locked} className="-mx-3 flex gap-1 overflow-x-auto px-3 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-0">
           <li className="flex-none lg:hidden">
             <button
               type="button"
@@ -210,6 +215,7 @@ export default function DesktopShell({
         <div className="mt-auto hidden flex-col gap-2 lg:flex">
           <button
             type="button"
+            inert={locked}
             onClick={() => onNavigate("settings")}
             aria-current={section === "settings" ? "page" : undefined}
             className={itemClass(section === "settings")}

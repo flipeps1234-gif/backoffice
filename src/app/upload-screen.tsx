@@ -2224,6 +2224,9 @@ function Ledger({
 
   const quickAddEl = (quickAdd || logAgain) && (
     <QuickAdd
+      // Desktop keeps it mounted behind other sections; only type into it
+      // while it is the section on screen (and no tour covers it).
+      active={!desktop || (section === "expense" && !tourOpen)}
       key={`quick-add-${logAgainSeq}`}
       services={services}
       expense={!logAgain}
@@ -3152,6 +3155,11 @@ function Ledger({
       "inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-700";
 
     function navigate(next: DesktopSection) {
+      // A tour review owns the workspace (it is modal, as the full-screen
+      // tour always was): no section can open or mount behind it — a
+      // Settings form seeded from the old profile would otherwise revert
+      // what the tour just saved.
+      if (tourOpen) return;
       // Log sale / Log expense open on their start panel: a form opens
       // only when the owner starts one (or "log again" prefills one), so
       // a mere visit never counts as an entry in flight.
@@ -3178,6 +3186,7 @@ function Ledger({
         email={email}
         signedIn={accountId !== null}
         onSignOut={signOut}
+        locked={tourOpen}
       >
         {status === "error" && (
           <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
@@ -3188,6 +3197,9 @@ function Ledger({
 
         {tourOpen && (
           <section className={`${card} mx-auto w-full max-w-2xl space-y-6 p-6`}>
+            {/* Phones: the sidebar's account line is hidden, and the old
+                full-screen tour always offered Sign out. */}
+            <div className="lg:hidden">{accountLine}</div>
             {setupErrorEl}
             {setupWizardEl}
           </section>

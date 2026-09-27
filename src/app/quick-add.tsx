@@ -106,6 +106,7 @@ export default function QuickAdd({
   onCreateService,
   onLinkService,
   onClose,
+  active = true,
 }: {
   services: Service[];
   prefill?: QuickAddPrefill;
@@ -122,6 +123,10 @@ export default function QuickAdd({
   onCreateService: (service: Service) => void;
   onLinkService: (txId: string, serviceId: string) => void;
   onClose: () => void;
+  /** False while this keypad is mounted but not on screen (the desktop
+   *  app keeps a half-typed expense mounted behind other sections): the
+   *  physical-keyboard listener must not type into a hidden amount. */
+  active?: boolean;
 }) {
   const { t } = useLocale();
   const [cents, setCents] = useState(prefill?.amountCents ?? 0);
@@ -172,16 +177,18 @@ export default function QuickAdd({
   // in a text field, and while the save-as-service prompt is up.
   const pressRef = useRef<(key: string) => void>(() => {});
   const promptOpenRef = useRef(false);
+  const activeRef = useRef(active);
   useEffect(() => {
     pressRef.current = press;
     promptOpenRef.current = pending !== null;
+    activeRef.current = active;
   });
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      if (promptOpenRef.current) return;
+      if (promptOpenRef.current || !activeRef.current) return;
       // A chord is a browser command, not a digit. Cmd+0 resets zoom — and
       // without this it also turned $60.00 into $600.00 and saved it.
       if (event.metaKey || event.ctrlKey || event.altKey) return;

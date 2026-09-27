@@ -53,6 +53,17 @@ match"), service bars vs chart months disagreed for rows dated ahead
 (seriesMonths), service card unscoped (now "…, {year}"); LOW — all-time
 owed on past-year tabs, empty-state copy vs pending/owed, chart names
 without values for screen readers, badge without words or on phones.
+PASS 2 (newcode over pass 1's own diff): 4 findings, all fixed — MED:
+the in-frame tour left the sidebar live (Settings could mount seeded
+from the old profile mid-tour and revert it on Save) → DesktopShell
+`locked` makes the section links inert and navigate() refuses while the
+tour is up; the tour card carries the account line on phones. MED-LOW:
+the hidden QuickAdd's window keydown still typed into the parked amount
+→ QuickAdd `active` (false unless its section is showing). LOW: a year
+with only EXPECTED sales said "log a sale" (desktop.emptyExpected; the
+generic empty copy now says cash sale/expense); a row dated ahead stole
+the chart's opening month and the "so far" label (partialIndex, home
+month = today's).
 
 ## Marketing site surface — 2026-09-14
 
