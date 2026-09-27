@@ -54,6 +54,7 @@ export default function Dashboard({
   notifyPrefs,
   onClose,
   exportsBlocked,
+  title,
 }: {
   transactions: Transaction[];
   services: Service[];
@@ -77,6 +78,9 @@ export default function Dashboard({
    *  empty-but-wrong, so every CSV here would silently omit payments.
    *  The buttons make way for the load error instead. */
   exportsBlocked?: boolean;
+  /** The heading, when a host frames this differently — the desktop app
+   *  shows it under its own analytics as "Reports and exports". */
+  title?: string;
 }) {
   const { t, tag } = useLocale();
   const [proofOpen, setProofOpen] = useState(false);
@@ -211,7 +215,7 @@ export default function Dashboard({
   return (
     <div className="space-y-6">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">{t("dash.title")}</h2>
+        <h2 className="text-sm font-semibold">{title ?? t("dash.title")}</h2>
         {onClose && (
           <button
             type="button"

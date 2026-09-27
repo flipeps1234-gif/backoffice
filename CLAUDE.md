@@ -2,6 +2,37 @@
 
 # CLAUDE.md — read this before doing anything
 
+## Desktop app (preview) — 2026-09-27, branch feat/desktop-app
+
+Owner: "take it from being a demo to the new full product … keep it in
+the demooo", on a PRIVATE PREVIEW (Vercel preview of this branch, behind
+Vercel Authentication) — main and getcontado.com untouched until the
+owner says ship. /demooo is now `<UploadScreen layout="desktop" />`: the
+SAME Ledger, state and write paths as /app (queue, settlement races,
+generation readback — none of it duplicated), framed by
+`desktop-shell.tsx` (black sidebar in the owner's order: Dashboard, Log
+sale, Log expense, Owed, Clients, Products and services, History; Upload
+screenshots on top, Settings/language/account at the bottom; below lg it
+folds into a sideways-scrolling top bar) and `DesktopGate` for terms,
+sign-in, loading and the tour. The home is `desktop-overview.tsx`
+(kept/in/out, one large month chart with a year and series switch,
+revenue by service) over pure `src/lib/desktop.ts` (IN = business
+money-in + EXPECTED sales, the RunningTotals figure; tests in
+tests/unit/desktop.test.mjs), with the app's own Dashboard below it as
+"Reports and exports" (Dashboard gained an optional `title`). The nine
+takeover screens are now element constants shared by both layouts; the
+classic render is unchanged. Desktop rule: sale, expense, products and
+settings stay MOUNTED while hidden once opened, so the sidebar never
+vaporizes a half-typed entry — hence `entryOpen` (search / "log again"
+guards) no longer counts Products/Settings on desktop. Sign-in return:
+`src/lib/return-to.ts` — the sign-in screen records /app or /demooo
+(allow-list, 1 h, consumed once) and the landing's #access_token forward
+goes there. Copy: `src/lib/messages/desktop.ts` (EN/ES/PT). Preview env:
+NEXT_PUBLIC_SUPABASE_URL/ANON_KEY scoped to this branch; OWNER-SIDE for
+the preview to be fully real: add the preview origin to Supabase Auth →
+Redirect URLs, and (only if screenshot reading is wanted there)
+OPENAI_API_KEY + SUPABASE_SERVICE_ROLE_KEY for Preview.
+
 ## Marketing site surface — 2026-09-14
 
 Owner-approved from a mockup (Option B in both themes): every public page

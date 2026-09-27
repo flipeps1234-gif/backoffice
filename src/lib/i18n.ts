@@ -2,6 +2,7 @@ import { messages as cats } from "./messages/cats";
 import { messages as clients } from "./messages/clients";
 import { messages as common } from "./messages/common";
 import { messages as dash } from "./messages/dash";
+import { messages as desktop } from "./messages/desktop";
 import { messages as help } from "./messages/help";
 import { messages as home } from "./messages/home";
 import { messages as insights } from "./messages/insights";
@@ -72,6 +73,7 @@ const ALL = {
   ...landing,
   ...help,
   ...site,
+  ...desktop,
 } as const;
 
 export type MessageKey = keyof typeof ALL;

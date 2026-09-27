@@ -9,6 +9,8 @@ import {
 } from "react";
 import ClientsPage from "./clients-page";
 import ConfirmationSheet from "./confirmation-sheet";
+import DesktopOverview from "./desktop-overview";
+import DesktopShell, { DesktopGate, type DesktopSection } from "./desktop-shell";
 import DropZone from "./drop-zone";
 import Dashboard from "./dashboard";
 import HistoryList, { type LogAgainPrefill } from "./history-list";
@@ -110,6 +112,7 @@ import {
 import { useSession } from "@/lib/supabase/use-session";
 import { HOME_EVENT } from "./brand-home";
 import { acceptTerms, TERMS_VERSION } from "@/lib/terms";
+import { rememberReturnTo } from "@/lib/return-to";
 import type { Service } from "@/lib/service";
 import { formatCents, type Transaction } from "@/lib/transaction";
 
@@ -183,7 +186,14 @@ class RevertedWrite extends Error {
   }
 }
 
-export default function UploadScreen() {
+export default function UploadScreen({
+  layout = "classic",
+}: {
+  /** "desktop" = the sidebar app at /demooo (desktop-shell.tsx); the
+   *  default is /app exactly as it has always been. Same Ledger, same
+   *  state, same write paths — only the frame differs. */
+  layout?: "classic" | "desktop";
+} = {}) {
   const accepted = useAcceptedTerms();
   const { user, loading, isConfigured } = useSession();
   const { locale, t } = useLocale();
@@ -270,19 +280,29 @@ export default function UploadScreen() {
   // Don't flash the sign-in form at someone who is already signed in, and
   // don't flash the terms at someone who has already accepted them: `accepted`
   // is undefined until localStorage has actually been read.
+  // The desktop layout frames the gates in the site's banner so they
+  // are not a lone column on an empty grey page; /app renders them bare.
+  const gate = (node: React.ReactNode) =>
+    layout === "desktop" ? <DesktopGate>{node}</DesktopGate> : node;
+
   if (loading || accepted === undefined) {
-    return <p className="text-sm text-neutral-500">{t("home.loading")}</p>;
+    return gate(<p className="text-sm text-neutral-500">{t("home.loading")}</p>);
   }
 
   // Before sign-in, deliberately. The disclosure that screenshots leave the
   // device has to come before we ask for an email address.
   if (accepted !== TERMS_VERSION) {
-    return <TermsGate onAccept={acceptTerms} />;
+    return gate(<TermsGate onAccept={acceptTerms} />);
   }
 
   // Configured but signed out: the ledger belongs to an account.
   if (isConfigured && !user) {
-    return <SignIn />;
+    return gate(
+      <>
+        <RememberReturnTo path={layout === "desktop" ? "/demooo" : "/app"} />
+        <SignIn />
+      </>,
+    );
   }
 
   return (
@@ -291,18 +311,30 @@ export default function UploadScreen() {
       accountId={user?.id ?? null}
       email={user?.email ?? null}
       isConfigured={isConfigured}
+      layout={layout}
     />
   );
+}
+
+/** Records where a sign-in started, so the landing page's token forward
+ *  (landing.tsx) returns the owner to the desktop app, not /app. */
+function RememberReturnTo({ path }: { path: string }) {
+  useEffect(() => {
+    rememberReturnTo(path);
+  }, [path]);
+  return null;
 }
 
 function Ledger({
   accountId,
   email,
   isConfigured,
+  layout,
 }: {
   accountId: string | null;
   email: string | null;
   isConfigured: boolean;
+  layout: "classic" | "desktop";
 }) {
   const { t, tag } = useLocale();
   const [status, setStatus] = useState<Status>("idle");
@@ -443,10 +475,11 @@ function Ledger({
     // flight beats navigation; the notice says why nothing moved. The
     // Products and Settings takeovers hold unsaved forms too (a new
     // service, business-profile edits), so they block the same way.
-    if (quickAdd || logAgain || showNewSale || showProducts || showSettings) {
+    if (entryOpen) {
       setSaleNotice(t("home.finishEntryFirst"));
       return;
     }
+    setSection("clients");
     // Owed/RecentSales hold no typed state — close them explicitly, or
     // (outranking Clients in the takeover chain) they mask this open and
     // the client page pops up later when the user closes them.
@@ -459,6 +492,21 @@ function Ledger({
   const [showProducts, setShowProducts] = useState(false);
   /** One line of good news after a sale/match, with undo where honest. */
   const [saleNotice, setSaleNotice] = useState("");
+  /** Desktop layout only: which sidebar section is on screen. The show*
+   *  flags still decide what is MOUNTED — a half-typed sale, expense,
+   *  service or profile stays mounted (hidden) when the owner clicks
+   *  elsewhere, so navigating never vaporizes an entry. */
+  const desktop = layout === "desktop";
+  const [section, setSection] = useState<DesktopSection>("dashboard");
+  /**
+   * Is typed money or a typed form on screen, so a jump (search, "log
+   * again") must not remount or evict it? On /app every takeover is one
+   * screen, so Products and Settings count. On desktop they stay mounted
+   * while hidden — leaving them loses nothing — so only the two money
+   * entry forms block, the ones a "log again" would remount.
+   */
+  const entryOpen =
+    quickAdd || logAgain !== null || showNewSale || (!desktop && (showProducts || showSettings));
 
   /**
    * Is the welcome tour on screen? First use: the boot decision above
@@ -1970,14 +2018,16 @@ function Ledger({
     // path would remount or evict it — vaporizing the entry (or arming
     // a numpad that pops up later out of nowhere). Products and Settings
     // hold unsaved forms too.
-    if (quickAdd || logAgain || showNewSale || showProducts || showSettings) {
+    if (entryOpen) {
       setSaleNotice(t("home.finishEntryFirst"));
       return;
     }
     if (prefill.direction === "out") {
       pickLogAgain(prefill);
+      setSection("expense");
       return;
     }
+    setSection("sale");
     const service = services.find((svc) => svc.id === prefill.serviceId);
     setSalePrefill({
       lineItems: [
@@ -2031,10 +2081,11 @@ function Ledger({
     // input — the seq bump below would remount NewSale and discard it.
     // Products and Settings hold unsaved forms too (same set as
     // openClientFromSearch).
-    if (quickAdd || logAgain || showNewSale || showProducts || showSettings) {
+    if (entryOpen) {
       setSaleNotice(t("home.finishEntryFirst"));
       return;
     }
+    setSection("sale");
     setSalePrefill({
       lineItems: sale.lineItems.map((item) => ({ ...item })),
       clientName: clientNameOf(sale.clientId),
@@ -2057,264 +2108,290 @@ function Ledger({
   // The flow column shows exactly one thing at a time: a takeover — the
   // numpad, or (on phones only, where there's no rail) history/dashboard —
   // and otherwise the main loop below. null means "nothing took over".
-  let takeover: React.ReactNode = null;
-  if (showNewSale) {
-    takeover = (
-      <NewSale
-        key={`sale-${saleSeq}`}
-        services={services}
-        clients={clients}
-        sales={sales}
-        flowOrder={saleFlow}
-        prefill={salePrefill ?? undefined}
-        onDone={handleSaleDone}
-        onClose={() => {
-          setShowNewSale(false);
-          setSalePrefill(null);
-        }}
-      />
-    );
-  } else if (showRecentSales) {
-    takeover = (
-      <RecentSales
-        sales={sales}
-        clients={clients}
-        onPick={pickSaleAgain}
-        onClose={() => setShowRecentSales(false)}
-      />
-    );
-  } else if (showOwed) {
-    takeover = (
-      <OwedTab
-        sales={sales}
-        clients={clients}
-        onMarkCash={(saleId) => {
-          const sale = sales.find((s) => s.id === saleId);
-          if (sale) paySaleCash(sale);
-        }}
-        onMoveToOwed={(saleId) => {
-          patchSale(saleId, { state: "open", method: null });
-          void persist(() =>
-            saveSale(canonicalSaleId(saleId), { state: "open", method: null }),
-          );
-        }}
-        onFindPayment={(saleId) => {
-          const sale = sales.find((sl) => sl.id === saleId);
-          if (!sale) return;
-          const candidates = txnCandidatesForSale(
-            transactions,
-            sale,
-            clientNameOf(sale.clientId),
-            { relaxName: true },
-          );
-          if (candidates.length === 0) {
-            setSaleNotice(t("home.noMatchFound"));
-            return;
-          }
-          setSuggestions((current) => [
-            ...current,
-            { kind: "sale", saleId, txnIds: candidates.map((t) => t.id) },
-          ]);
-        }}
-        onLogAgain={pickSaleAgain}
-        onClose={() => setShowOwed(false)}
-      />
-    );
-  } else if (showClients) {
-    takeover = (
-      <ClientsPage
-        // Remount when search targets a client — seq included so tapping
-        // the SAME client again re-focuses even after navigating away
-        // inside the page.
-        key={clientsFocus ? `${clientsFocus}-${clientsFocusSeq}` : "clients"}
-        clients={clients}
-        sales={sales}
-        templates={templates}
-        services={services}
-        initialOpenId={clientsFocus}
-        onUpdateClient={(id, patch) => {
-          setClients((current) =>
-            current.map((c) => (c.id === id ? { ...c, ...patch } : c)),
-          );
-          void persist(() => saveClient(id, patch));
-        }}
-        onUpdateTemplate={(id, patch) => {
-          setTemplates((current) =>
-            current.map((t) => (t.id === id ? { ...t, ...patch } : t)),
-          );
-          void persist(() => saveTemplate(id, patch));
-        }}
-        onLogAgain={pickSaleAgain}
-        onOpenClient={fetchClientPhotos}
-        onClose={() => {
-          setShowClients(false);
-          setClientsFocus(null);
-        }}
-      />
-    );
-  } else if (showProducts) {
-    takeover = (
-      <ProductsPage
-        services={services}
-        onCreate={createService}
-        onUpdate={updateService}
-        onClose={() => setShowProducts(false)}
-      />
-    );
-  } else if (quickAdd || logAgain) {
-    takeover = (
-      <QuickAdd
-        key={`quick-add-${logAgainSeq}`}
-        services={services}
-        expense={!logAgain}
-        prefill={logAgain ?? undefined}
-        remember={(payer, serviceId) =>
-          rememberedFor(transactions, payer, serviceId)
+  const newSaleEl = (
+    <NewSale
+      key={`sale-${saleSeq}`}
+      services={services}
+      clients={clients}
+      sales={sales}
+      flowOrder={saleFlow}
+      prefill={salePrefill ?? undefined}
+      onDone={handleSaleDone}
+      onClose={() => {
+        setShowNewSale(false);
+        setSalePrefill(null);
+      }}
+    />
+  );
+
+  const recentSalesEl = (
+    <RecentSales
+      sales={sales}
+      clients={clients}
+      onPick={pickSaleAgain}
+      onClose={() => {
+        setShowRecentSales(false);
+        if (desktop) setSection("dashboard");
+      }}
+    />
+  );
+
+  const owedEl = (
+    <OwedTab
+      sales={sales}
+      clients={clients}
+      onMarkCash={(saleId) => {
+        const sale = sales.find((s) => s.id === saleId);
+        if (sale) paySaleCash(sale);
+      }}
+      onMoveToOwed={(saleId) => {
+        patchSale(saleId, { state: "open", method: null });
+        void persist(() =>
+          saveSale(canonicalSaleId(saleId), { state: "open", method: null }),
+        );
+      }}
+      onFindPayment={(saleId) => {
+        const sale = sales.find((sl) => sl.id === saleId);
+        if (!sale) return;
+        const candidates = txnCandidatesForSale(
+          transactions,
+          sale,
+          clientNameOf(sale.clientId),
+          { relaxName: true },
+        );
+        if (candidates.length === 0) {
+          setSaleNotice(t("home.noMatchFound"));
+          return;
         }
-        payerSuggestions={knownPayers(transactions)}
-        onSave={(tx) => {
-          // Prepend: the array stays newest-first (see the batch comment).
-          setTransactions((current) => [tx, ...current]);
-          if (accountId) {
-            void persist(() => insertTransactions([tx], accountId));
-          }
-        }}
-        onCreateService={createService}
-        onLinkService={(txId, serviceId) => {
-          updateTransaction(txId, { serviceId });
-          void persist(() => saveTransaction(txId, { serviceId }));
-        }}
-        onClose={() => {
-          setQuickAdd(false);
-          setLogAgain(null);
-        }}
-      />
-    );
-  } else if (showDashboard) {
-    takeover = (
-      <Dashboard
-        transactions={transactions}
-        services={services}
-        sales={sales}
-        clients={clients}
-        templates={templates}
-        photoSaleIds={photoSaleIds}
-        profile={profile}
-        notifyPrefs={notifyPrefs}
-        exportsBlocked={loadFailed}
-        onClose={() => setShowDashboard(false)}
-      />
-    );
-  } else if (showHistory) {
-    takeover = (
-      <HistoryList
-        transactions={transactions}
-        services={services}
-        onLogAgain={(prefill) => {
-          setShowHistory(false);
-          routeLogAgain(prefill);
-        }}
-        onClose={() => setShowHistory(false)}
-      />
-    );
-  } else if (showSettings) {
-    takeover = (
-      <SettingsPage
-        signedIn={accountId !== null}
-        email={email}
-        profile={profile}
-        // Anonymous has nothing stored to protect; signed-in gates the
-        // business Save until the stored profile actually loaded.
-        profileReady={accountId === null || profileLoaded}
-        // The STICKY flag, not the transient banner string: `error` also
-        // fires for upload/file-type problems (false amber) and is cleared
-        // at the start of every upload run (false green after a real lost
-        // write). saveFailed exists precisely to remember unrecovered save
-        // failures for the life of the session.
-        hasSaveError={saveFailed}
-        onSaveProfile={(next) => {
-          setProfile(next);
-          // A Settings save creates the row too, so the tour is done.
-          setProfileExists(true);
-          if (accountId) void persist(() => saveProfile(next, accountId));
-        }}
-        notifyPrefs={notifyPrefs}
-        notifyReady={accountId === null || notifyLoaded}
-        onSaveNotifyPrefs={(next) => {
-          setNotifyPrefs(next);
-          if (accountId) {
-            void persist(() => saveNotificationPrefs(next, accountId));
-          }
-        }}
-        deletionRequestedAt={deletionAt}
-        // Direct awaits, not the persist queue: the page needs the
-        // outcome to show pending/failed truthfully.
-        onRequestDeletion={async () => {
-          if (!accountId) return false;
-          // A failed ledger load means the "export your CSV first" copy
-          // just above this button is a lie right now — the CSV would be
-          // missing every payment. Refuse until a reload proves the data.
-          if (loadFailed) return false;
-          try {
-            await requestDeletion(accountId);
-            setDeletionAt(new Date().toISOString());
-            return true;
-          } catch {
-            return false;
-          }
-        }}
-        onCancelDeletion={async () => {
-          if (!accountId) return false;
-          try {
-            await cancelDeletion(accountId);
-            setDeletionAt(null);
-            return true;
-          } catch {
-            return false;
-          }
-        }}
-        onExportEverything={() => {
-          // Same guard as deletion: after a failed load the payments
-          // section would silently export empty while the other sections
-          // look complete — a "backup" that isn't one.
-          if (loadFailed) {
-            setError(translate(currentLocale(), "home.errLoadFailed"));
-            setStatus("error");
-            return;
-          }
-          downloadCsv(
-            everythingCsv(transactions, services, sales, clients, templates, photoSaleIds, profile, notifyPrefs),
-            "contado-everything.csv",
-          );
-        }}
-        onOpenProducts={() => {
-          setShowSettings(false);
-          setShowProducts(true);
-        }}
-        onOpenClients={() => {
-          setShowSettings(false);
-          setClientsFocus(null);
-          setShowClients(true);
-        }}
-        // Review mode: same screens, prefilled. Gated on profileReady
-        // above — reopening it before the stored profile loaded would
-        // seed blank fields whose Finish could overwrite a real row.
-        onShowTour={() => {
-          setShowSettings(false);
-          // The tour branch renders the hub's lost-write banner (a
-          // service saved on step 3 goes through the persist queue). A
-          // transient earlier failure must not paint over the review;
-          // a STICKY one (saveFailed: an unsaved batch) must stay up.
-          if (!saveFailed) {
-            setStatus("idle");
-            setError("");
-          }
-          setTourOpen(true);
-        }}
-        onClose={() => setShowSettings(false)}
-      />
-    );
-  }
+        setSuggestions((current) => [
+          ...current,
+          { kind: "sale", saleId, txnIds: candidates.map((t) => t.id) },
+        ]);
+      }}
+      onLogAgain={pickSaleAgain}
+      onClose={() => {
+        setShowOwed(false);
+        if (desktop) setSection("dashboard");
+      }}
+    />
+  );
+
+  const clientsEl = (
+    <ClientsPage
+      // Remount when search targets a client — seq included so tapping
+      // the SAME client again re-focuses even after navigating away
+      // inside the page.
+      key={clientsFocus ? `${clientsFocus}-${clientsFocusSeq}` : "clients"}
+      clients={clients}
+      sales={sales}
+      templates={templates}
+      services={services}
+      initialOpenId={clientsFocus}
+      onUpdateClient={(id, patch) => {
+        setClients((current) =>
+          current.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+        );
+        void persist(() => saveClient(id, patch));
+      }}
+      onUpdateTemplate={(id, patch) => {
+        setTemplates((current) =>
+          current.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+        );
+        void persist(() => saveTemplate(id, patch));
+      }}
+      onLogAgain={pickSaleAgain}
+      onOpenClient={fetchClientPhotos}
+      onClose={() => {
+        setShowClients(false);
+        setClientsFocus(null);
+        if (desktop) setSection("dashboard");
+      }}
+    />
+  );
+
+  const productsEl = (
+    <ProductsPage
+      services={services}
+      onCreate={createService}
+      onUpdate={updateService}
+      onClose={() => {
+        setShowProducts(false);
+        if (desktop) setSection("dashboard");
+      }}
+    />
+  );
+
+  const quickAddEl = (quickAdd || logAgain) && (
+    <QuickAdd
+      key={`quick-add-${logAgainSeq}`}
+      services={services}
+      expense={!logAgain}
+      prefill={logAgain ?? undefined}
+      remember={(payer, serviceId) =>
+        rememberedFor(transactions, payer, serviceId)
+      }
+      payerSuggestions={knownPayers(transactions)}
+      onSave={(tx) => {
+        // Prepend: the array stays newest-first (see the batch comment).
+        setTransactions((current) => [tx, ...current]);
+        if (accountId) {
+          void persist(() => insertTransactions([tx], accountId));
+        }
+      }}
+      onCreateService={createService}
+      onLinkService={(txId, serviceId) => {
+        updateTransaction(txId, { serviceId });
+        void persist(() => saveTransaction(txId, { serviceId }));
+      }}
+      onClose={() => {
+        setQuickAdd(false);
+        setLogAgain(null);
+      }}
+    />
+  );
+
+  const dashboardEl = (
+    <Dashboard
+      transactions={transactions}
+      services={services}
+      sales={sales}
+      clients={clients}
+      templates={templates}
+      photoSaleIds={photoSaleIds}
+      profile={profile}
+      notifyPrefs={notifyPrefs}
+      exportsBlocked={loadFailed}
+      onClose={() => setShowDashboard(false)}
+    />
+  );
+
+  const historyEl = (
+    <HistoryList
+      transactions={transactions}
+      services={services}
+      onLogAgain={(prefill) => {
+        setShowHistory(false);
+        routeLogAgain(prefill);
+      }}
+      onClose={() => {
+        setShowHistory(false);
+        if (desktop) setSection("dashboard");
+      }}
+    />
+  );
+
+  const settingsEl = (
+    <SettingsPage
+      signedIn={accountId !== null}
+      email={email}
+      profile={profile}
+      // Anonymous has nothing stored to protect; signed-in gates the
+      // business Save until the stored profile actually loaded.
+      profileReady={accountId === null || profileLoaded}
+      // The STICKY flag, not the transient banner string: `error` also
+      // fires for upload/file-type problems (false amber) and is cleared
+      // at the start of every upload run (false green after a real lost
+      // write). saveFailed exists precisely to remember unrecovered save
+      // failures for the life of the session.
+      hasSaveError={saveFailed}
+      onSaveProfile={(next) => {
+        setProfile(next);
+        // A Settings save creates the row too, so the tour is done.
+        setProfileExists(true);
+        if (accountId) void persist(() => saveProfile(next, accountId));
+      }}
+      notifyPrefs={notifyPrefs}
+      notifyReady={accountId === null || notifyLoaded}
+      onSaveNotifyPrefs={(next) => {
+        setNotifyPrefs(next);
+        if (accountId) {
+          void persist(() => saveNotificationPrefs(next, accountId));
+        }
+      }}
+      deletionRequestedAt={deletionAt}
+      // Direct awaits, not the persist queue: the page needs the
+      // outcome to show pending/failed truthfully.
+      onRequestDeletion={async () => {
+        if (!accountId) return false;
+        // A failed ledger load means the "export your CSV first" copy
+        // just above this button is a lie right now — the CSV would be
+        // missing every payment. Refuse until a reload proves the data.
+        if (loadFailed) return false;
+        try {
+          await requestDeletion(accountId);
+          setDeletionAt(new Date().toISOString());
+          return true;
+        } catch {
+          return false;
+        }
+      }}
+      onCancelDeletion={async () => {
+        if (!accountId) return false;
+        try {
+          await cancelDeletion(accountId);
+          setDeletionAt(null);
+          return true;
+        } catch {
+          return false;
+        }
+      }}
+      onExportEverything={() => {
+        // Same guard as deletion: after a failed load the payments
+        // section would silently export empty while the other sections
+        // look complete — a "backup" that isn't one.
+        if (loadFailed) {
+          setError(translate(currentLocale(), "home.errLoadFailed"));
+          setStatus("error");
+          return;
+        }
+        downloadCsv(
+          everythingCsv(transactions, services, sales, clients, templates, photoSaleIds, profile, notifyPrefs),
+          "contado-everything.csv",
+        );
+      }}
+      onOpenProducts={() => {
+        setShowSettings(false);
+        setShowProducts(true);
+        setSection("products");
+      }}
+      onOpenClients={() => {
+        setShowSettings(false);
+        setClientsFocus(null);
+        setShowClients(true);
+        setSection("clients");
+      }}
+      // Review mode: same screens, prefilled. Gated on profileReady
+      // above — reopening it before the stored profile loaded would
+      // seed blank fields whose Finish could overwrite a real row.
+      onShowTour={() => {
+        setShowSettings(false);
+        // The tour branch renders the hub's lost-write banner (a
+        // service saved on step 3 goes through the persist queue). A
+        // transient earlier failure must not paint over the review;
+        // a STICKY one (saveFailed: an unsaved batch) must stay up.
+        if (!saveFailed) {
+          setStatus("idle");
+          setError("");
+        }
+        setTourOpen(true);
+      }}
+      onClose={() => {
+        setShowSettings(false);
+        if (desktop) setSection("dashboard");
+      }}
+    />
+  );
+
+  let takeover: React.ReactNode = null;
+  if (showNewSale) takeover = newSaleEl;
+  else if (showRecentSales) takeover = recentSalesEl;
+  else if (showOwed) takeover = owedEl;
+  else if (showClients) takeover = clientsEl;
+  else if (showProducts) takeover = productsEl;
+  else if (quickAdd || logAgain) takeover = quickAddEl;
+  else if (showDashboard) takeover = dashboardEl;
+  else if (showHistory) takeover = historyEl;
+  else if (showSettings) takeover = settingsEl;
 
   async function signOut() {
     // Drain the write queue BEFORE revoking the session: signOut
@@ -2348,19 +2425,39 @@ function Ledger({
     </p>
   );
 
-  // The main loop: totals, the upload targets, the sheet, the swipe deck.
-  const mainLoop = (
-    <div className="space-y-6">
-      {(stage === "sort" || sorted.length > 0 || sales.length > 0) && (
-        <RunningTotals
-          transactions={transactions}
-          expectedCents={sales
-            .filter((s) => s.state === "expected")
-            .reduce((sum, s) => sum + saleTotalCents(s), 0)}
-          owedCents={owedCents(sales)}
-        />
-      )}
+  /** Opening Settings re-checks the two async facts it renders (a
+   *  deletion pending elsewhere; a profile or alert prefs that failed to
+   *  load). Shared by /app's quiet Settings line and the desktop sidebar. */
+  function openSettings() {
+    setShowSettings(true);
+    if (accountId) {
+      loadDeletionRequest()
+        .then(setDeletionAt)
+        .catch(() => {});
+      if (!profileLoaded) {
+        loadProfile()
+          .then((row) => {
+            setProfile(row ?? EMPTY_PROFILE);
+            setProfileExists(row !== null);
+            setProfileLoaded(true);
+          })
+          .catch(() => {});
+      }
+      if (!notifyLoaded) {
+        loadNotificationPrefs()
+          .then((prefs) => {
+            setNotifyPrefs(prefs);
+            setNotifyLoaded(true);
+          })
+          .catch(() => {});
+      }
+    }
+  }
 
+  // Pieces the classic main loop and the desktop sections share, so the
+  // two layouts can never drift apart on what a notice or a step says.
+  const seasonNoticesEl = (
+    <>
       {/* The two in-app notices (settings-gated). Recap: last month's
           numbers, once per month. Tax season: Jan–mid-April pointer.
           Both dismiss for good with one tap — a nag is worse than no
@@ -2427,6 +2524,258 @@ function Ledger({
             </button>
           </div>
         )}
+    </>
+  );
+
+  const noticesEl = (
+    <>
+      {/* Batch messages describe the batch wherever the user is looking —
+          gating them to one stage hid them exactly when they mattered. */}
+      {batchNotice && (
+        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {batchNotice}
+        </p>
+      )}
+
+      {saleNotice && (
+        <p
+          aria-live="polite"
+          className="flex items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
+        >
+          <span>{saleNotice}</span>
+          <span className="flex shrink-0 gap-3">
+            {matchUndo.length > 0 && (
+              <button
+                type="button"
+                className="font-medium underline"
+                onClick={undoMatches}
+              >
+                {t("common.undo")}
+              </button>
+            )}
+            <button
+              type="button"
+              aria-label={t("common.dismiss")}
+              className="font-medium"
+              onClick={() => {
+                // Dismissing accepts the matches: the undo window closes
+                // WITH the notice, so a later notice can never revive it.
+                setSaleNotice("");
+                setMatchUndo([]);
+              }}
+            >
+              ×
+            </button>
+          </span>
+        </p>
+      )}
+
+      {suggestions.map((sug) => {
+        // Ambiguity is resolved by a human, never a guess. Each entry
+        // pairs one side with its candidates; a tap links, "None" drops.
+        const isPayment = sug.kind === "payment";
+        const txnOf = (id: string) => transactions.find((t) => t.id === id);
+        const saleOf = (id: string) => sales.find((sl) => sl.id === id);
+        const anchor = isPayment ? txnOf(sug.txnId) : saleOf(sug.saleId);
+        if (!anchor) return null;
+        // A card whose anchor got settled some other way (cash mark, another
+        // match, an undo of the underlying batch) is stale — linking from it
+        // would double-pay. Drop resolved anchors and filter candidates to
+        // pairs that are still linkable.
+        if (isPayment && (anchor as Transaction).matchedSaleId) return null;
+        if (!isPayment && (anchor as Sale).state === "paid") return null;
+        const stillLinkable = (otherId: string) => {
+          const sale = isPayment ? saleOf(otherId) : (anchor as Sale);
+          const txn = isPayment ? (anchor as Transaction) : txnOf(otherId);
+          return (
+            sale && txn && sale.state !== "paid" && !txn.matchedSaleId
+          );
+        };
+        const dismiss = () =>
+          setSuggestions((current) => current.filter((x) => x !== sug));
+        return (
+          <div
+            key={isPayment ? `p-${sug.txnId}` : `s-${sug.saleId}`}
+            className="space-y-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          >
+            <p>
+              {isPayment
+                ? t("home.sugPayment", {
+                    amount: formatCents((anchor as Transaction).amountCents),
+                    payer: (anchor as Transaction).payer || t("home.someone"),
+                  })
+                : t("home.sugSale", {
+                    amount: formatCents(saleTotalCents(anchor as Sale)),
+                  })}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(isPayment ? sug.saleIds : sug.txnIds)
+                .filter(stillLinkable)
+                .map((otherId) => {
+                const sale = isPayment
+                  ? saleOf(otherId)
+                  : (anchor as Sale);
+                const txn = isPayment
+                  ? (anchor as Transaction)
+                  : txnOf(otherId);
+                if (!sale || !txn) return null;
+                return (
+                  <button
+                    key={otherId}
+                    type="button"
+                    className="rounded-md border border-amber-300 bg-white px-2 py-1.5 text-xs font-medium"
+                    onClick={() => {
+                      // The undo chip must revert THIS link only — never a
+                      // leftover batch of earlier auto-links behind the
+                      // same "Matched." message.
+                      setMatchUndo([]);
+                      linkSaleToTxn(sale, txn);
+                      setSaleNotice(t("home.matchedShort"));
+                      dismiss();
+                    }}
+                  >
+                    {isPayment
+                      ? `${clientNameOf(sale.clientId) || t("home.fallbackSale")} · ${sale.date}`
+                      : `${txn.payer || t("home.fallbackPayment")} · ${txn.date || t("home.noDate")}`}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                className="rounded-md px-2 py-1.5 text-xs font-medium underline"
+                onClick={dismiss}
+              >
+                {t("home.noneOfThese")}
+              </button>
+            </div>
+          </div>
+        );
+      })}
+
+      {warnings.map((warning, index) => (
+        <p
+          key={`${warning.code}-${index}`}
+          className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          {warning.filename && (
+            <span className="font-medium">{warning.filename}: </span>
+          )}
+          {t(
+            warning.code === "no_amounts_visible"
+              ? "home.warnNoAmounts"
+              : warning.code === "not_a_payment_feed"
+                ? "home.warnNotAFeed"
+                : "home.warnUnreadable",
+          )}
+        </p>
+      ))}
+    </>
+  );
+
+  const reviewFlowEl = (
+    <>
+      {stage === "confirm" && (
+        <>
+          {/* Only the new batch needs confirming — anything already sorted
+              (cash, or an earlier batch) has business set and is excluded. */}
+          <ConfirmationSheet
+            transactions={pending}
+            onChange={updateTransaction}
+            removableIds={lastBatchIds}
+            onRemove={removeNotAPayment}
+          />
+          <button
+            type="button"
+            className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"
+            onClick={confirmBatch}
+          >
+            {t("home.looksRight")}
+          </button>
+        </>
+      )}
+
+      {stage === "sort" && (
+        <>
+          {/* "What we found" is about the batch just read — not the whole
+              ledger, which already includes cash and loaded history. */}
+          <Insights transactions={lastBatch} />
+
+          {pending.length > 0 ? (
+            <SwipeDeck
+              pending={pending}
+              onDecide={decide}
+              onUndo={undo}
+              canUndo={decided.length > 0}
+            />
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm font-medium">
+                {sorted.some((tx) => tx.direction === "out")
+                  ? t("home.allSortedInOut")
+                  : t("home.allSortedIn")}
+              </p>
+              <button
+                type="button"
+                className="text-sm text-neutral-500 hover:underline"
+                onClick={undo}
+                disabled={decided.length === 0}
+              >
+                {t("home.undoLast")}
+              </button>
+              <button
+                type="button"
+                className="block w-full rounded-lg bg-foreground px-4 py-3 text-sm font-medium text-background hover:opacity-90"
+                onClick={moreScreenshots}
+              >
+                {t("home.addMore")}
+              </button>
+              {accountId && !saveFailed ? (
+                <p className="text-xs text-neutral-500">
+                  {t("home.savedToAccount")}
+                </p>
+              ) : accountId ? (
+                // The reassurance above was printed unconditionally, including
+                // right after a write that failed — so the one moment the user
+                // needed to know their batch was only on screen was the one
+                // moment the app told them it was safe.
+                <p className="text-xs text-red-700 dark:text-red-400">
+                  {t("home.saveFailedNote")}
+                </p>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="block w-full rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50"
+                    onClick={startOver}
+                  >
+                    {t("home.clearStartOver")}
+                  </button>
+                  <p className="text-xs text-neutral-500">
+                    {t("home.notSignedIn")}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </>
+  );
+
+  // The main loop: totals, the upload targets, the sheet, the swipe deck.
+  const mainLoop = (
+    <div className="space-y-6">
+      {(stage === "sort" || sorted.length > 0 || sales.length > 0) && (
+        <RunningTotals
+          transactions={transactions}
+          expectedCents={sales
+            .filter((s) => s.state === "expected")
+            .reduce((sum, s) => sum + saleTotalCents(s), 0)}
+          owedCents={owedCents(sales)}
+        />
+      )}
+
+      {seasonNoticesEl}
 
       {accountLine}
 
@@ -2575,263 +2924,16 @@ function Ledger({
           <button
             type="button"
             className="mt-4 w-full text-center text-sm text-neutral-500 hover:underline"
-            onClick={() => {
-              setShowSettings(true);
-              if (accountId) {
-                loadDeletionRequest()
-                  .then(setDeletionAt)
-                  .catch(() => {});
-                if (!profileLoaded) {
-                  loadProfile()
-                    .then((row) => {
-                      setProfile(row ?? EMPTY_PROFILE);
-                      setProfileExists(row !== null);
-                      setProfileLoaded(true);
-                    })
-                    .catch(() => {});
-                }
-                if (!notifyLoaded) {
-                  loadNotificationPrefs()
-                    .then((prefs) => {
-                      setNotifyPrefs(prefs);
-                      setNotifyLoaded(true);
-                    })
-                    .catch(() => {});
-                }
-              }
-            }}
+            onClick={openSettings}
           >
             {t("settings.title")}
           </button>
         </div>
       )}
 
-      {/* Batch messages describe the batch wherever the user is looking —
-          gating them to one stage hid them exactly when they mattered. */}
-      {batchNotice && (
-        <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-          {batchNotice}
-        </p>
-      )}
+      {noticesEl}
 
-      {saleNotice && (
-        <p
-          aria-live="polite"
-          className="flex items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900"
-        >
-          <span>{saleNotice}</span>
-          <span className="flex shrink-0 gap-3">
-            {matchUndo.length > 0 && (
-              <button
-                type="button"
-                className="font-medium underline"
-                onClick={undoMatches}
-              >
-                {t("common.undo")}
-              </button>
-            )}
-            <button
-              type="button"
-              aria-label={t("common.dismiss")}
-              className="font-medium"
-              onClick={() => {
-                // Dismissing accepts the matches: the undo window closes
-                // WITH the notice, so a later notice can never revive it.
-                setSaleNotice("");
-                setMatchUndo([]);
-              }}
-            >
-              ×
-            </button>
-          </span>
-        </p>
-      )}
-
-      {suggestions.map((sug) => {
-        // Ambiguity is resolved by a human, never a guess. Each entry
-        // pairs one side with its candidates; a tap links, "None" drops.
-        const isPayment = sug.kind === "payment";
-        const txnOf = (id: string) => transactions.find((t) => t.id === id);
-        const saleOf = (id: string) => sales.find((sl) => sl.id === id);
-        const anchor = isPayment ? txnOf(sug.txnId) : saleOf(sug.saleId);
-        if (!anchor) return null;
-        // A card whose anchor got settled some other way (cash mark, another
-        // match, an undo of the underlying batch) is stale — linking from it
-        // would double-pay. Drop resolved anchors and filter candidates to
-        // pairs that are still linkable.
-        if (isPayment && (anchor as Transaction).matchedSaleId) return null;
-        if (!isPayment && (anchor as Sale).state === "paid") return null;
-        const stillLinkable = (otherId: string) => {
-          const sale = isPayment ? saleOf(otherId) : (anchor as Sale);
-          const txn = isPayment ? (anchor as Transaction) : txnOf(otherId);
-          return (
-            sale && txn && sale.state !== "paid" && !txn.matchedSaleId
-          );
-        };
-        const dismiss = () =>
-          setSuggestions((current) => current.filter((x) => x !== sug));
-        return (
-          <div
-            key={isPayment ? `p-${sug.txnId}` : `s-${sug.saleId}`}
-            className="space-y-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-          >
-            <p>
-              {isPayment
-                ? t("home.sugPayment", {
-                    amount: formatCents((anchor as Transaction).amountCents),
-                    payer: (anchor as Transaction).payer || t("home.someone"),
-                  })
-                : t("home.sugSale", {
-                    amount: formatCents(saleTotalCents(anchor as Sale)),
-                  })}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {(isPayment ? sug.saleIds : sug.txnIds)
-                .filter(stillLinkable)
-                .map((otherId) => {
-                const sale = isPayment
-                  ? saleOf(otherId)
-                  : (anchor as Sale);
-                const txn = isPayment
-                  ? (anchor as Transaction)
-                  : txnOf(otherId);
-                if (!sale || !txn) return null;
-                return (
-                  <button
-                    key={otherId}
-                    type="button"
-                    className="rounded-md border border-amber-300 bg-white px-2 py-1.5 text-xs font-medium"
-                    onClick={() => {
-                      // The undo chip must revert THIS link only — never a
-                      // leftover batch of earlier auto-links behind the
-                      // same "Matched." message.
-                      setMatchUndo([]);
-                      linkSaleToTxn(sale, txn);
-                      setSaleNotice(t("home.matchedShort"));
-                      dismiss();
-                    }}
-                  >
-                    {isPayment
-                      ? `${clientNameOf(sale.clientId) || t("home.fallbackSale")} · ${sale.date}`
-                      : `${txn.payer || t("home.fallbackPayment")} · ${txn.date || t("home.noDate")}`}
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                className="rounded-md px-2 py-1.5 text-xs font-medium underline"
-                onClick={dismiss}
-              >
-                {t("home.noneOfThese")}
-              </button>
-            </div>
-          </div>
-        );
-      })}
-
-      {warnings.map((warning, index) => (
-        <p
-          key={`${warning.code}-${index}`}
-          className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900"
-        >
-          {warning.filename && (
-            <span className="font-medium">{warning.filename}: </span>
-          )}
-          {t(
-            warning.code === "no_amounts_visible"
-              ? "home.warnNoAmounts"
-              : warning.code === "not_a_payment_feed"
-                ? "home.warnNotAFeed"
-                : "home.warnUnreadable",
-          )}
-        </p>
-      ))}
-
-      {stage === "confirm" && (
-        <>
-          {/* Only the new batch needs confirming — anything already sorted
-              (cash, or an earlier batch) has business set and is excluded. */}
-          <ConfirmationSheet
-            transactions={pending}
-            onChange={updateTransaction}
-            removableIds={lastBatchIds}
-            onRemove={removeNotAPayment}
-          />
-          <button
-            type="button"
-            className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"
-            onClick={confirmBatch}
-          >
-            {t("home.looksRight")}
-          </button>
-        </>
-      )}
-
-      {stage === "sort" && (
-        <>
-          {/* "What we found" is about the batch just read — not the whole
-              ledger, which already includes cash and loaded history. */}
-          <Insights transactions={lastBatch} />
-
-          {pending.length > 0 ? (
-            <SwipeDeck
-              pending={pending}
-              onDecide={decide}
-              onUndo={undo}
-              canUndo={decided.length > 0}
-            />
-          ) : (
-            <div className="space-y-4">
-              <p className="text-sm font-medium">
-                {sorted.some((tx) => tx.direction === "out")
-                  ? t("home.allSortedInOut")
-                  : t("home.allSortedIn")}
-              </p>
-              <button
-                type="button"
-                className="text-sm text-neutral-500 hover:underline"
-                onClick={undo}
-                disabled={decided.length === 0}
-              >
-                {t("home.undoLast")}
-              </button>
-              <button
-                type="button"
-                className="block w-full rounded-lg bg-foreground px-4 py-3 text-sm font-medium text-background hover:opacity-90"
-                onClick={moreScreenshots}
-              >
-                {t("home.addMore")}
-              </button>
-              {accountId && !saveFailed ? (
-                <p className="text-xs text-neutral-500">
-                  {t("home.savedToAccount")}
-                </p>
-              ) : accountId ? (
-                // The reassurance above was printed unconditionally, including
-                // right after a write that failed — so the one moment the user
-                // needed to know their batch was only on screen was the one
-                // moment the app told them it was safe.
-                <p className="text-xs text-red-700 dark:text-red-400">
-                  {t("home.saveFailedNote")}
-                </p>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="block w-full rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium hover:bg-neutral-50"
-                    onClick={startOver}
-                  >
-                    {t("home.clearStartOver")}
-                  </button>
-                  <p className="text-xs text-neutral-500">
-                    {t("home.notSignedIn")}
-                  </p>
-                </>
-              )}
-            </div>
-          )}
-        </>
-      )}
+      {reviewFlowEl}
     </div>
   );
 
@@ -2971,11 +3073,12 @@ function Ledger({
   // the session check does until the three loads have landed (or one
   // has failed), so a first-use account meets the tour and nothing else.
   if (accountId !== null && setupDecision === "pending") {
-    return <p className="text-sm text-neutral-500">{t("home.loading")}</p>;
+    const line = <p className="text-sm text-neutral-500">{t("home.loading")}</p>;
+    return desktop ? <DesktopGate>{line}</DesktopGate> : line;
   }
 
   if (setupUp) {
-    return (
+    const tour = (
       <div className="mx-auto w-full max-w-lg space-y-6">
         {accountLine}
         {setupError && (
@@ -3006,6 +3109,220 @@ function Ledger({
           review={tourOpen}
         />
       </div>
+    );
+    return desktop ? <DesktopGate>{tour}</DesktopGate> : tour;
+  }
+
+  if (desktop) return renderDesktop();
+
+  /**
+   * The desktop app (/demooo): the sidebar sections over the SAME state
+   * and handlers /app uses. Rules:
+   * - Money-entry and form screens (sale, expense, products, settings)
+   *   stay MOUNTED while hidden once opened, so clicking elsewhere never
+   *   loses a half-typed entry; their own Cancel/Close unmounts them.
+   * - Every other section renders only while it is showing.
+   * - The save-failed banner and the sale/match notices sit above every
+   *   section — a write can fail while any screen is up.
+   */
+  function renderDesktop() {
+    const pendingCount = pending.length;
+    const card = "rounded-xl border border-neutral-300 bg-background dark:border-neutral-700";
+    const heading = (title: string, sub?: string) => (
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        {sub && <p className="text-sm text-neutral-500">{sub}</p>}
+      </div>
+    );
+    const primary =
+      "inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-700";
+
+    function navigate(next: DesktopSection) {
+      if (next === "sale" && !showNewSale) {
+        setSalePrefill(null);
+        setSaleSeq((n) => n + 1);
+        setShowNewSale(true);
+      }
+      if (next === "expense" && !quickAdd && !logAgain) setQuickAdd(true);
+      if (next === "products") setShowProducts(true);
+      if (next === "settings" && !showSettings) openSettings();
+      if (next === "clients" && section !== "clients") {
+        // The sidebar opens the LIST — never a stale search focus.
+        setClientsFocus(null);
+      }
+      setSection(next);
+      window.scrollTo({ top: 0 });
+    }
+
+    const show = (id: DesktopSection) => section === id;
+
+    return (
+      <DesktopShell
+        section={section}
+        onNavigate={navigate}
+        owedCents={owedCents(sales)}
+        toCheck={pendingCount}
+        email={email}
+        signedIn={accountId !== null}
+        onSignOut={signOut}
+      >
+        {status === "error" && (
+          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+            {error}
+          </p>
+        )}
+        {noticesEl}
+
+        {show("dashboard") && (
+          <>
+            {seasonNoticesEl}
+            {pendingCount > 0 && stage !== "upload" && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                <span>
+                  {pendingCount === 1
+                    ? t("desktop.toCheckBanner.one", { count: pendingCount })
+                    : t("desktop.toCheckBanner.many", { count: pendingCount })}
+                </span>
+                <button type="button" className="font-medium underline" onClick={() => navigate("upload")}>
+                  {t("desktop.checkNow")}
+                </button>
+              </div>
+            )}
+            <DesktopOverview
+              transactions={transactions}
+              sales={sales}
+              services={services}
+              owedCents={owedCents(sales)}
+              onOwed={() => navigate("owed")}
+            />
+            <section className={`${card} p-6`}>
+              <Dashboard
+                title={t("desktop.reports")}
+                transactions={transactions}
+                services={services}
+                sales={sales}
+                clients={clients}
+                templates={templates}
+                photoSaleIds={photoSaleIds}
+                profile={profile}
+                notifyPrefs={notifyPrefs}
+                exportsBlocked={loadFailed}
+              />
+            </section>
+          </>
+        )}
+
+        {show("upload") && (
+          <>
+            {heading(t("desktop.uploadTitle"), t("desktop.uploadSub"))}
+            <section className={`${card} flex flex-col gap-6 p-6`}>
+              {stage === "upload" && (
+                <DropZone busy={status === "reading"} onFiles={handleFiles} />
+              )}
+              {status === "reading" && progress && (
+                <ProgressBar label={progress.label} detail={progress.detail} fraction={progress.fraction} />
+              )}
+              {stage !== "upload" && <div className="mx-auto w-full max-w-2xl space-y-6">{reviewFlowEl}</div>}
+            </section>
+          </>
+        )}
+
+        {/* Log sale: the flow stays mounted while hidden (a half-typed
+            sale survives a look at Owed); the start panel shows when it
+            is closed, with "Log again" beside it. */}
+        {showNewSale && (
+          <div hidden={!show("sale")} className="flex flex-col gap-5">
+            <section className={`${card} max-w-2xl p-6`}>{newSaleEl}</section>
+          </div>
+        )}
+        {show("sale") && !showNewSale && (
+          <>
+            {heading(t("desktop.nav.logSale"), t("desktop.saleSub"))}
+            <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <section className={`${card} flex flex-col items-start gap-4 p-6`}>
+                <button
+                  type="button"
+                  className={primary}
+                  onClick={() => {
+                    setSalePrefill(null);
+                    setSaleSeq((n) => n + 1);
+                    setShowNewSale(true);
+                  }}
+                >
+                  {t("desktop.startSale")}
+                </button>
+              </section>
+              <section className={`${card} p-6`}>{recentSalesEl}</section>
+            </div>
+          </>
+        )}
+
+        {quickAddEl && (
+          <div hidden={!show("expense")} className="flex flex-col gap-5">
+            <section className={`${card} max-w-2xl p-6`}>{quickAddEl}</section>
+          </div>
+        )}
+        {show("expense") && !quickAddEl && (
+          <>
+            {heading(t("desktop.nav.logExpense"), t("desktop.expenseSub"))}
+            <section className={`${card} flex flex-col items-start gap-4 p-6`}>
+              <button type="button" className={primary} onClick={() => setQuickAdd(true)}>
+                {t("desktop.startExpense")}
+              </button>
+            </section>
+          </>
+        )}
+
+        {show("owed") && <section className={`${card} p-6`}>{owedEl}</section>}
+
+        {show("clients") && <section className={`${card} p-6`}>{clientsEl}</section>}
+
+        {showProducts && (
+          <section hidden={!show("products")} className={`${card} p-6`}>
+            {productsEl}
+          </section>
+        )}
+        {show("products") && !showProducts && (
+          <section className={`${card} p-6`}>
+            <button type="button" className={primary} onClick={() => setShowProducts(true)}>
+              {t("desktop.nav.products")}
+            </button>
+          </section>
+        )}
+
+        {show("history") && (
+          <>
+            {heading(t("desktop.nav.history"), t("desktop.historySub"))}
+            {(sales.length > 0 || clients.length > 0 || transactions.length > 0) && (
+              <section className={`${card} p-6`}>
+                <SearchPanel
+                  clients={clients}
+                  sales={sales}
+                  transactions={transactions}
+                  onOpenClient={openClientFromSearch}
+                />
+              </section>
+            )}
+            <section className={`${card} p-6`}>
+              <HistoryList transactions={transactions} services={services} onLogAgain={routeLogAgain} />
+            </section>
+          </>
+        )}
+
+        {showSettings && (
+          <div hidden={!show("settings")} className="flex flex-col gap-5">
+            <div className="lg:hidden">{accountLine}</div>
+            <section className={`${card} max-w-3xl p-6`}>{settingsEl}</section>
+          </div>
+        )}
+        {show("settings") && !showSettings && (
+          <section className={`${card} p-6`}>
+            <button type="button" className={primary} onClick={openSettings}>
+              {t("settings.title")}
+            </button>
+          </section>
+        )}
+      </DesktopShell>
     );
   }
 

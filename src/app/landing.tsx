@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { takeReturnTo } from "@/lib/return-to";
 import Link from "next/link";
 import Dashboard from "./dashboard";
 import DropZone from "./drop-zone";
@@ -60,7 +61,7 @@ export default function Landing() {
     // signed out. Forward the fragment intact to the page that reads it;
     // a full-document navigation, per the analytics rule.
     if (/[#&](access_token|error|error_code|error_description)=/.test(window.location.hash)) {
-      window.location.replace(`/app${window.location.hash}`);
+      window.location.replace(`${takeReturnTo()}${window.location.hash}`);
       return;
     }
     // Google sign-in returns here as well. With this client's implicit
@@ -68,7 +69,7 @@ export default function Landing() {
     // they arrive as ?code= (errors as ?error=) — forward those the same
     // way, query and hash intact, so /app can finish the exchange.
     if (/[?&](code|error|error_code|error_description)=/.test(window.location.search)) {
-      window.location.replace(`/app${window.location.search}${window.location.hash}`);
+      window.location.replace(`${takeReturnTo()}${window.location.search}${window.location.hash}`);
       return;
     }
     let hasToken = false;
