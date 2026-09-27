@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { revenueByService } from "@/lib/dashboard";
-import { yearSeries, yearsWithData } from "@/lib/desktop";
+import { expectedCentsIn, seriesMonths, yearSeries, yearsWithData } from "@/lib/desktop";
 import type { Sale } from "@/lib/sale";
 import type { Service } from "@/lib/service";
 import { formatCents, type Transaction } from "@/lib/transaction";
@@ -14,11 +14,14 @@ import { useLocale } from "./use-locale";
  * Pure rendering over the ledger the Ledger already holds — the money
  * rules are the app's own:
  *
- * - Business rows only; personal money stays out (lib/dashboard).
- * - IN is business money-in transactions PLUS EXPECTED sales (paid
- *   digitally, not yet matched) — the same figure RunningTotals shows as
- *   "Business". A PAID sale enters only through its one transaction, so
- *   nothing is counted twice; OPEN sales are owed and never blend in.
+ * - Business TRANSACTIONS only, the Reports card's basis (byMonth), so
+ *   the two never disagree about a month; personal money stays out.
+ * - Sales paid digitally but not matched yet (EXPECTED) are named beside
+ *   the totals ("paid, waiting to match"), never folded in — they would
+ *   move months when the payment lands. OPEN sales (owed) never blend in.
+ * - The chart runs through the latest month with a dated row, so a row
+ *   dated ahead never counts in the service bars but not the chart.
+ * - "Still owed" is a today figure (all open sales), shown on this year.
  * - Undated rows can't sit on a month, so the chart skips them; the
  *   Reports card below (the app's Dashboard) still lists them.
  */
@@ -200,11 +203,18 @@ function Chart({
           fill="transparent"
           tabIndex={0}
           role="button"
-          aria-label={t("desktop.chart.show", { month: monthNames[i] })}
+          // The name carries the value, so a screen reader hears the
+          // month's figure on focus, not just "Show March".
+          aria-label={t("desktop.chart.point", {
+            month: lastIsPartial && i === n - 1 ? t("desktop.chart.soFar", { month: monthNames[i] }) : monthNames[i],
+            amount: money(values[i]),
+            series: seriesLabel,
+          })}
           onPointerEnter={() => onActive(i)}
           onFocus={() => onActive(i)}
           onClick={() => onActive(i)}
-          className="cursor-pointer outline-none"
+          strokeWidth={2}
+          className="cursor-pointer outline-none focus-visible:stroke-neutral-500"
         />
       ))}
     </svg>
@@ -252,12 +262,16 @@ export default function DesktopOverview({
   sales,
   services,
   owedCents,
+  pendingCount,
   onOwed,
 }: {
   transactions: Transaction[];
   sales: Sale[];
   services: Service[];
   owedCents: number;
+  /** Rows read from screenshots and not sorted yet — they are not on
+   *  the chart until sorted, and the empty state says so. */
+  pendingCount: number;
   onOwed: () => void;
 }) {
   const { t, tag } = useLocale();
@@ -269,12 +283,13 @@ export default function DesktopOverview({
 
   const [year, setYear] = useState(thisYear);
   const [series, setSeries] = useState<Series>("kept");
-  const monthCount = year === thisYear ? thisMonth : 12;
+  const monthCount = seriesMonths(transactions, year, thisYear, thisMonth);
   const [active, setActive] = useState(Math.max(0, monthCount - 1));
   const safeActive = Math.min(active, monthCount - 1);
 
   const monthKey = (i: number) => `${year}-${String(i + 1).padStart(2, "0")}`;
-  const { inCents, outCents, keptCents } = yearSeries(transactions, sales, year, monthCount);
+  const { inCents, outCents, keptCents } = yearSeries(transactions, year, monthCount);
+  const expectedCents = expectedCentsIn(sales, year);
   const yearTxns = transactions.filter(
     (tx) => tx.business === true && tx.date && tx.date.startsWith(`${year}-`),
   );
@@ -295,8 +310,9 @@ export default function DesktopOverview({
   const seriesLabel = t(`desktop.series.${series}`);
 
   const services_ = revenueByService(yearTxns, services).filter((s) => s.revenueCents > 0).slice(0, 6);
-  const [picked, setPicked] = useState(0);
-  const pickedService = services_[Math.min(picked, services_.length - 1)];
+  const [pickedRaw, setPicked] = useState(0);
+  const picked = Math.min(pickedRaw, Math.max(services_.length - 1, 0));
+  const pickedService = services_[picked];
   const topRevenue = Math.max(services_[0]?.revenueCents ?? 1, 1);
   const serviceName = (s: (typeof services_)[number]) => (s.serviceId ? s.name : t("desktop.noService"));
   const money = (c: number) => (c < 0 ? `−${formatCents(-c)}` : formatCents(c));
@@ -320,7 +336,15 @@ export default function DesktopOverview({
             <span className="tabular-nums text-red-600 dark:text-red-400">
               {t("desktop.amountOut", { amount: formatCents(totalOut) })}
             </span>
-            {owedCents > 0 && (
+            {expectedCents > 0 && (
+              <>
+                {" · "}
+                <span className="tabular-nums">
+                  {t("desktop.amountExpected", { amount: formatCents(expectedCents) })}
+                </span>
+              </>
+            )}
+            {year === thisYear && owedCents > 0 && (
               <>
                 {" · "}
                 <button
@@ -341,7 +365,8 @@ export default function DesktopOverview({
               value={year}
               onChange={(y) => {
                 setYear(y);
-                setActive(y === thisYear ? thisMonth - 1 : 11);
+                setActive(seriesMonths(transactions, y, thisYear, thisMonth) - 1);
+                setPicked(0);
               }}
               options={years.map((y) => ({ value: y, label: String(y) }))}
             />
@@ -377,19 +402,25 @@ export default function DesktopOverview({
             seriesLabel={seriesLabel}
             title={chartTitle}
             year={year}
-            lastIsPartial={year === thisYear}
+            lastIsPartial={year === thisYear && monthCount === thisMonth}
             active={safeActive}
             onActive={setActive}
           />
         ) : (
-          <p className="py-16 text-center text-sm text-neutral-500">{t("desktop.empty", { year })}</p>
+          <p className="py-16 text-center text-sm text-neutral-500">
+            {pendingCount > 0
+              ? t("desktop.emptyPending")
+              : year === thisYear && owedCents > 0
+                ? t("desktop.emptyOwed")
+                : t("desktop.empty", { year })}
+          </p>
         )}
       </section>
 
       {services_.length > 0 && (
         <section className={`${card} flex flex-col gap-4 p-5`}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-base font-semibold">{t("dash.revenueByService")}</h2>
+            <h2 className="text-base font-semibold">{t("desktop.revenueYear", { year })}</h2>
             {pickedService && (
               <span className="text-xs tabular-nums text-neutral-500">
                 {t("desktop.serviceDetail", {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { rememberReturnTo } from "@/lib/return-to";
 import { getSupabase } from "@/lib/supabase/client";
 import type { MessageKey } from "@/lib/i18n";
 import { currentLocale } from "@/lib/locale";
@@ -115,7 +116,15 @@ function GoogleMark() {
   );
 }
 
-export default function SignIn() {
+export default function SignIn({
+  returnTo = "/app",
+}: {
+  /** Where the landing page should forward this sign-in once the link or
+   *  Google returns to the bare origin (src/lib/return-to.ts). Recorded at
+   *  the moment a sign-in is STARTED, never on mount — a second tab's
+   *  sign-in screen must not decide where this one lands. */
+  returnTo?: "/app" | "/demooo";
+} = {}) {
   const { t } = useLocale();
   const [sent, setSent] = useState(false);
   const [email, setEmail] = useState("");
@@ -184,6 +193,7 @@ export default function SignIn() {
 
     setBusy(true);
     setError("");
+    rememberReturnTo(returnTo);
 
     const { error: sendError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
@@ -222,6 +232,7 @@ export default function SignIn() {
 
     setBusy(true);
     setError("");
+    rememberReturnTo(returnTo);
     // Lands on the bare origin like the magic link (the only allowed
     // redirect); the landing forwards the tokens to /app. select_account
     // so a person with two Google accounts gets to choose every time.

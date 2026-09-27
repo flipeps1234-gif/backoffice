@@ -89,6 +89,23 @@ export function NavIcon({ id }: { id: DesktopSection }) {
   );
 }
 
+/** Rows waiting to be checked: a number for the eye, a sentence for a
+ *  screen reader ("3 to check"), on both the sidebar and the phone bar. */
+function ToCheckBadge({ count }: { count: number }) {
+  const { t } = useLocale();
+  if (count <= 0) return null;
+  return (
+    <>
+      <span aria-hidden="true" className="rounded-full bg-amber-400 px-1.5 text-xs font-semibold text-black tabular-nums">
+        {count}
+      </span>
+      <span className="sr-only">
+        {count === 1 ? t("desktop.nav.toCheck.one", { count }) : t("desktop.nav.toCheck.many", { count })}
+      </span>
+    </>
+  );
+}
+
 const itemClass = (on: boolean) =>
   `flex h-10 w-full items-center gap-3 whitespace-nowrap rounded-lg px-3 text-left text-sm transition-colors ${
     on ? "bg-[#ededed] font-semibold text-black" : "text-neutral-400 hover:bg-neutral-900 hover:text-[#ededed]"
@@ -142,11 +159,7 @@ export default function DesktopShell({
         >
           <NavIcon id="upload" />
           {t("desktop.nav.upload")}
-          {toCheck > 0 && (
-            <span className="rounded-full bg-amber-400 px-1.5 text-xs font-semibold text-black tabular-nums">
-              {toCheck}
-            </span>
-          )}
+          <ToCheckBadge count={toCheck} />
         </button>
 
         <ul className="-mx-3 flex gap-1 overflow-x-auto px-3 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-0">
@@ -159,6 +172,7 @@ export default function DesktopShell({
             >
               <NavIcon id="upload" />
               {t("desktop.nav.upload")}
+              <ToCheckBadge count={toCheck} />
             </button>
           </li>
           {NAV.map((item) => {

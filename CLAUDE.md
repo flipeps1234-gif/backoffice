@@ -32,6 +32,27 @@ NEXT_PUBLIC_SUPABASE_URL/ANON_KEY scoped to this branch; OWNER-SIDE for
 the preview to be fully real: add the preview origin to Supabase Auth →
 Redirect URLs, and (only if screenshot reading is wanted there)
 OPENAI_API_KEY + SUPABASE_SERVICE_ROLE_KEY for Preview.
+FIND-AND-FIX PASS 1 on this branch (four never-run-here lenses: newcode
+over the upload-screen refactor, state-machine over the sections, product
+semantics over the new numbers, authz/copy/a11y): the /app refactor came
+back byte-equivalent (mainLoop re-inlined and diffed). 11 findings, all
+fixed: HIGH — GA armed inside the signed-in /demooo (analytics.tsx's
+deny-list only named /app, /api; now PRIVATE_PREFIXES includes /demooo,
+and GA is never armed on a URL carrying a sign-in return's tokens);
+HIGH — a mere visit to Log sale/expense opened an empty form and the
+global guard then blocked every "Log again" and search (sections now open
+on a start panel; desktop guards are per form kind and take the owner to
+the open form with desktop.saleOpen/expenseOpen; search never blocks);
+MED-HIGH — a tour review unmounted mounted-hidden forms (a desktop review
+now renders inside the frame; closes to the dashboard); MED — return path
+recorded on sign-in MOUNT (now at send/Google start, SignIn returnTo
+prop), and read-and-forget twice under StrictMode (once per load); MED —
+chart IN included EXPECTED sales while the Reports card beside it didn't
+(series is transactions-only; expected shown as "paid, waiting to
+match"), service bars vs chart months disagreed for rows dated ahead
+(seriesMonths), service card unscoped (now "…, {year}"); LOW — all-time
+owed on past-year tabs, empty-state copy vs pending/owed, chart names
+without values for screen readers, badge without words or on phones.
 
 ## Marketing site surface — 2026-09-14
 

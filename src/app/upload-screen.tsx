@@ -112,7 +112,6 @@ import {
 import { useSession } from "@/lib/supabase/use-session";
 import { HOME_EVENT } from "./brand-home";
 import { acceptTerms, TERMS_VERSION } from "@/lib/terms";
-import { rememberReturnTo } from "@/lib/return-to";
 import type { Service } from "@/lib/service";
 import { formatCents, type Transaction } from "@/lib/transaction";
 
@@ -297,12 +296,7 @@ export default function UploadScreen({
 
   // Configured but signed out: the ledger belongs to an account.
   if (isConfigured && !user) {
-    return gate(
-      <>
-        <RememberReturnTo path={layout === "desktop" ? "/demooo" : "/app"} />
-        <SignIn />
-      </>,
-    );
+    return gate(<SignIn returnTo={layout === "desktop" ? "/demooo" : "/app"} />);
   }
 
   return (
@@ -314,15 +308,6 @@ export default function UploadScreen({
       layout={layout}
     />
   );
-}
-
-/** Records where a sign-in started, so the landing page's token forward
- *  (landing.tsx) returns the owner to the desktop app, not /app. */
-function RememberReturnTo({ path }: { path: string }) {
-  useEffect(() => {
-    rememberReturnTo(path);
-  }, [path]);
-  return null;
 }
 
 function Ledger({
@@ -475,7 +460,9 @@ function Ledger({
     // flight beats navigation; the notice says why nothing moved. The
     // Products and Settings takeovers hold unsaved forms too (a new
     // service, business-profile edits), so they block the same way.
-    if (entryOpen) {
+    // Desktop: Clients is its own section and every form stays mounted
+    // while hidden, so a search jump can never lose an entry — no block.
+    if (!desktop && entryOpen) {
       setSaleNotice(t("home.finishEntryFirst"));
       return;
     }
@@ -505,8 +492,10 @@ function Ledger({
    * while hidden — leaving them loses nothing — so only the two money
    * entry forms block, the ones a "log again" would remount.
    */
+  const saleOpen = showNewSale;
+  const expenseOpen = quickAdd || logAgain !== null;
   const entryOpen =
-    quickAdd || logAgain !== null || showNewSale || (!desktop && (showProducts || showSettings));
+    expenseOpen || saleOpen || (!desktop && (showProducts || showSettings));
 
   /**
    * Is the welcome tour on screen? First use: the boot decision above
@@ -2018,7 +2007,17 @@ function Ledger({
     // path would remount or evict it — vaporizing the entry (or arming
     // a numpad that pops up later out of nowhere). Products and Settings
     // hold unsaved forms too.
-    if (entryOpen) {
+    // Desktop: only an open form of the SAME kind is at risk (the seq bump
+    // would remount it), so only that blocks — and the owner is taken to
+    // it, with a line saying why, instead of a notice about a hidden form.
+    if (desktop) {
+      const blocked = prefill.direction === "out" ? expenseOpen : saleOpen;
+      if (blocked) {
+        setSection(prefill.direction === "out" ? "expense" : "sale");
+        setSaleNotice(t(prefill.direction === "out" ? "desktop.expenseOpen" : "desktop.saleOpen"));
+        return;
+      }
+    } else if (entryOpen) {
       setSaleNotice(t("home.finishEntryFirst"));
       return;
     }
@@ -2081,8 +2080,10 @@ function Ledger({
     // input — the seq bump below would remount NewSale and discard it.
     // Products and Settings hold unsaved forms too (same set as
     // openClientFromSearch).
-    if (entryOpen) {
-      setSaleNotice(t("home.finishEntryFirst"));
+    // Desktop: only an open sale is at risk (same rule as routeLogAgain).
+    if (desktop ? saleOpen : entryOpen) {
+      if (desktop) setSection("sale");
+      setSaleNotice(t(desktop ? "desktop.saleOpen" : "home.finishEntryFirst"));
       return;
     }
     setSection("sale");
@@ -2374,6 +2375,10 @@ function Ledger({
           setError("");
         }
         setTourOpen(true);
+        // Desktop: the review runs inside the app frame (forms stay
+        // mounted) and closing it lands on the dashboard, not on an
+        // empty Settings slot.
+        if (desktop) setSection("dashboard");
       }}
       onClose={() => {
         setShowSettings(false);
@@ -3077,15 +3082,34 @@ function Ledger({
     return desktop ? <DesktopGate>{line}</DesktopGate> : line;
   }
 
-  if (setupUp) {
+  const setupErrorEl = setupError && (
+    <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+      {setupError}
+    </p>
+  );
+  const setupWizardEl = (
+    <SetupWizard
+      profile={profile}
+      services={services}
+      onCreateService={createService}
+      onUpdateService={updateService}
+      onSaveProfile={saveSetupProfile}
+      onFinish={endSetup}
+      onSkip={endSetup}
+      saving={setupSaving}
+      review={tourOpen}
+    />
+  );
+
+  // A REVIEW opened from Settings on desktop renders inside the app frame
+  // (renderDesktop) so the sale/expense/product forms mounted behind it
+  // keep their typed state; first use (no forms can exist yet) and /app
+  // swap the whole screen for the tour as before.
+  if (setupUp && !(desktop && tourOpen)) {
     const tour = (
       <div className="mx-auto w-full max-w-lg space-y-6">
         {accountLine}
-        {setupError && (
-          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-            {setupError}
-          </p>
-        )}
+        {setupErrorEl}
         {/* The hub's lost-write banner, here too: a service saved on
             step 3 goes through the persist queue, whose failures report
             to `status`/`error` — and the hub return below never renders
@@ -3097,17 +3121,7 @@ function Ledger({
             {error}
           </p>
         )}
-        <SetupWizard
-          profile={profile}
-          services={services}
-          onCreateService={createService}
-          onUpdateService={updateService}
-          onSaveProfile={saveSetupProfile}
-          onFinish={endSetup}
-          onSkip={endSetup}
-          saving={setupSaving}
-          review={tourOpen}
-        />
+        {setupWizardEl}
       </div>
     );
     return desktop ? <DesktopGate>{tour}</DesktopGate> : tour;
@@ -3138,12 +3152,9 @@ function Ledger({
       "inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-700";
 
     function navigate(next: DesktopSection) {
-      if (next === "sale" && !showNewSale) {
-        setSalePrefill(null);
-        setSaleSeq((n) => n + 1);
-        setShowNewSale(true);
-      }
-      if (next === "expense" && !quickAdd && !logAgain) setQuickAdd(true);
+      // Log sale / Log expense open on their start panel: a form opens
+      // only when the owner starts one (or "log again" prefills one), so
+      // a mere visit never counts as an entry in flight.
       if (next === "products") setShowProducts(true);
       if (next === "settings" && !showSettings) openSettings();
       if (next === "clients" && section !== "clients") {
@@ -3154,7 +3165,9 @@ function Ledger({
       window.scrollTo({ top: 0 });
     }
 
-    const show = (id: DesktopSection) => section === id;
+    // While a review of the welcome tour is up it owns the workspace;
+    // every section (and every mounted form) is hidden, not unmounted.
+    const show = (id: DesktopSection) => !tourOpen && section === id;
 
     return (
       <DesktopShell
@@ -3172,6 +3185,13 @@ function Ledger({
           </p>
         )}
         {noticesEl}
+
+        {tourOpen && (
+          <section className={`${card} mx-auto w-full max-w-2xl space-y-6 p-6`}>
+            {setupErrorEl}
+            {setupWizardEl}
+          </section>
+        )}
 
         {show("dashboard") && (
           <>
@@ -3193,6 +3213,7 @@ function Ledger({
               sales={sales}
               services={services}
               owedCents={owedCents(sales)}
+              pendingCount={pendingCount}
               onOwed={() => navigate("owed")}
             />
             <section className={`${card} p-6`}>

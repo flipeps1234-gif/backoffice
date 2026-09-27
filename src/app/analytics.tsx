@@ -37,8 +37,20 @@ import Script from "next/script";
  *  string to turn analytics off entirely (empty is falsy below). */
 const GA_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ?? "G-JEM7B09P0L";
 
+/** Every route that shows or moves a signed-in ledger. /demooo joined
+ *  2026-09-27 when it became the desktop app (it was a static demo). */
+const PRIVATE_PREFIXES = ["/app", "/api", "/demooo"];
+
 const isPublicPath = (path: string): boolean =>
-  !path.startsWith("/app") && !path.startsWith("/api");
+  !PRIVATE_PREFIXES.some((prefix) => path.startsWith(prefix));
+
+/** A sign-in return (magic link / Google) carries its credentials in the
+ *  URL for the moment before the page forwards and auth-js clears them.
+ *  GA must never be armed on such a URL — page_location is the full href. */
+const carriesAuthReturn = (): boolean =>
+  /[#&?](access_token|refresh_token|code|error_description)=/.test(
+    window.location.hash + window.location.search,
+  );
 
 type GtagFn = (...args: unknown[]) => void;
 type GaWindow = Window & {
@@ -98,6 +110,7 @@ export default function Analytics() {
   // order js → config. The first page_view comes from config.
   useEffect(() => {
     if (!enabled || !GA_ID) return;
+    if (carriesAuthReturn()) return;
     const w = window as unknown as GaWindow;
     w.dataLayer = w.dataLayer ?? [];
     if (!w.gtag) {

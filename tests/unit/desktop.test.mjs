@@ -16,7 +16,7 @@ const load = (relative, globals = {}) => {
   return exports;
 };
 
-const { yearSeries, yearsWithData } = load('../../src/lib/desktop.ts');
+const { yearSeries, yearsWithData, seriesMonths, expectedCentsIn } = load('../../src/lib/desktop.ts');
 
 const tx = (date, amountCents, extra = {}) => ({ business: true, date, direction: 'in', amountCents, ...extra });
 const sale = (date, state, lines) => ({ date, state, lineItems: lines.map(([quantity, unitCents]) => ({ quantity, unitCents })) });
@@ -33,7 +33,6 @@ test('yearSeries: business rows by month; personal, undated, other years and out
       tx('2025-03-01', 8888),
       tx('2026-09-30', 1111),
     ],
-    [],
     2026,
     3,
   );
@@ -42,22 +41,30 @@ test('yearSeries: business rows by month; personal, undated, other years and out
   assert.deepEqual([...s.keptCents], [9000, 0, 5000]);
 });
 
-test('yearSeries: EXPECTED sales count as money in with per-line rounding; OPEN and PAID never do', () => {
-  const s = yearSeries(
-    [tx('2026-02-10', 10000)],
-    [
-      sale('2026-02-11', 'expected', [[1, 12000], [2.5, 333]]), // 12000 + round(832.5)=833
-      sale('2026-02-12', 'open', [[1, 50000]]),
-      sale('2026-02-13', 'paid', [[1, 70000]]),
-    ],
-    2026,
-    2,
-  );
-  assert.deepEqual([...s.inCents], [0, 10000 + 12000 + 833]);
+test('yearSeries is transactions only (the Reports basis); EXPECTED sales are summed apart, OPEN/PAID never', () => {
+  const s = yearSeries([tx('2026-02-10', 10000)], 2026, 2);
+  assert.deepEqual([...s.inCents], [0, 10000]);
+  const sales = [
+    sale('2026-02-11', 'expected', [[1, 12000], [2.5, 333]]), // 12000 + round(832.5)=833
+    sale('2025-12-30', 'expected', [[1, 5000]]),
+    sale('2026-02-12', 'open', [[1, 50000]]),
+    sale('2026-02-13', 'paid', [[1, 70000]]),
+  ];
+  assert.equal(expectedCentsIn(sales, 2026), 12833);
+  assert.equal(expectedCentsIn(sales, 2025), 5000);
+});
+
+test('seriesMonths: 12 for a past year; this year through today, extended by rows dated ahead', () => {
+  assert.equal(seriesMonths([], 2025, 2026, 9), 12);
+  assert.equal(seriesMonths([tx('2026-03-01', 1)], 2026, 2026, 9), 9);
+  assert.equal(seriesMonths([tx('2026-11-03', 30000)], 2026, 2026, 9), 11);
+  assert.equal(seriesMonths([tx('2026-11-03', 30000, { business: false })], 2026, 2026, 9), 9);
+  // The extended series now counts the future-dated row, like the service bars do.
+  assert.equal(yearSeries([tx('2026-11-03', 30000)], 2026, 11).inCents[10], 30000);
 });
 
 test('yearSeries: kept goes negative when a month spends more than it made', () => {
-  const s = yearSeries([tx('2026-01-02', 1000), tx('2026-01-03', 4000, { direction: 'out' })], [], 2026, 1);
+  const s = yearSeries([tx('2026-01-02', 1000), tx('2026-01-03', 4000, { direction: 'out' })], 2026, 1);
   assert.deepEqual([...s.keptCents], [-3000]);
 });
 

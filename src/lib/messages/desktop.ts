@@ -91,6 +91,41 @@ export const messages = {
     es: "{amount} por cobrar",
     pt: "{amount} a receber",
   },
+  "desktop.amountExpected": {
+    en: "{amount} paid, waiting to match",
+    es: "{amount} pagado, esperando coincidir",
+    pt: "{amount} pago, aguardando conferir",
+  },
+  "desktop.revenueYear": {
+    en: "Revenue by service, {year}",
+    es: "Ingresos por servicio, {year}",
+    pt: "Receita por serviço, {year}",
+  },
+  "desktop.emptyPending": {
+    en: "Sort the payments waiting to be checked and they show up here.",
+    es: "Clasifica los pagos que esperan revisión y aparecen aquí.",
+    pt: "Classifique os pagamentos que esperam conferência e eles aparecem aqui.",
+  },
+  "desktop.emptyOwed": {
+    en: "Sales show up here once they’re paid. What’s owed is in Owed.",
+    es: "Las ventas aparecen aquí cuando se pagan. Lo que te deben está en Por cobrar.",
+    pt: "As vendas aparecem aqui quando são pagas. O que devem a você está em A receber.",
+  },
+  "desktop.chart.point": {
+    en: "{month}: {amount} {series}",
+    es: "{month}: {amount} {series}",
+    pt: "{month}: {amount} {series}",
+  },
+  "desktop.saleOpen": {
+    en: "You already have a sale open — finish or close it first.",
+    es: "Ya tienes una venta abierta — termínala o ciérrala primero.",
+    pt: "Você já tem uma venda aberta — termine ou feche primeiro.",
+  },
+  "desktop.expenseOpen": {
+    en: "You already have an expense open — finish or close it first.",
+    es: "Ya tienes un gasto abierto — termínalo o ciérralo primero.",
+    pt: "Você já tem um gasto aberto — termine ou feche primeiro.",
+  },
   "desktop.chartShows": {
     en: "Chart shows",
     es: "El gráfico muestra",
@@ -136,11 +171,7 @@ export const messages = {
     es: "Señala un mes · {amount} en total",
     pt: "Aponte para um mês · {amount} no total",
   },
-  "desktop.chart.show": {
-    en: "Show {month}",
-    es: "Mostrar {month}",
-    pt: "Mostrar {month}",
-  },
+
   "desktop.chart.soFar": {
     en: "{month} so far",
     es: "{month} hasta hoy",

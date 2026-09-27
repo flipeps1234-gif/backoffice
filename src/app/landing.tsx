@@ -2,6 +2,9 @@
 
 import { useEffect } from "react";
 import { takeReturnTo } from "@/lib/return-to";
+
+/** The sign-in forward target, decided once per page load (see below). */
+let landingForward: string | null = null;
 import Link from "next/link";
 import Dashboard from "./dashboard";
 import DropZone from "./drop-zone";
@@ -51,6 +54,11 @@ export default function Landing() {
   // session — is answerable from localStorage alone; only a visitor who
   // has actually signed in loads the SDK, after hydration, to confirm.
   useEffect(() => {
+    // Where the sign-in started (/app or /demooo). Read-and-forget, so it
+    // is taken ONCE per page load: React may run this effect twice (dev
+    // StrictMode), and a second take would answer "/app" and its replace
+    // would override the first.
+    const forwardTo = () => (landingForward ??= takeReturnTo());
     // A magic link lands HERE: emailRedirectTo is the bare origin, the only
     // redirect Supabase allows today ("/app" is not in the Redirect URLs).
     // The SDK that consumes #access_token — or #error for an expired link —
@@ -61,7 +69,7 @@ export default function Landing() {
     // signed out. Forward the fragment intact to the page that reads it;
     // a full-document navigation, per the analytics rule.
     if (/[#&](access_token|error|error_code|error_description)=/.test(window.location.hash)) {
-      window.location.replace(`${takeReturnTo()}${window.location.hash}`);
+      window.location.replace(`${forwardTo()}${window.location.hash}`);
       return;
     }
     // Google sign-in returns here as well. With this client's implicit
@@ -69,7 +77,7 @@ export default function Landing() {
     // they arrive as ?code= (errors as ?error=) — forward those the same
     // way, query and hash intact, so /app can finish the exchange.
     if (/[?&](code|error|error_code|error_description)=/.test(window.location.search)) {
-      window.location.replace(`${takeReturnTo()}${window.location.search}${window.location.hash}`);
+      window.location.replace(`${forwardTo()}${window.location.search}${window.location.hash}`);
       return;
     }
     let hasToken = false;
