@@ -193,9 +193,9 @@ export const messages = {
     pt: "{title}, {year}. {month}: {amount}.",
   },
   "desktop.empty": {
-    en: "No money in or out in {year} yet. Upload screenshots, log a cash sale or an expense, and this fills in.",
-    es: "Todavía no hay dinero que entró o salió en {year}. Sube capturas, registra una venta en efectivo o un gasto, y esto se llena.",
-    pt: "Ainda não há dinheiro que entrou ou saiu em {year}. Envie capturas, registre uma venda em dinheiro ou um gasto, e isto se preenche.",
+    en: "No business money in or out in {year} yet. Upload screenshots, log a cash sale or an expense, and this fills in.",
+    es: "Todavía no hay dinero del negocio que entró o salió en {year}. Sube capturas, registra una venta en efectivo o un gasto, y esto se llena.",
+    pt: "Ainda não há dinheiro do negócio que entrou ou saiu em {year}. Envie capturas, registre uma venda em dinheiro ou um gasto, e isto se preenche.",
   },
   "desktop.serviceDetail": {
     en: "{name} · {jobs} · avg {amount}",

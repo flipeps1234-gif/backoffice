@@ -2373,7 +2373,8 @@ function Ledger({
         // service saved on step 3 goes through the persist queue). A
         // transient earlier failure must not paint over the review;
         // a STICKY one (saveFailed: an unsaved batch) must stay up.
-        if (!saveFailed) {
+        // A failed LOAD stays up too: it is what explains an empty ledger.
+        if (!saveFailed && !loadFailed) {
           setStatus("idle");
           setError("");
         }
@@ -3165,9 +3166,13 @@ function Ledger({
       // a mere visit never counts as an entry in flight.
       if (next === "products") setShowProducts(true);
       if (next === "settings" && !showSettings) openSettings();
-      if (next === "clients" && section !== "clients") {
-        // The sidebar opens the LIST — never a stale search focus.
+      if (next === "clients" && !showClients) {
+        // Opening Clients fresh shows the LIST — never a stale search
+        // focus. Once open it stays mounted (hidden) like the forms: a
+        // half-typed client note or recurring-price edit survives a look
+        // at another section, so coming back must not remount it.
         setClientsFocus(null);
+        setShowClients(true);
       }
       setSection(next);
       window.scrollTo({ top: 0 });
@@ -3188,8 +3193,11 @@ function Ledger({
         onSignOut={signOut}
         locked={tourOpen}
       >
+        {/* Sticky: every section is one scrolling page here, and a "Got
+            cash" far down a long Owed list must still SHOW its failed save
+            (on /app the banner sits in the sticky flow column). */}
         {status === "error" && (
-          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+          <p role="alert" className="sticky top-2 z-20 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
             {error}
           </p>
         )}
@@ -3199,7 +3207,7 @@ function Ledger({
           <section className={`${card} mx-auto w-full max-w-2xl space-y-6 p-6`}>
             {/* Phones: the sidebar's account line is hidden, and the old
                 full-screen tour always offered Sign out. */}
-            <div className="lg:hidden">{accountLine}</div>
+            {accountLine && <div className="lg:hidden">{accountLine}</div>}
             {setupErrorEl}
             {setupWizardEl}
           </section>
@@ -3226,6 +3234,7 @@ function Ledger({
               services={services}
               owedCents={owedCents(sales)}
               pendingCount={pendingCount}
+              loadFailed={loadFailed}
               onOwed={() => navigate("owed")}
             />
             <section className={`${card} p-6`}>
@@ -3308,7 +3317,11 @@ function Ledger({
 
         {show("owed") && <section className={`${card} p-6`}>{owedEl}</section>}
 
-        {show("clients") && <section className={`${card} p-6`}>{clientsEl}</section>}
+        {showClients && (
+          <section hidden={!show("clients")} className={`${card} p-6`}>
+            {clientsEl}
+          </section>
+        )}
 
         {showProducts && (
           <section hidden={!show("products")} className={`${card} p-6`}>

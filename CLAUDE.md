@@ -64,6 +64,21 @@ with only EXPECTED sales said "log a sale" (desktop.emptyExpected; the
 generic empty copy now says cash sale/expense); a row dated ahead stole
 the chart's opening month and the "so far" label (partialIndex, home
 month = today's).
+PASS 3 (newcode over pass 2 + RESILIENCE, never run on this layout):
+6 findings, all fixed — MED: after a failed ledger LOAD the desktop home
+drew a confident $0.00 year (DesktopOverview now takes `loadFailed` and
+shows the load error instead; a tour review no longer clears that
+error); MED-LOW: the save-failed banner sat at the top of one long
+scrolling page, off-screen under a long Owed list (now sticky on
+desktop); LOW-MED: Clients unmounted on a sidebar click, losing
+half-typed client notes/recurring edits (now mounted-hidden like the
+forms; a fresh open still shows the list); LOW: a Products EditForm kept
+stale fields while the tour edited the same service (EditForm keyed on
+the row's content); LOW: empty copy said "no money" when only personal
+money existed ("no business money"); LOW: the chart callout overflowed
+for five-figure ES/PT amounts (236px, clamped inside the plot).
+Severity trend: P1 11 (2 HIGH) → P2 4 (2 MED) → P3 6 (1 MED, rest
+lower) — P3's MEDIUM came from a NEW lens, not a regression.
 
 ## Marketing site surface — 2026-09-14
 

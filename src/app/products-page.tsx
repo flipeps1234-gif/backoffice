@@ -224,7 +224,12 @@ export default function ProductsPage({
         {services.map((service) =>
           editing === service.id ? (
             <EditForm
-              key={service.id}
+              // Keyed on the row's CONTENT, not just its id: EditForm seeds
+              // its fields once, and on desktop this page can stay mounted
+              // while the welcome tour edits the same service. A changed
+              // row remounts the form with the stored values, so a later
+              // Save can't write the stale price back over the tour's.
+              key={JSON.stringify(service)}
               initial={service}
               services={services}
               onSave={(next) => {

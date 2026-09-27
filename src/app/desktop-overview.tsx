@@ -112,8 +112,14 @@ function Chart({
   const money = (c: number) => (c < 0 ? `−${formatCents(-c)}` : formatCents(c));
 
   // The callout sits beside the active point, flipped left past midway.
-  const boxW = 190;
-  const bx = active > (n - 1) / 2 ? x(active) - boxW - 16 : x(active) + 16;
+  // Wide enough for five-figure amounts in ES/PT ("$123,456.78 entró ·
+  // $12,345.67 salió" measures ~194px in 11px Arial), and kept inside the
+  // plot on both sides.
+  const boxW = 236;
+  const bx = Math.min(
+    Math.max(active > (n - 1) / 2 ? x(active) - boxW - 16 : x(active) + 16, L),
+    W - R - boxW,
+  );
   const by = Math.min(Math.max(y(values[active]) - 84, T), T + ph - 76);
   const monthTitle =
     active === partialIndex
@@ -264,6 +270,7 @@ export default function DesktopOverview({
   services,
   owedCents,
   pendingCount,
+  loadFailed,
   onOwed,
 }: {
   transactions: Transaction[];
@@ -273,6 +280,10 @@ export default function DesktopOverview({
   /** Rows read from screenshots and not sorted yet — they are not on
    *  the chart until sorted, and the empty state says so. */
   pendingCount: number;
+  /** The ledger never loaded: the in-memory rows are empty-but-wrong, so
+   *  no total may be drawn from them (the Reports card and uploads obey
+   *  the same flag). */
+  loadFailed: boolean;
   onOwed: () => void;
 }) {
   const { t, tag } = useLocale();
@@ -323,6 +334,18 @@ export default function DesktopOverview({
   const hasData = totalIn > 0 || totalOut > 0;
 
   const card = "rounded-xl border border-neutral-300 bg-background dark:border-neutral-700";
+
+  if (loadFailed) {
+    // Hooks above always run; only the drawing is withheld. A $0.00 year
+    // after a network failure would read as the truth.
+    return (
+      <section className={`${card} p-6`}>
+        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+          {t("home.errLoadFailed")}
+        </p>
+      </section>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5">
