@@ -275,12 +275,14 @@ export default function DashboardScreen({
       </div>
 
       <section className={`${card} flex flex-col overflow-hidden`}>
-        <div className="flex items-baseline justify-between bg-neutral-200 px-4 pb-3 pt-3.5">
+        {/* One heavier, dark rule sets the total apart from the rows; the
+            rows keep their hairlines. */}
+        <div className="flex items-baseline justify-between border-b-2 border-neutral-900 px-4 pb-3 pt-3.5">
           <h2 className="text-[15px] font-semibold">Total Owed to You</h2>
           <span className="text-[15px] font-semibold tabular-nums text-amber-800">{formatCents(owedCents)}</span>
         </div>
         {shown.length === 0 ? (
-          <p className="border-t border-neutral-200 px-4 py-4 text-sm text-[#525252]">
+          <p className="px-4 py-4 text-sm text-[#525252]">
             Nobody owes you anything. As it should be.
           </p>
         ) : (
@@ -288,7 +290,7 @@ export default function DashboardScreen({
             {shown.map((o) => {
               const days = daysBetween(o.date, DEMO_TODAY);
               return (
-                <li key={o.id} className="border-t border-neutral-200">
+                <li key={o.id} className="border-t border-neutral-200 first:border-t-0">
                   <button
                     type="button"
                     onClick={onOwed}
