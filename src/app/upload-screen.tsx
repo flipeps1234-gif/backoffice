@@ -187,11 +187,15 @@ class RevertedWrite extends Error {
 
 export default function UploadScreen({
   layout = "classic",
+  returnTo = "/app",
 }: {
-  /** "desktop" = the sidebar app at /demooo (desktop-shell.tsx); the
-   *  default is /app exactly as it has always been. Same Ledger, same
-   *  state, same write paths — only the frame differs. */
+  /** "desktop" = the sidebar app (desktop-shell.tsx); the default is the
+   *  phone app. Same Ledger, same state, same write paths — only the
+   *  frame differs. /app picks by screen width (app-frame.tsx). */
   layout?: "classic" | "desktop";
+  /** The page this screen is on, so a sign-in started here comes back
+   *  here (lib/return-to.ts). The layout does not say: /app shows both. */
+  returnTo?: "/app" | "/demooo";
 } = {}) {
   const accepted = useAcceptedTerms();
   const { user, loading, isConfigured } = useSession();
@@ -296,7 +300,7 @@ export default function UploadScreen({
 
   // Configured but signed out: the ledger belongs to an account.
   if (isConfigured && !user) {
-    return gate(<SignIn returnTo={layout === "desktop" ? "/demooo" : "/app"} />);
+    return gate(<SignIn returnTo={returnTo} />);
   }
 
   return (
@@ -3207,8 +3211,9 @@ function Ledger({
   if (desktop) return renderDesktop();
 
   /**
-   * The desktop app (/demooo): the sidebar sections over the SAME state
-   * and handlers /app uses. Rules:
+   * The desktop app (/app on a wide screen, /demooo at any width): the
+   * sidebar sections over the SAME state and handlers the phone app uses.
+   * Rules:
    * - Money-entry and form screens (sale, expense, products, settings)
    *   stay MOUNTED while hidden once opened, so clicking elsewhere never
    *   loses a half-typed entry; their own Cancel/Close unmounts them.

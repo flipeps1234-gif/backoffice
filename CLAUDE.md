@@ -2,6 +2,32 @@
 
 # CLAUDE.md — read this before doing anything
 
+## Desktop app on /app — 2026-10-04
+
+Owner: "ok push to main now" (after "ship" put the preview live at
+/demooo on 2026-10-04). /app now renders `app-frame.tsx`: a window at
+least lg (64rem) wide when the page opens gets
+`<UploadScreen layout="desktop" />`, anything narrower gets the phone app
+in its old header (moved out of app/page.tsx). The choice is made ONCE
+per visit and held — never switched live under a mounted Ledger (a
+half-typed sale, a takeover, a queued write) and never by remounting it;
+both layouts already work at the other size, and leaving /app forgets
+the choice. Before the window can be read (server render + hydration)
+both frames' loading line are rendered and CSS (`lg:hidden` /
+`hidden lg:block`) picks, so neither size paints the other's frame.
+UploadScreen gained `returnTo` (default /app; /demooo passes its own) —
+the layout no longer says which page a sign-in started on. /demooo stays:
+the sidebar app at any width. The classic layout's lg side column
+(useIsDesktop in upload-screen.tsx) is now reached only by a phone-width
+window widened mid-visit. Checked in a browser, anonymous mode: opens at
+1280 and 1024 → sidebar app; 1023 and 375 → phone app; opened wide then
+narrowed → stays sidebar (folded, no sideways scroll); every sidebar
+section opens; no console or hydration errors. NOT checked: anything
+signed in (same gap as the section below), and a real resize event —
+the browser harness's viewport override fires no matchMedia change.
+ROLLBACK: revert this one commit; /app goes back to the phone app at
+every width and /demooo is unaffected.
+
 ## Desktop app (preview) — 2026-09-27, branch feat/desktop-app
 
 Owner: "take it from being a demo to the new full product … keep it in

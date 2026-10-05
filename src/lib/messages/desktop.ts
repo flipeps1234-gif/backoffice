@@ -1,5 +1,5 @@
 /**
- * The desktop app (/demooo while it is in preview): the black sidebar and
+ * The desktop app (/app on a wide screen; /demooo at any width): the black sidebar and
  * the analytics home. Every other screen inside it is the app's own and
  * keeps its own keys. Words reuse the app's vocabulary on purpose — "Por
  * cobrar"/"A receber" for Owed, "capturas" for screenshots, "te quedó"/

@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import BrandHome from "../brand-home";
-import LocalePicker from "../locale-picker";
-import UploadScreen from "../upload-screen";
+import AppFrame from "../app-frame";
 
 /** The sign-in gate is not content: its own title, and an explicit
  *  noindex so search engines don't list the bare URL that every public
@@ -14,29 +12,14 @@ export const metadata: Metadata = {
 
 /**
  * The app itself, moved from / to /app when the landing page took the
- * root (public surface, 2026-08-16). Everything else is unchanged: the
- * sign-in gate and anonymous in-memory mode both live inside
- * UploadScreen exactly as before — a logged-out visitor here sees the
- * sign-in screen, which IS the app's front door.
+ * root (public surface, 2026-08-16). The sign-in gate and anonymous
+ * in-memory mode both live inside UploadScreen — a logged-out visitor
+ * here sees the sign-in screen, which IS the app's front door.
+ *
+ * Since 2026-10-04 a wide screen gets the sidebar app that was previewed
+ * at /demooo and a phone keeps the layout it has always had; app-frame.tsx
+ * makes that choice (and holds the phone header that used to live here).
  */
 export default function AppPage() {
-  return (
-    <main className="mx-auto w-full max-w-lg px-4 py-8 lg:max-w-5xl lg:px-8">
-      {/* The picker lives in the permanent header — every screen, every
-          state, including signed-out. A language switcher you have to hunt
-          for might as well not exist. */}
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-lg font-semibold tracking-tight">
-          {/* The mark and the word are one link to the APP's home (the hub),
-              the way the public header's brand link goes to the site's
-              homepage — each surface points at its own front door. See
-              brand-home.tsx for why a click goes home in place rather than
-              reloading the page. */}
-          <BrandHome />
-        </h1>
-        <LocalePicker compact />
-      </div>
-      <UploadScreen />
-    </main>
-  );
+  return <AppFrame />;
 }
