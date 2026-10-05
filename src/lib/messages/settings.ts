@@ -107,9 +107,14 @@ export const messages = {
     pt: "Ainda carregando o que está salvo na sua conta — um momento.",
   },
   "settings.backupIssue": {
-    en: "Something didn't save — check your connection. The home screen shows what failed.",
-    es: "Algo no se guardó — revisa tu conexión. La pantalla de inicio muestra qué falló.",
-    pt: "Algo não foi salvo — verifique sua conexão. A tela inicial mostra o que falhou.",
+    en: "Something didn't save to your account. Reload the page to see what was saved.",
+    es: "Algo no se guardó en tu cuenta. Recarga la página para ver qué quedó guardado.",
+    pt: "Algo não foi salvo na sua conta. Recarregue a página para ver o que ficou salvo.",
+  },
+  "settings.backupWaiting": {
+    en: "Waiting for a connection — your latest changes save by themselves when you're back online. Keep this page open.",
+    es: "Esperando conexión — tus últimos cambios se guardan solos cuando vuelva. Deja esta página abierta.",
+    pt: "Aguardando conexão — suas últimas mudanças são salvas sozinhas quando ela voltar. Deixe esta página aberta.",
   },
   // ---- Services & clients ----
   "settings.catalog": {

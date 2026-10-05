@@ -147,6 +147,41 @@ export default function NewSale({
     backToProductsIfEmptied();
     setQuantities((current) => new Map(current).set(service.id, quantity));
     setKinds((current) => new Map(current).set(service.id, kindOf(service)));
+    // A stepper tap replaces whatever was being typed in the size field.
+    setSizeText((current) => {
+      if (!current.has(service.id)) return current;
+      const next = new Map(current);
+      next.delete(service.id);
+      return next;
+    });
+  }
+  /**
+   * The "how many hours / sq ft / rooms" field's TEXT while it is being
+   * typed. The quantity is a number, and a text input bound to a number
+   * cannot hold a half-typed one: "1." parses to 1, React writes "1" back
+   * over the field, and the next key makes 15 — 1.5 hours became 15 hours
+   * ($600 for a $60 lesson); clearing the "1" to type another size parsed
+   * to 0 and unmounted the field under the keyboard (task-flow lens,
+   * 2026-10-04). Same rule as the client page's qtyText and the keypad's
+   * qty: keep what was typed, parse it on the side. An entry exists only
+   * between the first keystroke and blur.
+   */
+  const [sizeText, setSizeText] = useState<Map<string, string>>(() => new Map());
+  const typedSize = (service: Service): string | undefined =>
+    kindChanged(service) ? undefined : sizeText.get(service.id);
+  function typeSize(service: Service, text: string) {
+    const size = Number.parseFloat(text.replace(",", "."));
+    setQty(service, Number.isFinite(size) && size > 0 ? size : 0);
+    // After setQty: its updater drops the entry, this one puts the new text back.
+    setSizeText((current) => new Map(current).set(service.id, text));
+  }
+  function doneTypingSize(service: Service) {
+    setSizeText((current) => {
+      if (!current.has(service.id)) return current;
+      const next = new Map(current);
+      next.delete(service.id);
+      return next;
+    });
   }
   // Custom amount: a sale with no catalog product behind it. Kept as
   // dollars text until checkout so typing feels like the numpad.
@@ -769,8 +804,10 @@ export default function NewSale({
                 quantity={qtyOf(service)}
                 onStep={(delta) => step_(service, delta)}
               />
+              {/* Also while its text is being typed: an empty or "0." field
+                  is a quantity of 0 for a moment, and must stay put. */}
               {service.pricing.type === "rate" &&
-                qtyOf(service) > 0 && (
+                (qtyOf(service) > 0 || typedSize(service) !== undefined) && (
                   <div className="flex items-center gap-2 px-2 text-sm">
                     <label htmlFor={`size-${service.id}`}>
                       {t(
@@ -786,13 +823,11 @@ export default function NewSale({
                       type="text"
                       inputMode="decimal"
                       className={`${fieldClass} w-24 text-center`}
-                      value={qtyOf(service)}
-                      onChange={(e) => {
-                        const size = Number.parseFloat(
-                          e.target.value.replace(",", "."),
-                        );
-                        setQty(service, Number.isFinite(size) && size > 0 ? size : 0);
-                      }}
+                      value={typedSize(service) ?? String(qtyOf(service))}
+                      onChange={(e) => typeSize(service, e.target.value)}
+                      // Leaving the field shows the number that will be
+                      // charged ("1," → 1); left empty, the line is off.
+                      onBlur={() => doneTypingSize(service)}
                     />
                   </div>
                 )}

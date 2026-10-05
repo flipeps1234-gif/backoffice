@@ -13,4 +13,4 @@ Después de tu primer lote ya verás tu total del período, tu día más movido 
 
 ## ¿Necesito una cuenta?
 
-Puedes probar todo sin una, pero nada se guarda hasta que inicies sesión. Iniciar sesión es solo tu correo — te mandamos un enlace, sin contraseña. Desde ahí, cada cambio se guarda en tu cuenta al instante.
+Sí — la app se abre cuando inicias sesión. Iniciar sesión es solo tu correo — te mandamos un enlace, sin contraseña. Desde ahí, cada cambio se guarda en tu cuenta al instante. Antes de eso, puedes probar los ejemplos de nuestra página de inicio sin una.

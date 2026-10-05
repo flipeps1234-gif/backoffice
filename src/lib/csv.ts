@@ -26,10 +26,18 @@ import type { Transaction } from "./transaction";
  * from screenshots — anyone who pays the owner controls it, and Excel
  * executes a cell starting with = + - or @ as a formula even when quoted.
  * The standard mitigation is a leading apostrophe.
+ *
+ * Comma is not the only delimiter this file meets. Excel under a regional
+ * format whose list separator is ";" (pt-BR, es-ES — this product's own
+ * audience) and LibreOffice's import dialog also split on ";" and TAB, and
+ * a quote that does not OPEN such a field is literal there — so a payer of
+ * `Ana;=cmd…` put a live formula in the next cell (injection lens,
+ * 2026-10-04). So: a TAB becomes a space, and the apostrophe goes before a
+ * trigger character at the start AND after every ";".
  */
 const field = (value: string): string => {
-  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
-  return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+  const safe = value.replace(/\t/g, " ").replace(/(^|;)(\s*)([=+\-@\r])/g, "$1$2'$3");
+  return /[",;\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 };
 
 const dollars = (cents: number): string => (cents / 100).toFixed(2);

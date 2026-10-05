@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Client } from "@/lib/client";
+import { findClientByName, type Client } from "@/lib/client";
 import { formatMiles, parseMilesToTenths } from "@/lib/mileage";
 import {
   fastForwardPastGap,
@@ -137,6 +137,14 @@ export default function ClientsPage({
   }
 
   const detail = clients.find((c) => c.id === openId);
+  // The name being typed already belongs to ANOTHER client. The table is
+  // unique on (account, lower(name)) — 0005 — so that save is rejected by
+  // the database; it used to "save" on screen (two clients, one name),
+  // raise the "check your connection" banner, and revert on the next open
+  // together with the notes typed alongside it. Refused here instead, the
+  // way products-page.tsx refuses a duplicate product.
+  const sameName = editing && detail ? findClientByName(clients, name) : undefined;
+  const nameTaken = sameName && detail && sameName.id !== detail.id ? sameName : null;
 
   // ---- detail ----
   if (detail) {
@@ -177,7 +185,18 @@ export default function ClientsPage({
                 className={fieldClass}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                aria-invalid={nameTaken ? true : undefined}
+                aria-describedby={nameTaken ? "client-name-taken" : undefined}
               />
+              {nameTaken && (
+                <p
+                  id="client-name-taken"
+                  role="alert"
+                  className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900"
+                >
+                  {t("clients.duplicate", { name: nameTaken.name })}
+                </p>
+              )}
             </div>
             <div>
               <label className={labelClass} htmlFor="client-notes">
@@ -212,7 +231,7 @@ export default function ClientsPage({
             <div className="flex gap-2">
               <button
                 type="button"
-                disabled={name.trim() === ""}
+                disabled={name.trim() === "" || nameTaken !== null}
                 className="flex-1 rounded-lg bg-foreground px-4 py-3 text-sm font-medium text-background hover:opacity-90 disabled:opacity-40"
                 onClick={() => {
                   onUpdateClient(detail.id, {

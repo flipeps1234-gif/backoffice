@@ -13,4 +13,4 @@ After your first batch you'll already see your period total, your busiest day, a
 
 ## Do I need an account?
 
-You can try everything without one, but nothing is saved until you sign in. Signing in is just your email — we send you a link, no password. After that, every change saves to your account instantly.
+Yes — the app opens once you sign in. Signing in is just your email — we send you a link, no password. After that, every change saves to your account instantly. Before that, you can try the examples on our home page without one.

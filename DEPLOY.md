@@ -242,7 +242,17 @@ order by column_name;
 You need `direction` and `quantity` in that list. If either is missing,
 stop and run the migration.
 
-Current high-water mark: **0023** (0021 + 0022 applied 2026-09-04 19:14
+Current high-water mark: **0025** — `admin_overview_hardening`, applied
+2026-10-04 via the Supabase MCP during a find-and-fix pass (no separate
+go-ahead was asked for it: say so to the owner). It is a `create or
+replace` of the same read-only, service_role-only function — totals only
+count well-formed sale lines and `lang` is clamped to en/es/pt/other.
+Verified by read-only SQL before and after: production had 0 malformed
+rows, and the function's totals (accounts 12, sales 6, owed 40000; 52050
+across all listed accounts) and its grants were identical. Undo: run
+0023's file again. **0024 is reserved** for the parked
+integrity_and_idempotency migration of the 2026-09-04 security branch and
+is NOT applied. Before that: **0023** (0021 + 0022 applied 2026-09-04 19:14
 CDT via the Supabase MCP and verified — see the section at the top of this
 file; **0023 `admin_overview`** applied 2026-09-05 via the MCP: a
 read-only, service_role-only function for /app/admin, verified by grant

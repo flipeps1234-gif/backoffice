@@ -114,9 +114,9 @@ export const messages = {
   "desktop.backupIssue": {
     // No pointer to the red banner: this line follows the STICKY
     // save-failed flag, and the banner (transient) may already be gone.
-    en: "Something didn't save to your account — check your connection.",
-    es: "Algo no se guardó en tu cuenta — revisa tu conexión.",
-    pt: "Algo não foi salvo na sua conta — verifique sua conexão.",
+    en: "Something didn't save to your account. Reload the page to see what was saved.",
+    es: "Algo no se guardó en tu cuenta. Recarga la página para ver qué quedó guardado.",
+    pt: "Algo não foi salvo na sua conta. Recarregue a página para ver o que ficou salvo.",
   },
   "desktop.doneIntro": {
     en: "Three ways to log money, all in the menu:",

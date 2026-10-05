@@ -10,6 +10,11 @@ export const messages = {
     pt: "← Todos os clientes",
   },
   "clients.name": { en: "Name", es: "Nombre", pt: "Nome" },
+  "clients.duplicate": {
+    en: 'You already have a client named "{name}".',
+    es: 'Ya tienes un cliente llamado "{name}".',
+    pt: 'Você já tem um cliente chamado "{name}".',
+  },
   "clients.notes": { en: "Notes", es: "Notas", pt: "Notas" },
   "clients.notesPlaceholder": {
     en: "Gate code, dog's name, prefers Tuesdays…",

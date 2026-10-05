@@ -51,7 +51,10 @@ export async function POST(request: Request) {
   const normalized = email.trim().toLowerCase();
   if (
     Buffer.byteLength(normalized, "utf8") > 320 ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized) ||
+    // The list is read by a person, possibly in a spreadsheet: an
+    // "address" opening with = + - is a formula there, never a mailbox.
+    /^[=+\-]/.test(normalized)
   ) {
     return Response.json({ error: "Bad request." }, { status: 400 });
   }

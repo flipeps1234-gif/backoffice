@@ -73,6 +73,7 @@ import {
 import { dedupe, isDuplicate } from "@/lib/extract/dedupe";
 import type { ExtractionWarning } from "@/lib/extract/types";
 import { isAuthRetryableFetchError } from "@supabase/supabase-js";
+import { isNetworkSaveError, retryDelayMs } from "@/lib/save-retry";
 import { getSupabase } from "@/lib/supabase/client";
 import {
   insertClient,
@@ -184,6 +185,43 @@ class RevertedWrite extends Error {
     super(key);
   }
 }
+
+/** The write queue's retry state. One mutable record per Ledger (a ref):
+ *  none of it is rendered — `saveWaiting` state mirrors `waiting` for that. */
+type SaveQueue = {
+  /** Parked on a save the network refused; later saves wait behind it. */
+  waiting: boolean;
+  /** Sign-out or unmount: finish what is running, retry nothing. */
+  stopped: boolean;
+  /** Cuts the current wait short ("Try now", sign-out, unmount). */
+  wake: (() => void) | null;
+  /** Resolvers of persist()'s promises that have not had an outcome yet. */
+  outcomes: Set<() => void>;
+};
+
+/** Resolve when it is worth trying the parked save again: the browser says
+ *  it is back online, the tab comes back to the front, the backoff runs
+ *  out, or someone calls queue.wake. */
+const parkUntilRetry = (queue: SaveQueue, attempt: number): Promise<void> =>
+  new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      window.clearTimeout(timer);
+      window.removeEventListener("online", finish);
+      document.removeEventListener("visibilitychange", onVisible);
+      if (queue.wake === finish) queue.wake = null;
+      resolve();
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") finish();
+    };
+    const timer = window.setTimeout(finish, retryDelayMs(attempt));
+    window.addEventListener("online", finish);
+    document.addEventListener("visibilitychange", onVisible);
+    queue.wake = finish;
+  });
 
 export default function UploadScreen({
   layout = "classic",
@@ -379,6 +417,41 @@ function Ledger({
     lostWritesWhileSignedOut = false;
     return true;
   });
+  /** True while the write queue is parked on a save that never reached
+   *  the server (no signal) and is being retried — see persist. Not sticky:
+   *  it clears when the save lands. */
+  const [saveWaiting, setSaveWaiting] = useState(false);
+  /** "Back online — everything is saved", for a few seconds after that. */
+  const [saveRecovered, setSaveRecovered] = useState(false);
+  const saveQueue = useRef<SaveQueue>({ waiting: false, stopped: false, wake: null, outcomes: new Set() });
+  useEffect(() => {
+    const queue = saveQueue.current;
+    queue.stopped = false;
+    return () => {
+      // The Ledger is going away (account switch, a sign-out in another
+      // tab): nothing may keep retrying into the next account's session.
+      // What was still parked is lost — say so on the next signed-in mount.
+      if (queue.waiting) lostWritesWhileSignedOut = true;
+      queue.stopped = true;
+      queue.wake?.();
+    };
+  }, []);
+  useEffect(() => {
+    if (!saveRecovered) return;
+    const timer = window.setTimeout(() => setSaveRecovered(false), 6000);
+    return () => window.clearTimeout(timer);
+  }, [saveRecovered]);
+  // While a save is parked, closing or reloading the tab loses it (nothing
+  // is kept on the device): make the browser ask first.
+  useEffect(() => {
+    if (!saveWaiting) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [saveWaiting]);
   /**
    * Set when the initial ledger pull failed. While true, uploads are OFF:
    * the duplicate screen compares new batches against the in-memory ledger,
@@ -451,6 +524,7 @@ function Ledger({
   const [recapClosed, setRecapClosed] = useState(false);
   const [taxNoteClosed, setTaxNoteClosed] = useState(false);
   const [showOwed, setShowOwed] = useState(false);
+  const noticesRef = useRef<HTMLDivElement>(null);
   const [showClients, setShowClients] = useState(false);
   /** Search landed on a client — ClientsPage opens on their detail. */
   const [clientsFocus, setClientsFocus] = useState<string | null>(null);
@@ -584,62 +658,113 @@ function Ledger({
     (id: string): string => saleIdRemap.current.get(id) ?? id,
     [],
   );
+  /**
+   * Queue one save. Saves run strictly in order, and a save that never
+   * REACHED the server (no signal, the auth refresh failing offline) is
+   * tried again until it lands, with everything queued behind it waiting
+   * its turn — so the order on the server is the order of the taps, and
+   * "keep this page open, it saves when you're back online" is true. A
+   * save the server answered and refused is reported and dropped, as
+   * before (lib/save-retry.ts has the rule and the reasons).
+   *
+   * The returned promise resolves at this save's FIRST outcome — landed,
+   * failed for good, or parked behind the network — not when it finally
+   * lands: readFiles awaits it while holding the upload lock, and must not
+   * hold that for as long as the phone has no signal. signOut awaits the
+   * chain itself, after stopping the retries.
+   */
   const persist = useCallback(
     (work: () => Promise<void>): Promise<void> => {
+      const queue = saveQueue.current;
+      let settle = () => {};
+      const outcome = new Promise<void>((resolve) => {
+        settle = resolve;
+      });
+      queue.outcomes.add(settle);
+      if (queue.waiting) settle();
       const next = writeChain.current.then(async () => {
-        if (!isConfigured || !accountId) return;
+        let parked = false;
         try {
-          // Another tab's sign-out clears the shared session between enqueue
-          // and run; supabase-js would then send the ANON key, RLS would
-          // drop inserts (into a component already unmounted) and match
-          // updates to zero rows "successfully". Refuse, and remember.
-          //
-          // But "no session" has TWO causes. auth-js also answers null —
-          // WITH an error, keeping the stored session and emitting no
-          // SIGNED_OUT — when the access token is past expiry and the
-          // refresh fails retryably: offline, DNS, auth 5xx. That is the
-          // product's headline moment (phone asleep an hour, "Got cash" in
-          // a driveway with no signal), the user is still here and this
-          // Ledger still mounted, so it is a FAILED SAVE and must banner.
-          // Only a session-less, error-less read (storage really cleared)
-          // takes the quiet flag path.
-          const res = await getSupabase()?.auth.getSession();
-          if (!res?.data.session) {
-            if (res?.error) {
-              // auth-js removes the stored session and broadcasts
-              // SIGNED_OUT (unmounting this Ledger) for every NON-retryable
-              // refresh failure — a revoked refresh token, say — so the
-              // throw below lands on nobody; remember the loss for the next
-              // signed-in mount. A retryable failure keeps the session and
-              // this Ledger, so the throw alone banners.
-              if (!isAuthRetryableFetchError(res.error)) {
+          if (!isConfigured || !accountId) return;
+          for (let attempt = 0; ; attempt += 1) {
+            try {
+              // Another tab's sign-out clears the shared session between enqueue
+              // and run; supabase-js would then send the ANON key, RLS would
+              // drop inserts (into a component already unmounted) and match
+              // updates to zero rows "successfully". Refuse, and remember.
+              //
+              // But "no session" has TWO causes. auth-js also answers null —
+              // WITH an error, keeping the stored session and emitting no
+              // SIGNED_OUT — when the access token is past expiry and the
+              // refresh fails retryably: offline, DNS, auth 5xx. That is the
+              // product's headline moment (phone asleep an hour, "Got cash" in
+              // a driveway with no signal), the user is still here and this
+              // Ledger still mounted, so it is a save to RETRY (the throw
+              // below is an AuthRetryableFetchError, which the catch parks).
+              // Only a session-less, error-less read (storage really cleared)
+              // takes the quiet flag path.
+              const res = await getSupabase()?.auth.getSession();
+              if (!res?.data.session) {
+                if (res?.error) {
+                  // auth-js removes the stored session and broadcasts
+                  // SIGNED_OUT (unmounting this Ledger) for every NON-retryable
+                  // refresh failure — a revoked refresh token, say — so the
+                  // throw below lands on nobody; remember the loss for the next
+                  // signed-in mount. A retryable failure keeps the session and
+                  // this Ledger.
+                  if (!isAuthRetryableFetchError(res.error)) {
+                    lostWritesWhileSignedOut = true;
+                  }
+                  throw res.error;
+                }
                 lostWritesWhileSignedOut = true;
+                return;
               }
-              throw res.error;
+              await work();
+              // It waited and it landed. If more saves are queued behind
+              // it and the network drops again, the next one re-parks.
+              if (parked) setSaveRecovered(true);
+              return;
+            } catch (cause) {
+              const reverted = cause instanceof RevertedWrite;
+              if (!reverted && !queue.stopped && isNetworkSaveError(cause)) {
+                console.warn("Save waiting for the network:", cause);
+                parked = true;
+                queue.waiting = true;
+                setSaveWaiting(true);
+                setSaveRecovered(false);
+                // Everyone awaiting a queued save has their answer: parked.
+                for (const done of queue.outcomes) done();
+                await parkUntilRetry(queue, attempt);
+                if (!queue.stopped) continue;
+              }
+              console.error("Save failed:", cause);
+              // translate + currentLocale, not `t`: this callback (and the load
+              // effect depending on it) must not re-run on a language switch.
+              setError(
+                translate(currentLocale(), reverted ? cause.key : "home.errSaveFailed"),
+              );
+              setStatus("error");
+              // Remembered, not just flashed: the finish copy below promises the
+              // batch is on the user's account "next time you open this on any
+              // device". After a failed write that sentence is false, and it is
+              // the only thing standing between them and losing the batch. A
+              // REVERTED write left nothing unsaved on screen, so it is not sticky.
+              if (!reverted) setSaveFailed(true);
+              return;
             }
-            lostWritesWhileSignedOut = true;
-            return;
           }
-          await work();
-        } catch (cause) {
-          console.error("Save failed:", cause);
-          const reverted = cause instanceof RevertedWrite;
-          // translate + currentLocale, not `t`: this callback (and the load
-          // effect depending on it) must not re-run on a language switch.
-          setError(
-            translate(currentLocale(), reverted ? cause.key : "home.errSaveFailed"),
-          );
-          setStatus("error");
-          // Remembered, not just flashed: the finish copy below promises the
-          // batch is on the user's account "next time you open this on any
-          // device". After a failed write that sentence is false, and it is
-          // the only thing standing between them and losing the batch. A
-          // REVERTED write left nothing unsaved on screen, so it is not sticky.
-          if (!reverted) setSaveFailed(true);
+        } finally {
+          if (parked) {
+            queue.waiting = false;
+            setSaveWaiting(false);
+          }
+          queue.outcomes.delete(settle);
+          settle();
         }
       });
       writeChain.current = next;
-      return next;
+      return outcome;
     },
     [isConfigured, accountId],
   );
@@ -979,8 +1104,8 @@ function Ledger({
    */
   const reading = useRef(false);
 
-  async function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
+  async function handleFiles(files: File[]) {
+    if (files.length === 0) return;
     // A failed load means the dedupe screen would run against an empty
     // in-memory ledger and wave duplicates straight into the account.
     // Refuse until a reload brings the real rows back.
@@ -1007,7 +1132,7 @@ function Ledger({
     }
   }
 
-  async function readFiles(files: FileList) {
+  async function readFiles(files: File[]) {
     // accept="image/*" is only advice: the file dialog lets you switch it off,
     // and a drag-and-drop never consults it at all. Filter here so both ways
     // in are covered, rather than letting a PDF reach the compressor.
@@ -1384,6 +1509,10 @@ function Ledger({
       setStatus("error");
       return;
     }
+    // "Saved — Rosa owes $60.00." was still on screen, over the dashboard,
+    // after Rosa's cash had been taken. A notice with an Undo attached is
+    // about something else and stays.
+    if (matchUndo.length === 0) setSaleNotice("");
     // A prior "Got cash" whose sale update failed leaves the mirror txn
     // behind with the sale still open. Re-tapping must REUSE that txn, not
     // mint a second one — two mirrors for one sale is doubled revenue in
@@ -1932,8 +2061,9 @@ function Ledger({
         t("home.savedOwes", {
           name:
             result.newClient?.name ??
-            clientNameOf(sale.clientId) ??
-            t("home.fallbackClient"),
+            // ||, not ??: clientNameOf answers "" for a sale with no
+            // client, and the notice read "Saved —  owes $80.00."
+            (clientNameOf(sale.clientId) || t("home.fallbackClient")),
           amount: formatCents(saleTotalCents(sale)),
         }),
       );
@@ -2165,6 +2295,14 @@ function Ledger({
     // top of one long page; from far down the Owed list the button would
     // seem to do nothing.
     if (desktop) window.scrollTo({ top: 0 });
+    else if (showOwed) {
+      // Phone: the Owed takeover REPLACES the main loop, and the answer
+      // renders in the main loop — so from the takeover the button seemed
+      // to do nothing until Close. Go back to the hub and bring the answer
+      // into view (after this render has put it there).
+      setShowOwed(false);
+      requestAnimationFrame(() => noticesRef.current?.scrollIntoView({ block: "center" }));
+    }
     if (waiting > 0) {
       setSaleNotice(
         t(waiting === 1 ? "home.matchWaiting.one" : "home.matchWaiting.many", { count: waiting }),
@@ -2360,6 +2498,7 @@ function Ledger({
       // write). saveFailed exists precisely to remember unrecovered save
       // failures for the life of the session.
       hasSaveError={saveFailed}
+      saveWaiting={saveWaiting}
       onSaveProfile={(next) => {
         setProfile(next);
         // A Settings save creates the row too, so the tour is done.
@@ -2476,13 +2615,48 @@ function Ledger({
     // write (the sale you just settled) would run unauthenticated,
     // fail RLS, and be dropped with its error banner unmounted —
     // silent loss at the exact moment no UI remains to report it.
+    const queue = saveQueue.current;
+    // A save still waiting for the network cannot be drained: signing out
+    // now loses it. That is the owner's call, asked once.
+    if (queue.waiting && !window.confirm(t("home.signOutUnsaved"))) return;
+    queue.stopped = true;
+    queue.wake?.();
     await writeChain.current;
     // "global" (auth-js's default, spelled out): GoTrue revokes
     // every session for the account, not just this device's.
     // Whether sign-out should be per-device instead is an owner
     // call, not a fix.
     await getSupabase()?.auth.signOut({ scope: "global" });
+    // Still here (the sign-out itself failed): saves may retry again.
+    queue.stopped = false;
   }
+
+  /** The write queue's own line, beside the red error banner: amber while
+   *  a save waits for the network (with a way to try at once), then a
+   *  short confirmation when it lands. Nothing when all is well. */
+  const saveQueueEl = (where: "phone" | "sidebar" | "sidebar-sticky" = "phone") =>
+    saveWaiting ? (
+      <p
+        role="alert"
+        className={`${where === "sidebar-sticky" ? "sticky top-2 z-20 " : where === "phone" ? "mb-4 " : ""}flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-sm text-amber-900`}
+      >
+        <span className="py-1">{t("home.saveWaiting")}</span>
+        <button
+          type="button"
+          className="min-h-11 shrink-0 px-2 font-medium underline"
+          onClick={() => saveQueue.current.wake?.()}
+        >
+          {t("home.saveRetryNow")}
+        </button>
+      </p>
+    ) : saveRecovered && !saveFailed ? (
+      <p
+        role="status"
+        className={`${where === "sidebar-sticky" ? "sticky top-2 z-20 " : where === "phone" ? "mb-4 " : ""}rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900`}
+      >
+        {t("home.saveRecovered")}
+      </p>
+    ) : null;
 
   /** The email + Sign out line. Shared by the hub and the welcome tour:
    *  someone who signed in with the wrong address must be able to leave
@@ -2806,7 +2980,11 @@ function Ledger({
               >
                 {t("home.addMore")}
               </button>
-              {accountId && !saveFailed ? (
+              {accountId && saveWaiting ? (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  {t("home.saveWaitingNote")}
+                </p>
+              ) : accountId && !saveFailed ? (
                 <p className="text-xs text-neutral-500">
                   {t("home.savedToAccount")}
                 </p>
@@ -2871,7 +3049,13 @@ function Ledger({
         multiple
         disabled={status === "reading"}
         className="sr-only"
-        onChange={(event) => handleFiles(event.target.files)}
+        onChange={(event) => {
+          // Copy, then clear — see drop-zone.tsx: the same photo retaken or
+          // re-picked after a failure must fire `change` again.
+          const files = [...(event.target.files ?? [])];
+          event.target.value = "";
+          void handleFiles(files);
+        }}
       />
       {t("home.snap")}
     </label>
@@ -3016,7 +3200,10 @@ function Ledger({
         </div>
       )}
 
-      {noticesEl}
+      {/* The ref is findPaymentFor's scroll target. */}
+      <div ref={noticesRef} className="space-y-6 empty:hidden">
+        {noticesEl}
+      </div>
 
       {reviewFlowEl}
     </div>
@@ -3202,6 +3389,7 @@ function Ledger({
             {error}
           </p>
         )}
+        {saveQueueEl()}
         {setupWizardEl}
       </div>
     );
@@ -3287,6 +3475,7 @@ function Ledger({
             {error}
           </p>
         )}
+        {saveQueueEl(show("upload") ? "sidebar" : "sidebar-sticky")}
         {noticesEl}
 
         {tourOpen && (
@@ -3356,10 +3545,13 @@ function Ledger({
               {status === "reading" && progress && (
                 <ProgressBar label={progress.label} detail={progress.detail} fraction={progress.fraction} />
               )}
-              {/* Phones only: the camera. The sidebar has no item for it
-                  (the owner's order), but a phone must still be able to
-                  photograph a receipt from here. */}
-              {snapEl && <div className="lg:hidden">{snapEl}</div>}
+              {/* The camera, for anything held in a hand. The sidebar has
+                  no item for it (the owner's order), but a phone must still
+                  be able to photograph a receipt from here — and so must a
+                  tablet: since /app serves this layout at lg and up, a
+                  landscape iPad is "wide" too, so it is hidden by POINTER
+                  (a mouse or trackpad), not by width alone. */}
+              {snapEl && <div className="lg:pointer-fine:hidden">{snapEl}</div>}
               {stage !== "upload" && <div className="mx-auto w-full max-w-2xl space-y-6">{reviewFlowEl}</div>}
             </section>
           </>
@@ -3490,6 +3682,7 @@ function Ledger({
             {error}
           </p>
         )}
+        {saveQueueEl()}
         {takeover ?? mainLoop}
       </div>
       {isDesktop && (

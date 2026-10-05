@@ -91,17 +91,13 @@ export default function HistoryScreen({ entries }: { entries: Entry[] }) {
                       </span>
                       <div className="flex min-w-0 flex-1 flex-col">
                         <span className="truncate text-sm font-medium">{e.name}</span>
-                        <span className="truncate text-xs text-[#737373]">{e.what}</span>
-                      </div>
-                      <div className="hidden gap-1.5">
-                        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-[#525252] ring-1 ring-neutral-200">
-                          {e.source === "cash" ? "Cash" : "Screenshot"}
+                        {/* The day's net and the totals above count business
+                            rows only, so a personal row has to say so here —
+                            the desktop demo's chips do not fit a phone. */}
+                        <span className="truncate text-xs text-[#737373]">
+                          {e.what}
+                          {!e.business && " · personal"}
                         </span>
-                        {!e.business && (
-                          <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs text-[#525252] ring-1 ring-neutral-200">
-                            Personal
-                          </span>
-                        )}
                       </div>
                       <span
                         className={`w-28 text-right text-sm font-semibold tabular-nums ${

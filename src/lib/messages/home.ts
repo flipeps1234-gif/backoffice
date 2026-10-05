@@ -9,10 +9,37 @@ export const messages = {
     es: "Cargando…",
     pt: "Carregando…",
   },
+  // A save the SERVER refused, or one abandoned at sign-out: it is not
+  // retried, so the old "check your connection" sent people to fix a
+  // connection that was fine and wait for a retry that never came. What
+  // works is a reload (the ledger then shows what really saved).
   "home.errSaveFailed": {
-    en: "Saved on screen but not to your account. Check your connection.",
-    es: "Se guardó en pantalla pero no en tu cuenta. Revisa tu conexión.",
-    pt: "Salvo na tela, mas não na sua conta. Verifique sua conexão.",
+    en: "This didn't save to your account. Reload the page to see what was saved, then enter anything that's missing again.",
+    es: "Esto no se guardó en tu cuenta. Recarga la página para ver qué quedó guardado y vuelve a escribir lo que falte.",
+    pt: "Isto não foi salvo na sua conta. Recarregue a página para ver o que ficou salvo e digite de novo o que faltar.",
+  },
+  // A save that never reached the server: the write queue keeps trying
+  // (upload-screen.tsx persist), so "keep this page open" is the truth.
+  "home.saveWaiting": {
+    en: "Not saved to your account yet — we can't reach the server. Keep this page open: it saves by itself when you're back online.",
+    es: "Todavía no se guardó en tu cuenta — no logramos conectar con el servidor. Deja esta página abierta: se guarda solo cuando vuelva la conexión.",
+    pt: "Ainda não foi salvo na sua conta — não conseguimos falar com o servidor. Deixe esta página aberta: salva sozinho quando a conexão voltar.",
+  },
+  "home.saveRetryNow": { en: "Try now", es: "Intentar ahora", pt: "Tentar agora" },
+  "home.saveRecovered": {
+    en: "Back online — everything is saved to your account.",
+    es: "Volvió la conexión — todo quedó guardado en tu cuenta.",
+    pt: "A conexão voltou — tudo foi salvo na sua conta.",
+  },
+  "home.saveWaitingNote": {
+    en: "Some of this is on screen only for now. Keep this page open — it saves by itself when you're back online.",
+    es: "Parte de esto está solo en pantalla por ahora. Deja esta página abierta — se guarda solo cuando vuelva la conexión.",
+    pt: "Parte disto está só na tela por enquanto. Deixe esta página aberta — salva sozinho quando a conexão voltar.",
+  },
+  "home.signOutUnsaved": {
+    en: "Some changes haven't saved to your account yet. Sign out anyway? They will be lost.",
+    es: "Algunos cambios todavía no se guardaron en tu cuenta. ¿Cerrar sesión de todos modos? Se perderán.",
+    pt: "Algumas mudanças ainda não foram salvas na sua conta. Sair mesmo assim? Elas serão perdidas.",
   },
   // The two writes that take their own data back OFF the screen before
   // failing — "saved on screen" would be a lie for them.
@@ -333,9 +360,9 @@ export const messages = {
     pt: "Salvo na sua conta. Vai estar aqui na próxima vez que você abrir isto em qualquer aparelho.",
   },
   "home.saveFailedNote": {
-    en: "Some of this is on screen only — a save didn't reach your account. Stay on this page and check your connection; closing the tab now would lose it.",
-    es: "Parte de esto está solo en pantalla — un guardado no llegó a tu cuenta. Quédate en esta página y revisa tu conexión; si cierras la pestaña ahora, se pierde.",
-    pt: "Parte disto está só na tela — um salvamento não chegou à sua conta. Fique nesta página e verifique sua conexão; se fechar a aba agora, isso se perde.",
+    en: "Some of this is on screen only — a save didn't reach your account and won't be tried again. Reload the page to see what was saved, then enter anything that's missing again.",
+    es: "Parte de esto está solo en pantalla — un guardado no llegó a tu cuenta y no se volverá a intentar. Recarga la página para ver qué quedó guardado y vuelve a escribir lo que falte.",
+    pt: "Parte disto está só na tela — um salvamento não chegou à sua conta e não será tentado de novo. Recarregue a página para ver o que ficou salvo e digite de novo o que faltar.",
   },
   "home.clearStartOver": {
     en: "Clear and start over",

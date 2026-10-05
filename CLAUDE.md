@@ -2,6 +2,101 @@
 
 # CLAUDE.md — read this before doing anything
 
+## Sitewide find-and-fix — 2026-10-04 (owner: "3 clean passes as always. whole sitewide. focus on usability and security bugs. different lens on each pass")
+
+A pass is clean when nothing survives verification that needs a change
+under src/ or supabase/; any landed fix resets the count.
+SIGNED-IN LOCAL TESTING NOW EXISTS: `scripts/mock-supabase.mjs` (its
+header has the three steps) — an in-memory REST/auth stand-in on
+127.0.0.1:3999 with an "offline" and a "refuse the next write" switch.
+It is not Postgres (no RLS, no constraints), so it proves the CLIENT's
+behaviour, not the database's.
+PASS 1 — NOT CLEAN (count 0). Tooling: tsc/eslint/tests clean; npm audit's
+next/og advisory re-rejected (opengraph-image.tsx is still the only
+ImageResponse and is prerendered); a crawl of the live site (26 pages,
+every internal link) found nothing but Cloudflare's own
+/cdn-cgi/l/email-protection, which works in a browser; security headers
+present on every route. Three lenses never run on this tree, each
+finding verified before fixing (harnesses in the session scratchpad;
+the permanent ones are the new tests):
+- INJECTION / OUTPUT ENCODING — 3 findings, all at a cross-boundary sink.
+  MED: admin_overview() (0023) cast every account's sales.line_items
+  inside one SECURITY DEFINER statement — one sale with a non-array or a
+  string/NaN/1e30 cents raised for everybody (/app/admin "dark", with the
+  NOT-CONFIGURED note), and a negative unitCents silently cancelled other
+  accounts' open sales. Migration 0025 (APPLIED, see DEPLOY.md) totals
+  only well-formed lines and clamps lang; the route now tags a failed
+  query (`reason: "query"`) so the screen says the query failed. MED:
+  `languageLabel` used an account-chosen string as an object-literal key —
+  user_metadata.lang = "__proto__" rendered Object.prototype and crashed
+  the page; now a Map. LOW: csv.ts neutralised a formula only at the
+  START of a field; Excel under a ";" list separator (pt-BR, es-ES) and
+  LibreOffice's import dialog start a new cell at ";" or TAB, where a
+  quote that does not open the field is literal — `Ana;=cmd…` was a live
+  cell. TAB becomes a space, the apostrophe also goes after every ";",
+  and ";" forces quoting. /api/founding refuses an address starting with
+  = + - (the list is read by a person, possibly in a spreadsheet).
+  Traced and safe: return-to (allow-list), JSON-LD, every href/src,
+  PostgREST filters (no .or/.filter/ilike from input), every SECURITY
+  DEFINER search_path, webhooks, headers, the extraction validator.
+- NEWCODE over today's three commits — nothing above LOW. Fixed: /demoo
+  History hid the "personal" marker (the breakpoint strip left a `hidden`
+  with no un-hide) and accepted dates outside the one month its model
+  holds; the camera input was `lg:hidden`, so a landscape tablet lost it
+  when /app began serving the sidebar layout there (now
+  `lg:pointer-fine:hidden`); DesktopGate — /app's front door on a wide
+  screen — had no <main> and no <h1>.
+- TASK-FLOW DEAD ENDS — 2 HIGH, 3 MED, all reproduced or read line by
+  line. HIGH: A FAILED SAVE WAS NEVER RETRIED. persist ran each write
+  once; offline, the entry stayed on screen under "check your connection
+  / stay on this page", nothing was ever re-sent, and it was gone on the
+  next open. The queue now RETRIES a save that never reached the server
+  (lib/save-retry.ts: the browsers' fetch-failure messages and
+  AuthRetryableFetchError) until it lands — strictly in order, later
+  saves waiting behind it, on `online`, on the tab coming forward, on a
+  2/5/15/30 s backoff and on the banner's "Try now" — and still reports
+  and drops a save the server ANSWERED and refused. Every insert carries
+  a client-made id, so a repeat cannot double a row; a multi-step work
+  that half-landed fails for good on its retry, exactly as it did before.
+  persist() now resolves at the save's FIRST outcome (readFiles awaits it
+  holding the upload lock); signOut asks before abandoning a parked save
+  and stops the retries; an unmount with a parked save raises the sticky
+  banner on the next mount; `beforeunload` asks while a save is parked.
+  The final-failure copy no longer says "check your connection": it says
+  to reload and re-enter. HIGH: the sale's "how many hours / sq ft"
+  field was a NUMBER bound to a text input — "1." parsed to 1 and React
+  wrote "1" back, so 1.5 hours became 15 ($600 for a $60 lesson), and
+  clearing the "1" unmounted the field mid-typing. Text is now kept per
+  service while typing (the clients page's qtyText rule). MED: both
+  upload inputs kept their selection, so re-picking the same screenshots
+  after a failed upload fired no `change` — "try again" did nothing. MED:
+  an expired or already-used sign-in link came back as #error=…, was
+  forwarded to /app and then ignored — a blank form; the sign-in screen
+  now says so (signin.linkExpired / returnFailed, EN/ES/PT) and strips
+  the params. MED: renaming a client to a name another client has was
+  rejected by the database, shown as saved, bannered as a CONNECTION
+  problem and reverted on reload with the notes typed beside it; refused
+  in the form now (clients.duplicate). Also: the phone's Owed → "Find the
+  payment…" answered inside the main loop the Owed takeover was covering
+  (it closes the takeover and scrolls to the answer); a nameless owes-me
+  sale read "Saved —  owes $80.00."; "Saved — Rosa owes $60.00." stayed
+  up after Rosa's cash was taken; the help article said "You can try
+  everything without [an account]" (production requires sign-in); the
+  product chart's callout no longer covers other months' dots.
+Checked SIGNED IN against the mock (a first for the sidebar layout):
+boot, a 1.5-hour owes-me sale, Got cash (mirror row + sale paid +
+dashboard), duplicate-name refusal, offline → parked → `online`/"Try
+now" → landed in order, a refused write (reported once, queue moves on),
+sign-out confirm, the beforeunload guard, the phone layout's banner.
+NOT checked: anything against the real project signed in; a real
+spreadsheet opening the CSV (the reader in tests/unit/csv.test.mjs
+emulates the documented delimiter rules); Android's file picker; the
+native app, whose messages.json is generated from these strings — the
+reworded save-failure copy says "reload the page", so read it before
+regenerating. Queued for pass 2: tap targets under 44px on the phone
+(Settings link 20px, "Not a payment" 16px, Got cash / Log again 30px —
+design-tokens.md says 44).
+
 ## Phone demo at /demoo — 2026-10-04
 
 Owner: "turn it into an interactive demo and put it at /demoo" — look B

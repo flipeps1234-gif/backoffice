@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { dollarsToCents, formatCents } from "@/lib/transaction";
-import { CATEGORIES, DEMO_TODAY, dayLabel, type Entry } from "./data";
+import { CATEGORIES, DEMO_MONTH_START, DEMO_TODAY, dayLabel, inDemoMonth, type Entry } from "./data";
 import { ScreenHeader, Segmented, card, input, label, primaryBtn, secondaryBtn } from "./ui";
 
 export type ExpenseDraft = {
@@ -97,7 +97,7 @@ export default function ExpenseScreen({
             </label>
             <label className="flex flex-col gap-1.5">
               <span className={label}>Date</span>
-              <input type="date" className={input} value={date} max={DEMO_TODAY} onChange={(e) => setDate(e.target.value || DEMO_TODAY)} />
+              <input type="date" className={input} value={date} min={DEMO_MONTH_START} max={DEMO_TODAY} onChange={(e) => setDate(inDemoMonth(e.target.value))} />
             </label>
           </div>
           <div className="flex flex-wrap gap-2">

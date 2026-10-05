@@ -51,7 +51,10 @@ export async function GET(request: Request) {
     // The code, never the message: a stale migration (PGRST202 / 42883)
     // is diagnosable from the Vercel log without echoing internals.
     console.error("admin_overview failed:", error?.code ?? "empty");
-    return Response.json({ error: "Try again later." }, { status: 503 });
+    // `reason` lets the screen tell "the query failed" from "not set up":
+    // both are 503, and showing the setup note for a failed query sent
+    // the owner to check env vars that were fine.
+    return Response.json({ error: "Try again later.", reason: "query" }, { status: 503 });
   }
 
   return Response.json(data, {

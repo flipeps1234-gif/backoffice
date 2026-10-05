@@ -116,6 +116,28 @@ function GoogleMark() {
   );
 }
 
+/**
+ * A sign-in that came back as an ERROR: an expired or already-used email
+ * link returns `#error=access_denied&error_code=otp_expired&…`, a cancelled
+ * Google sign-in `?error=access_denied`. The landing page forwards those
+ * here and auth-js reads them silently (its _initialize returns the error
+ * to nobody), so the person used to land on an empty email form with no
+ * word about what happened — and the natural reaction, asking for another
+ * link, kills any other email still in the inbox (task-flow lens,
+ * 2026-10-04). Only the CODE is read; the provider's English description
+ * is never shown.
+ */
+const RETURN_ERROR_PARAMS = ["error", "error_code", "error_description"];
+const readReturnError = (): "expired" | "failed" | null => {
+  if (typeof window === "undefined") return null;
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const query = new URLSearchParams(window.location.search);
+  const code = hash.get("error_code") ?? query.get("error_code");
+  const error = hash.get("error") ?? query.get("error");
+  if (!code && !error) return null;
+  return code === "otp_expired" ? "expired" : "failed";
+};
+
 export default function SignIn({
   returnTo = "/app",
 }: {
@@ -131,6 +153,22 @@ export default function SignIn({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [resent, setResent] = useState(false);
+  // Read once, at mount: this screen never renders on the server (the gate
+  // shows "Loading" until the session is known), so there is no hydration
+  // pass to disagree with.
+  const [returnError] = useState(readReturnError);
+  useEffect(() => {
+    if (!returnError) return;
+    // Said once; a reload must not say it again.
+    const url = new URL(window.location.href);
+    const hash = new URLSearchParams(url.hash.replace(/^#/, ""));
+    for (const key of RETURN_ERROR_PARAMS) {
+      url.searchParams.delete(key);
+      hash.delete(key);
+    }
+    url.hash = hash.toString();
+    window.history.replaceState(window.history.state, "", url.toString());
+  }, [returnError]);
   // When "Resend link" is offered again. The server refuses a second email
   // to the same address inside 60 s anyway; counting it down here turns a
   // 429 into a number the user can watch instead of an error they cannot
@@ -333,6 +371,14 @@ export default function SignIn({
       className="mx-auto w-full max-w-sm space-y-4 pt-4 text-center lg:pt-10"
       onSubmit={submitEmail}
     >
+      {returnError && (
+        <p
+          role="alert"
+          className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-left text-sm text-amber-900"
+        >
+          {t(returnError === "expired" ? "signin.linkExpired" : "signin.returnFailed")}
+        </p>
+      )}
       {googleReady && (
         <>
           <button

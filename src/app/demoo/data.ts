@@ -3,6 +3,14 @@
    "today" is fixed so the ages on the Owed screen always read the same. */
 
 export const DEMO_TODAY = "2026-09-24";
+/** The sample ledger is January–August as fixed monthly figures plus
+ *  September as rows, so an entry can only be dated inside September: any
+ *  other date showed in History and on the client but never moved the
+ *  dashboard. `min`/`max` on a date input are advice (a typed date passes),
+ *  hence the clamp. */
+export const DEMO_MONTH_START = "2026-09-01";
+export const inDemoMonth = (date: string): string =>
+  date >= DEMO_MONTH_START && date <= DEMO_TODAY ? date : DEMO_TODAY;
 
 export type Unit = "flat" | "hour" | "room" | "sqft";
 

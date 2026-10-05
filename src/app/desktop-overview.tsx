@@ -144,14 +144,20 @@ function Chart({
     Math.max(active > (n - 1) / 2 ? x(active) - boxW - 16 : x(active) + 16, L),
     W - R - boxW,
   );
-  // Above the point when there is room. When there is not: beside it at
-  // the top if the box clears the point sideways, otherwise BELOW it — on
-  // the compact drawing the box is wider than half the plot, so for
-  // mid-year months it would sit on the highlighted dot.
-  const px = x(active);
+  // Above the point when that spot is clear. The month still in progress
+  // — the one the chart opens on — is usually LOWER than the ones before
+  // it, and the box would then sit on their dots (on the compact drawing
+  // it is wider than half the plot: four months hidden). So when any dot
+  // falls under it, it goes below the lowest of them instead, inside the
+  // shaded area; only when neither fits does it fall back to the top edge.
   const py = y(values[active]);
-  const spansPoint = bx <= px && px <= bx + boxW;
-  const by = Math.min(py - 84 >= T ? py - 84 : spansPoint ? py + 14 : T, T + ph - 76);
+  const under = values
+    .map((v, i) => ({ px: x(i), py: y(v) }))
+    .filter((p) => p.px >= bx - 6 && p.px <= bx + boxW + 6);
+  const above = py - 84;
+  const clearAbove = above >= T && under.every((p) => p.py < above - 6 || p.py > above + 78);
+  const below = Math.max(py, ...under.map((p) => p.py)) + 14;
+  const by = clearAbove ? above : below <= T + ph - 76 ? below : Math.min(Math.max(above, T), T + ph - 76);
   const monthTitle =
     active === partialIndex
       ? t("desktop.chart.soFar", { month: monthNames[active] })

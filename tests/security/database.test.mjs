@@ -238,3 +238,37 @@ test('admin_overview totals: per-line rounding, owed = open only, demo excluded 
   assert.ok(Number(o.storage.db_bytes) > 0);
 });
 
+test('admin_overview survives hostile account rows: malformed line_items count as 0, negative cents cannot offset, lang is clamped', async () => {
+  // Its own two accounts: earlier tests delete users.
+  const user = '44444444-4444-4444-8444-444444444444', other = '55555555-5555-4555-8555-555555555555';
+  await db.exec('RESET ROLE; DELETE FROM public.sales;');
+  await db.query("INSERT INTO auth.users(id,email) VALUES ($1,'hostile@example.invalid'),($2,'bystander@example.invalid')", [user, other]);
+  await asUser(other, 'bystander@example.invalid');
+  await db.query(`INSERT INTO public.sales(account_id,occurred_on,line_items,state) VALUES ($1,'2026-09-01','[{"unitCents":12000,"quantity":1,"unitCostCents":null}]','open')`, [other]);
+  // Every shape the injection lens used (2026-10-04), written through RLS as an ordinary account.
+  await asUser(user, 'hostile@example.invalid');
+  const hostile = [
+    '[{"unitCents":"x","quantity":1}]', '{"a":1}', '"just a string"', '[1,"two",null,[3]]',
+    '[{"unitCents":"NaN","quantity":1}]', '[{"unitCents":1e30,"quantity":1}]', '[{"unitCents":-12000,"quantity":1}]',
+    '[{"unitCents":900000000000000,"quantity":1}]', '[{"unitCents":100.5,"quantity":1}]', '[{"unitCents":100,"quantity":-3}]',
+    '[{"unitCents":99999999,"quantity":1e300}]', '[{"unitCents":250,"quantity":2},{"unitCents":"bad","quantity":1}]',
+  ];
+  for (const items of hostile) {
+    await db.query("INSERT INTO public.sales(account_id,occurred_on,line_items,state) VALUES ($1,'2026-09-01',$2::jsonb,'open')", [user, items]);
+  }
+  await db.exec('RESET ROLE');
+  await db.query(`UPDATE auth.users SET raw_user_meta_data='{"lang":"__proto__"}' WHERE id=$1`, [user]);
+  await db.query(`UPDATE auth.users SET raw_user_meta_data='{"lang":"pt"}' WHERE id=$1`, [other]);
+  await db.exec('SET ROLE service_role');
+  const o = (await db.query('SELECT public.admin_overview() AS o')).rows[0].o;
+  await db.exec('RESET ROLE');
+  const me = o.accounts.find(a => a.id === user), them = o.accounts.find(a => a.id === other);
+  assert.equal(Number(them.owed_cents), 12000);                 // another account's debt is untouched
+  assert.equal(Number(me.owed_cents), 500);                     // only the one well-formed line (250 × 2) counts
+  assert.equal(Number(me.sales), hostile.length);               // the rows still exist and are still counted as sales
+  assert.equal(Number(o.totals.owed_cents), 12500);
+  assert.equal(me.lang, 'other'); assert.equal(them.lang, 'pt');
+  assert.ok(o.languages.every(l => ['en', 'es', 'pt', 'other'].includes(l.lang)), 'only shipped codes reach the screen');
+  await db.exec('DELETE FROM public.sales;');
+  await db.query('DELETE FROM auth.users WHERE id IN ($1,$2)', [user, other]);
+});

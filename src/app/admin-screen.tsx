@@ -57,7 +57,13 @@ async function fetchOverview(sample: boolean): Promise<State> {
     });
     if (response.status === 401) return { kind: "signed-out" };
     if (response.status === 403) return { kind: "forbidden" };
-    if (response.status === 503) return { kind: "dark" };
+    if (response.status === 503) {
+      // Not configured, or configured and the query itself failed (a stale
+      // migration, a row the function cannot total) — different fixes.
+      const body: unknown = await response.json().catch(() => null);
+      const failed = typeof body === "object" && body !== null && (body as { reason?: unknown }).reason === "query";
+      return failed ? { kind: "error", detail: "the database query failed — see the Vercel log" } : { kind: "dark" };
+    }
     if (!response.ok) return { kind: "error", detail: `HTTP ${response.status}` };
     return { kind: "ready", data: parseOverview(await response.json()), fetchedAt: new Date() };
   } catch {

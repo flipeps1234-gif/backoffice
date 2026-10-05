@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { dollarsToCents, formatCents } from "@/lib/transaction";
-import { DEMO_TODAY, UNIT_LABEL, type Client, type Product, type SaleLine } from "./data";
+import { DEMO_MONTH_START, DEMO_TODAY, UNIT_LABEL, inDemoMonth, type Client, type Product, type SaleLine } from "./data";
 import { Icon, ScreenHeader, card, input, label, primaryBtn } from "./ui";
 
 export type Paid = "cash" | "waiting" | "owed";
@@ -197,7 +197,7 @@ export default function SaleScreen({
           <section className={`${card} flex flex-col gap-4 p-5`}>
             <label className="flex max-w-[220px] flex-col gap-1.5">
               <span className={label}>Date</span>
-              <input type="date" className={input} value={date} max={DEMO_TODAY} onChange={(e) => setDate(e.target.value || DEMO_TODAY)} />
+              <input type="date" className={input} value={date} min={DEMO_MONTH_START} max={DEMO_TODAY} onChange={(e) => setDate(inDemoMonth(e.target.value))} />
             </label>
             <fieldset className="flex flex-col gap-2">
               <legend className="mb-2 text-base font-semibold">Paid?</legend>

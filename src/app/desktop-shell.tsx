@@ -259,15 +259,19 @@ export function DesktopGate({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen w-full flex-col bg-neutral-200 text-foreground dark:bg-neutral-900">
       <header className="flex items-center justify-between gap-4 bg-black px-4 py-4 text-[#ededed] [--background:#000] [--foreground:#ededed] lg:px-9">
-        <span className="flex items-center gap-2.5">
+        {/* The page's h1 and <main>, as the phone frame has (app-frame.tsx):
+            terms, sign-in and the tour start at h2 or have no heading, so
+            without these a screen reader found no heading and no main on
+            /app's front door. */}
+        <h1 className="flex items-center gap-2.5">
           <Mark className="h-[26px] w-[26px]" />
           <span className="text-xl font-semibold tracking-tight">contado</span>
-        </span>
+        </h1>
         <LocalePicker compact onDark />
       </header>
-      <div className="mx-auto w-full max-w-xl px-4 py-10">
+      <main className="mx-auto w-full max-w-xl px-4 py-10">
         <div className="rounded-xl border border-neutral-300 bg-background p-6 dark:border-neutral-700">{children}</div>
-      </div>
+      </main>
     </div>
   );
 }

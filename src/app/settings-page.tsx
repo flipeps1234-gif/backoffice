@@ -365,6 +365,7 @@ export default function SettingsPage({
   profile,
   profileReady,
   hasSaveError,
+  saveWaiting = false,
   onSaveProfile,
   notifyPrefs,
   notifyReady,
@@ -390,6 +391,8 @@ export default function SettingsPage({
   profileReady: boolean;
   /** The persist queue reported a failure — the backup line says so. */
   hasSaveError: boolean;
+  /** A save is parked until the network is back (it will be retried). */
+  saveWaiting?: boolean;
   onSaveProfile: (profile: BusinessProfile) => void;
   notifyPrefs: NotificationPrefs;
   /** Same gate as profileReady — never seed consent from a failed load. */
@@ -687,14 +690,16 @@ export default function SettingsPage({
           className={`text-sm ${
             !signedIn
               ? "text-neutral-500"
-              : hasSaveError
+              : hasSaveError || saveWaiting
                 ? "text-amber-700 dark:text-amber-400"
                 : "text-emerald-700 dark:text-emerald-400"
           }`}
         >
           {!signedIn
             ? t("settings.backupNone")
-            : hasSaveError
+            : saveWaiting
+              ? t("settings.backupWaiting")
+              : hasSaveError
               ? t(desktop ? "desktop.backupIssue" : "settings.backupIssue")
               : t("settings.backupOk")}
         </p>

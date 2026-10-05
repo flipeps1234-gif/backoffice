@@ -21,7 +21,7 @@ export default function DropZone({
   onFiles,
 }: {
   busy: boolean;
-  onFiles: (files: FileList | null) => void;
+  onFiles: (files: File[]) => void;
 }) {
   const { t } = useLocale();
   const [dragging, setDragging] = useState(false);
@@ -68,7 +68,7 @@ export default function DropZone({
         event.preventDefault();
         depth.current = 0;
         setDragging(false);
-        onFiles(event.dataTransfer.files);
+        onFiles([...event.dataTransfer.files]);
       }}
     >
       <input
@@ -77,7 +77,16 @@ export default function DropZone({
         multiple
         disabled={busy}
         className="sr-only"
-        onChange={(event) => onFiles(event.target.files)}
+        onChange={(event) => {
+          // Copy, then clear. A file input fires `change` only when the
+          // selection CHANGES: left holding the last pick, choosing the
+          // same screenshots again after a failed upload ("try again in a
+          // moment") did nothing at all — no progress, no new error.
+          // Sibling: the camera input in upload-screen.tsx (snapEl).
+          const files = [...(event.target.files ?? [])];
+          event.target.value = "";
+          onFiles(files);
+        }}
       />
       <span className="block text-base font-medium">
         {busy

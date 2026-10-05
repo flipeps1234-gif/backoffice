@@ -219,9 +219,16 @@ export const barScale = (values: number[]): number[] => {
   return values.map((v) => (max === 0 ? 0 : v / max));
 };
 
-/** "en" | "es" | "pt" → the language's own name; unknown codes pass through. */
-export const languageLabel = (lang: string): string =>
-  ({ en: "English", es: "Español", pt: "Português" })[lang] ?? lang;
+/** "en" | "es" | "pt" → the language's own name; unknown codes pass through.
+ *  A Map, not an object literal: the code comes from an account's own
+ *  user_metadata, and `({...})["__proto__"]` is Object.prototype — an
+ *  object React cannot render, which took the whole page down. */
+const LANGUAGE_LABELS = new Map([
+  ["en", "English"],
+  ["es", "Español"],
+  ["pt", "Português"],
+]);
+export const languageLabel = (lang: string): string => LANGUAGE_LABELS.get(lang) ?? lang;
 
 /**
  * A believable, obviously fake payload for the development-only sample view

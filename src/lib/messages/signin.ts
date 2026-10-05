@@ -102,6 +102,19 @@ export const messages = {
     es: "o",
     pt: "ou",
   },
+  // A sign-in that came BACK as an error in the URL (sign-in.tsx,
+  // readReturnError). The app's own "Resend link" makes the first email's
+  // link dead, so "open the newest email" is the instruction that works.
+  "signin.linkExpired": {
+    en: "That sign-in link expired or was already used. Enter your email for a new one, then open the newest email from us.",
+    es: "Ese enlace de acceso venció o ya se usó. Escribe tu correo para recibir uno nuevo y abre el correo más reciente que te enviemos.",
+    pt: "Esse link de acesso expirou ou já foi usado. Digite seu e-mail para receber um novo e abra o e-mail mais recente que enviarmos.",
+  },
+  "signin.returnFailed": {
+    en: "That sign-in didn't go through. Try again below.",
+    es: "Ese inicio de sesión no se completó. Intenta de nuevo abajo.",
+    pt: "Esse login não foi concluído. Tente de novo abaixo.",
+  },
   "signin.googleFailed": {
     en: "Google sign-in didn't go through. Use the email link instead.",
     es: "No se pudo entrar con Google. Usa el enlace por correo.",

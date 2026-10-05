@@ -13,4 +13,4 @@ Depois do primeiro lote você já vê o total do período, seu dia mais cheio e 
 
 ## Preciso de conta?
 
-Dá para experimentar tudo sem uma, mas nada é salvo até você entrar. Entrar é só o seu e-mail — mandamos um link, sem senha. A partir daí, cada mudança é salva na sua conta na hora.
+Sim — o app abre depois que você entra. Entrar é só o seu e-mail — mandamos um link, sem senha. A partir daí, cada mudança é salva na sua conta na hora. Antes disso, dá para experimentar os exemplos da nossa página inicial sem conta.
