@@ -137,6 +137,29 @@ as of this pass. OBSERVED, not fixed (pre-existing in /app, unchanged
 file): ProductCard's picker is a <button> containing the stepper
 <button>s (React warns: nested buttons); a sale notice keeps the
 language it was written in after the picker moves.
+PASS 5 REVIEW (two newcode agents over f5b3566, then fixed): MED — the
+`matchable` filter made Owed's "Find the payment…" answer "no payment
+matches" while the match sat unchecked on the sheet, beside "It was
+cash" (a second money row): one shared `findPaymentFor` (both OwedTabs;
+the two inline copies had drifted) now says N possible payments are
+waiting to be checked (home.matchWaiting.*) and, on desktop, opens
+Upload; a digital checkout in the same state says it will match once
+the check is finished (home.markedPaidAfterCheck). LOW — a "log again"
+line whose service changed kind showed quantity 0 while still charged
+(snapshot lines are exempt from the kind guard, as they are from the
+catalog); desktop.backupIssue pointed at a banner that may be gone;
+RunningTotals was wrapped in a div its own height, which defeats its
+sticky (now a direct child of the Upload card); the compact chart's
+callout covered the active dot mid-year (drops below the point). Lint
+caught one of my own edits (a helper closing over `prefillLines` above
+its declaration — React Compiler rule), fixed by ordering. Final small
+diff self-reviewed and browser-verified. Lenses run on this branch now:
+newcode x6, state-machine, product semantics, authz/exposure, copy,
+a11y, resilience, parity, concurrency/stale-state, bundle, headers,
+visual sweep. Never run: privacy/data lifecycle, capacity, schema-drift
+(no surface in this branch), and anything SIGNED IN against the real
+backend — every browser check so far ran in anonymous mode with the
+mock extractor.
 
 ## Marketing site surface — 2026-09-14
 

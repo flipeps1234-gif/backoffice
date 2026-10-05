@@ -105,31 +105,6 @@ export default function NewSale({
     return map;
   });
   /**
-   * What each catalog quantity MEANT when it was entered: "flat" (a
-   * count) or "rate:sqft|hour|room" (a size). On the desktop app this
-   * form can sit mounted while Products is edited in another section; a
-   * service switched from $0.18/sq ft to a flat $200 would otherwise turn
-   * "1200 sq ft" into 1200 × $200 = $240,000 on the PAID? screen. A line
-   * whose kind no longer matches its service is dropped (the same rule
-   * as a service that vanished: no invented price) and its stepper
-   * starts again from zero.
-   */
-  const [kinds, setKinds] = useState<Map<string, string>>(() => new Map());
-  const kindOf = (service: Service): string =>
-    service.pricing.type === "rate" ? `rate:${service.pricing.unit}` : "flat";
-  const kindChanged = (service: Service): boolean => {
-    const was = kinds.get(service.id);
-    return was !== undefined && was !== kindOf(service);
-  };
-  const qtyOf = (service: Service): number =>
-    kindChanged(service) ? 0 : (quantities.get(service.id) ?? 0);
-  function setQty(service: Service, quantity: number) {
-    backToProductsIfEmptied();
-    setQuantities((current) => new Map(current).set(service.id, quantity));
-    setKinds((current) => new Map(current).set(service.id, kindOf(service)));
-  }
-
-  /**
    * Prefill lines are SNAPSHOTS of what was actually charged. Rebuilding
    * them from the current catalog silently re-priced a $75 job to catalog
    * price × 1 — wrong revenue written to the ledger and the tax CSV in two
@@ -144,6 +119,35 @@ export default function NewSale({
     }
     return map;
   });
+
+  /**
+   * What each catalog quantity MEANT when it was entered: "flat" (a
+   * count) or "rate:sqft|hour|room" (a size). On the desktop app this
+   * form can sit mounted while Products is edited in another section; a
+   * service switched from $0.18/sq ft to a flat $200 would otherwise turn
+   * "1200 sq ft" into 1200 × $200 = $240,000 on the PAID? screen. A line
+   * whose kind no longer matches its service is dropped (the same rule
+   * as a service that vanished: no invented price) and its stepper
+   * starts again from zero.
+   */
+  const [kinds, setKinds] = useState<Map<string, string>>(() => new Map());
+  const kindOf = (service: Service): string =>
+    service.pricing.type === "rate" ? `rate:${service.pricing.unit}` : "flat";
+  const kindChanged = (service: Service): boolean => {
+    // Snapshot ("log again") lines never consult the catalog — the memo
+    // below prices them from the snapshot whatever the service is now —
+    // so the card must not show 0 for a line that is still being charged.
+    if (prefillLines.has(service.id)) return false;
+    const was = kinds.get(service.id);
+    return was !== undefined && was !== kindOf(service);
+  };
+  const qtyOf = (service: Service): number =>
+    kindChanged(service) ? 0 : (quantities.get(service.id) ?? 0);
+  function setQty(service: Service, quantity: number) {
+    backToProductsIfEmptied();
+    setQuantities((current) => new Map(current).set(service.id, quantity));
+    setKinds((current) => new Map(current).set(service.id, kindOf(service)));
+  }
   // Custom amount: a sale with no catalog product behind it. Kept as
   // dollars text until checkout so typing feels like the numpad.
   const [customAmount, setCustomAmount] = useState(() => {

@@ -112,9 +112,11 @@ export const messages = {
     pt: "Ainda não há produtos — use o valor personalizado abaixo, ou primeiro adicione em Produtos e serviços.",
   },
   "desktop.backupIssue": {
-    en: "Something didn't save — check your connection. The red message at the top of the page shows what failed.",
-    es: "Algo no se guardó — revisa tu conexión. El mensaje rojo en la parte de arriba muestra qué falló.",
-    pt: "Algo não foi salvo — verifique sua conexão. A mensagem vermelha no topo da página mostra o que falhou.",
+    // No pointer to the red banner: this line follows the STICKY
+    // save-failed flag, and the banner (transient) may already be gone.
+    en: "Something didn't save to your account — check your connection.",
+    es: "Algo no se guardó en tu cuenta — revisa tu conexión.",
+    pt: "Algo não foi salvo na sua conta — verifique sua conexão.",
   },
   "desktop.doneIntro": {
     en: "Three ways to log money, all in the menu:",

@@ -195,6 +195,21 @@ export const messages = {
     es: "cliente",
     pt: "cliente",
   },
+  "home.markedPaidAfterCheck": {
+    en: "Marked paid — it will match once you finish checking the payments you uploaded.",
+    es: "Marcado como pagado — se emparejará cuando termines de revisar los pagos que subiste.",
+    pt: "Marcado como pago — será vinculado quando você terminar de conferir os pagamentos enviados.",
+  },
+  "home.matchWaiting.one": {
+    en: "{count} possible payment is still waiting to be checked. Finish checking your uploaded payments, then try again.",
+    es: "{count} posible pago todavía espera revisión. Termina de revisar los pagos que subiste e inténtalo de nuevo.",
+    pt: "{count} possível pagamento ainda espera conferência. Termine de conferir os pagamentos enviados e tente de novo.",
+  },
+  "home.matchWaiting.many": {
+    en: "{count} possible payments are still waiting to be checked. Finish checking your uploaded payments, then try again.",
+    es: "{count} posibles pagos todavía esperan revisión. Termina de revisar los pagos que subiste e inténtalo de nuevo.",
+    pt: "{count} possíveis pagamentos ainda esperam conferência. Termine de conferir os pagamentos enviados e tente de novo.",
+  },
   "home.noMatchFound": {
     en: "No payment on your ledger matches that amount and window.",
     es: "Ningún pago en tu libro coincide con ese monto y esas fechas.",

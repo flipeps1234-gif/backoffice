@@ -1911,9 +1911,15 @@ function Ledger({
             { kind: "sale", saleId, txnIds: candidates.map((t) => t.id) },
           ]);
         }
+        // "In your next screenshots" would be false when the payment is
+        // already uploaded and only waiting on the confirmation sheet —
+        // confirmBatch's rescan links it the moment the sheet is confirmed.
+        const waitingOnSheet =
+          candidates.length === 0 &&
+          txnCandidatesForSale(transactions, sale, name).length > 0;
         setSaleNotice(
           candidates.length === 0
-            ? t("home.markedPaid")
+            ? t(waitingOnSheet ? "home.markedPaidAfterCheck" : "home.markedPaid")
             : t("home.pickBelow", { count: candidates.length }),
         );
       }
@@ -2126,10 +2132,51 @@ function Ledger({
    * sections (and /app's own lg rail) stay live, so the rule lives here:
    * unchecked rows are not candidates. The sale waits as EXPECTED and
    * confirmBatch's rescan links it against checked data. Call sites:
-   * handleSaleDone's digital path and both "Find payment" handlers.
+   * handleSaleDone's digital path and findPaymentFor (both OwedTabs).
    */
-  const matchable =
-    stage === "confirm" ? transactions.filter((tx) => tx.business !== null) : transactions;
+  const isUnchecked = (tx: Transaction): boolean =>
+    stage === "confirm" && tx.business === null;
+  const matchable = transactions.filter((tx) => !isUnchecked(tx));
+
+  /**
+   * Owed → "Find the payment…", for the takeover/desktop Owed AND /app's
+   * lg rail (one handler: the two copies had already drifted once). The
+   * relaxed-name search, over checked rows only — but when the only
+   * possible matches are still on the confirmation sheet it must not
+   * answer "no payment matches": the buttons beside this one are "It was
+   * cash" (which mints a second money row for a payment that IS there)
+   * and "Actually unpaid". Say where they are instead, and on desktop go
+   * there. Nothing retries by itself (confirmBatch's rescan uses the
+   * strict name rule), so the notice asks for the tap again.
+   */
+  function findPaymentFor(saleId: string) {
+    const sale = sales.find((sl) => sl.id === saleId);
+    if (!sale) return;
+    const all = txnCandidatesForSale(transactions, sale, clientNameOf(sale.clientId), {
+      relaxName: true,
+    });
+    const candidates = all.filter((tx) => !isUnchecked(tx));
+    const waiting = all.length - candidates.length;
+    // Desktop: the answer (a notice or the pick-one cards) renders at the
+    // top of one long page; from far down the Owed list the button would
+    // seem to do nothing.
+    if (desktop) window.scrollTo({ top: 0 });
+    if (waiting > 0) {
+      setSaleNotice(
+        t(waiting === 1 ? "home.matchWaiting.one" : "home.matchWaiting.many", { count: waiting }),
+      );
+      if (desktop) setSection("upload");
+      return;
+    }
+    if (candidates.length === 0) {
+      setSaleNotice(t("home.noMatchFound"));
+      return;
+    }
+    setSuggestions((current) => [
+      ...current,
+      { kind: "sale", saleId, txnIds: candidates.map((tx) => tx.id) },
+    ]);
+  }
   const lastBatch = transactions.filter((tx) => lastBatchIds.includes(tx.id));
 
   // The flow column shows exactly one thing at a time: a takeover — the
@@ -2178,28 +2225,7 @@ function Ledger({
           saveSale(canonicalSaleId(saleId), { state: "open", method: null }),
         );
       }}
-      onFindPayment={(saleId) => {
-        const sale = sales.find((sl) => sl.id === saleId);
-        if (!sale) return;
-        const candidates = txnCandidatesForSale(
-          matchable,
-          sale,
-          clientNameOf(sale.clientId),
-          { relaxName: true },
-        );
-        // Desktop: the answer (a notice or the pick-one cards) renders at
-        // the top of one long page; from far down the Owed list the button
-        // would seem to do nothing.
-        if (desktop) window.scrollTo({ top: 0 });
-        if (candidates.length === 0) {
-          setSaleNotice(t("home.noMatchFound"));
-          return;
-        }
-        setSuggestions((current) => [
-          ...current,
-          { kind: "sale", saleId, txnIds: candidates.map((t) => t.id) },
-        ]);
-      }}
+      onFindPayment={findPaymentFor}
       onLogAgain={pickSaleAgain}
       onClose={() => {
         setShowOwed(false);
@@ -3312,10 +3338,13 @@ function Ledger({
         {show("upload") && (
           <>
             {heading(t("desktop.uploadTitle"), t("desktop.uploadSub"))}
-            <section className={`${card} flex flex-col gap-6 p-4 lg:p-4 lg:p-6`}>
+            <section className={`${card} flex flex-col gap-6 p-4 lg:p-6`}>
               {/* The running totals sit with the batch flow, as on /app:
-                  sorting is what makes them climb. */}
-              {runningTotalsEl && <div className="mx-auto w-full max-w-2xl">{runningTotalsEl}</div>}
+                  sorting is what makes them climb. A DIRECT child of this
+                  tall card, never wrapped: RunningTotals is position:
+                  sticky, and inside a wrapper exactly its own height it
+                  has nowhere to travel. */}
+              {runningTotalsEl}
               {stage === "upload" && (
                 <DropZone busy={status === "reading"} onFiles={handleFiles} />
               )}
@@ -3479,24 +3508,7 @@ function Ledger({
                 saveSale(canonicalSaleId(saleId), { state: "open", method: null }),
               );
             }}
-                onFindPayment={(saleId) => {
-              const sale = sales.find((sl) => sl.id === saleId);
-              if (!sale) return;
-              const candidates = txnCandidatesForSale(
-                matchable,
-                sale,
-                clientNameOf(sale.clientId),
-                { relaxName: true },
-              );
-              if (candidates.length === 0) {
-                setSaleNotice(t("home.noMatchFound"));
-                return;
-              }
-              setSuggestions((current) => [
-                ...current,
-                { kind: "sale", saleId, txnIds: candidates.map((t) => t.id) },
-              ]);
-        }}
+            onFindPayment={findPaymentFor}
             onLogAgain={pickSaleAgain}
           />
           <Dashboard

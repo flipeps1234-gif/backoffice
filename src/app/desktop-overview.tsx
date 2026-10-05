@@ -144,7 +144,14 @@ function Chart({
     Math.max(active > (n - 1) / 2 ? x(active) - boxW - 16 : x(active) + 16, L),
     W - R - boxW,
   );
-  const by = Math.min(Math.max(y(values[active]) - 84, T), T + ph - 76);
+  // Above the point when there is room. When there is not: beside it at
+  // the top if the box clears the point sideways, otherwise BELOW it — on
+  // the compact drawing the box is wider than half the plot, so for
+  // mid-year months it would sit on the highlighted dot.
+  const px = x(active);
+  const py = y(values[active]);
+  const spansPoint = bx <= px && px <= bx + boxW;
+  const by = Math.min(py - 84 >= T ? py - 84 : spansPoint ? py + 14 : T, T + ph - 76);
   const monthTitle =
     active === partialIndex
       ? t("desktop.chart.soFar", { month: monthNames[active] })
