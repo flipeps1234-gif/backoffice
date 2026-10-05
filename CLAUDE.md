@@ -2,6 +2,28 @@
 
 # CLAUDE.md — read this before doing anything
 
+## Phone demo at /demoo — 2026-10-04
+
+Owner: "turn it into an interactive demo and put it at /demoo" — look B
+on the "Contado Mobile Redesign" canvas. /demoo (TWO o's; /demooo with
+three is the real sidebar app) is a SAMPLE-DATA preview of a proposed
+phone layout: slim black banner, the desktop home's number and month
+chart, Upload (green) / Log sale / Log expense, "Total Owed to You", and
+the desktop sidebar as a slide-in menu. It reads no account and saves
+nothing — src/app/demoo/ is self-contained (its own data.ts, ui.tsx and
+screens, restored from the sample desktop demo of commit 240c347 with
+their breakpoint classes stripped so it stays phone-shaped on a laptop,
+where it sits as one 430px column). English only, always light. Its
+chart is a COPY of desktop-overview.tsx's compact Chart, not an import,
+so the preview shares no code with the product; it places the callout
+below the line when it would cover other months' dots (the product's
+compact chart still covers them when the running month is the low one).
+Unlisted: noindex, not in the sitemap. Checked in a browser at 390 and
+1280: every menu section, chart toggle and month tap, checking a
+payment, a cash sale, an owed sale with a new client, an expense, paid
+cash on Owed, client list/detail/back, Escape and focus on the menu; no
+console errors, no sideways scroll.
+
 ## Desktop app on /app — 2026-10-04
 
 Owner: "ok push to main now" (after "ship" put the preview live at
