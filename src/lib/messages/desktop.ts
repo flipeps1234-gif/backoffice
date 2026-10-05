@@ -106,6 +106,36 @@ export const messages = {
     es: "Clasifica los pagos que esperan revisión y aparecen aquí.",
     pt: "Classifique os pagamentos que esperam conferência e eles aparecem aqui.",
   },
+  "desktop.noProducts": {
+    en: "No products yet — use the custom amount below, or add them under Products and services first.",
+    es: "Aún no hay productos — usa el monto personalizado abajo, o primero agrégalos en Productos y servicios.",
+    pt: "Ainda não há produtos — use o valor personalizado abaixo, ou primeiro adicione em Produtos e serviços.",
+  },
+  "desktop.backupIssue": {
+    en: "Something didn't save — check your connection. The red message at the top of the page shows what failed.",
+    es: "Algo no se guardó — revisa tu conexión. El mensaje rojo en la parte de arriba muestra qué falló.",
+    pt: "Algo não foi salvo — verifique sua conexão. A mensagem vermelha no topo da página mostra o que falhou.",
+  },
+  "desktop.doneIntro": {
+    en: "Three ways to log money, all in the menu:",
+    es: "Tres formas de registrar dinero, todas en el menú:",
+    pt: "Três formas de registrar dinheiro, todas no menu:",
+  },
+  "desktop.done1": {
+    en: "Upload screenshots — pick or drop them in, then confirm each row.",
+    es: "Subir capturas — elígelas o arrástralas, y confirma cada fila.",
+    pt: "Enviar capturas — escolha ou arraste, e confirme cada linha.",
+  },
+  "desktop.done2": {
+    en: "Log expense — a quick numpad for cash you spent.",
+    es: "Registrar gasto — un teclado rápido para lo que gastaste.",
+    pt: "Registrar gasto — um teclado rápido para o que você gastou.",
+  },
+  "desktop.done3": {
+    en: "Log sale — what you did, for whom, and whether it's paid or still owed.",
+    es: "Registrar venta — qué hiciste, para quién, y si está pagado o aún te lo deben.",
+    pt: "Registrar venda — o que você fez, para quem, e se está pago ou ainda devem.",
+  },
   "desktop.loadWaiting": {
     en: "Your totals show here once your saved payments load. Reload the page to try again.",
     es: "Tus totales aparecen aquí cuando carguen tus pagos guardados. Recarga la página para intentarlo de nuevo.",

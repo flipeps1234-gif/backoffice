@@ -75,7 +75,13 @@ export default function NewSale({
   prefill,
   onDone,
   onClose,
+  desktop = false,
 }: {
+  /** The sidebar app (/demooo): this form can stay mounted, hidden,
+   *  while the owner works in other sections — see pickedClientId, the
+   *  date and the quantity kinds below. Also picks the copy that names
+   *  where products are added. */
+  desktop?: boolean;
   services: Service[];
   clients: Client[];
   /** History — recommendations are DERIVED from it, never stored. */
@@ -98,6 +104,31 @@ export default function NewSale({
     }
     return map;
   });
+  /**
+   * What each catalog quantity MEANT when it was entered: "flat" (a
+   * count) or "rate:sqft|hour|room" (a size). On the desktop app this
+   * form can sit mounted while Products is edited in another section; a
+   * service switched from $0.18/sq ft to a flat $200 would otherwise turn
+   * "1200 sq ft" into 1200 × $200 = $240,000 on the PAID? screen. A line
+   * whose kind no longer matches its service is dropped (the same rule
+   * as a service that vanished: no invented price) and its stepper
+   * starts again from zero.
+   */
+  const [kinds, setKinds] = useState<Map<string, string>>(() => new Map());
+  const kindOf = (service: Service): string =>
+    service.pricing.type === "rate" ? `rate:${service.pricing.unit}` : "flat";
+  const kindChanged = (service: Service): boolean => {
+    const was = kinds.get(service.id);
+    return was !== undefined && was !== kindOf(service);
+  };
+  const qtyOf = (service: Service): number =>
+    kindChanged(service) ? 0 : (quantities.get(service.id) ?? 0);
+  function setQty(service: Service, quantity: number) {
+    backToProductsIfEmptied();
+    setQuantities((current) => new Map(current).set(service.id, quantity));
+    setKinds((current) => new Map(current).set(service.id, kindOf(service)));
+  }
+
   /**
    * Prefill lines are SNAPSHOTS of what was actually charged. Rebuilding
    * them from the current catalog silently re-priced a $75 job to catalog
@@ -124,7 +155,31 @@ export default function NewSale({
   );
 
   const [clientName, setClientName] = useState(prefill?.clientName ?? "");
-  const [date, setDate] = useState(today);
+  /**
+   * WHO, by id, once the name resolves to an existing client. A name is
+   * not an identity: on the desktop app the client can be renamed in the
+   * Clients section while this form waits, and re-resolving "Ana" after
+   * she became "Ana Souza" found nobody — so finish() minted a second
+   * "Ana" and hung the sale (and any recurring template) off it, with no
+   * merge to undo it. The id survives the rename; typing a different
+   * name re-resolves.
+   */
+  const [pickedClientId, setPickedClientId] = useState<string | null>(
+    () => findClientByName(clients, prefill?.clientName ?? "")?.id ?? null,
+  );
+  function chooseClientName(name: string) {
+    setClientName(name);
+    setPickedClientId(findClientByName(clients, name)?.id ?? null);
+  }
+  /**
+   * null = "follow the clock". The date used to be copied from the clock
+   * at mount; a form parked behind the sidebar for a day then logged the
+   * sale (and its cash payment, and a recurring anchor) on the day it was
+   * OPENED. Only a date the owner picks is remembered; "" (a cleared
+   * field) still means today at finish, as before.
+   */
+  const [dateOverride, setDate] = useState<string | null>(null);
+  const date = dateOverride ?? today();
   const [recurring, setRecurring] = useState(false);
   const [cadence, setCadence] = useState<Cadence>({ type: "weekly" });
   const [everyN, setEveryN] = useState("30");
@@ -162,7 +217,12 @@ export default function NewSale({
         continue;
       }
       const service = services.find((svc) => svc.id === serviceId);
-      if (service) items.push(lineFromService(service, qty));
+      const was = kinds.get(serviceId);
+      const sameKind =
+        service !== undefined &&
+        (was === undefined ||
+          was === (service.pricing.type === "rate" ? `rate:${service.pricing.unit}` : "flat"));
+      if (service && sameKind) items.push(lineFromService(service, qty));
       // No snapshot and no catalog entry: nothing to price it with — the
       // qty map can only contain such an id if the catalog changed mid-
       // sale, and a silently-invented price would be worse than dropping.
@@ -178,18 +238,30 @@ export default function NewSale({
       });
     }
     return items;
-  }, [services, quantities, prefillLines, customAmount, customLabel]);
+  }, [services, quantities, kinds, prefillLines, customAmount, customLabel]);
 
   const totalCents = saleTotalCents({ lineItems });
-  const knownClient = findClientByName(clients, clientName);
+  /**
+   * Nothing left to sell on a step past the products screen: only a line
+   * dropped behind the form (see `kinds`) gets here — the Checkout button
+   * is the one way forward and it is disabled at $0. Show the products
+   * screen instead of a $0.00 "Paid?" that would log an empty sale; the
+   * first thing added there makes the step real (backToProductsIfEmptied),
+   * so the form does not jump back to "Paid?" by itself.
+   */
+  const emptied =
+    totalCents === 0 && (step === "checkout" || step === "paid" || step === "method");
+  const shownStep: Step = emptied ? "pick" : step;
+  function backToProductsIfEmptied() {
+    if (emptied) setStep("pick");
+  }
+  const knownClient =
+    clients.find((c) => c.id === pickedClientId) ?? findClientByName(clients, clientName);
   const unknownName = clientName.trim() !== "" && !knownClient;
 
-  function step_(serviceId: string, delta: 1 | -1) {
-    setQuantities((current) => {
-      const next = new Map(current);
-      next.set(serviceId, Math.max(0, (next.get(serviceId) ?? 0) + delta));
-      return next;
-    });
+  function step_(service: Service, delta: 1 | -1) {
+    // qtyOf, not the raw map: a quantity whose kind went stale counts as 0.
+    setQty(service, Math.max(0, qtyOf(service) + delta));
   }
 
   /** Assemble the SaleResult once; every terminal button routes through. */
@@ -199,7 +271,8 @@ export default function NewSale({
     // table's occurred_on is NOT NULL (0006), so a "" date is a sale that
     // never persists, and advance("") throws before onDone ever runs.
     // An empty date means "today", same default the field started with.
-    const when = date || today();
+    // Read the clock NOW (not at the last render) unless the owner chose.
+    const when = (dateOverride ?? today()) || today();
     const trimmed = clientName.trim();
     const client =
       knownClient ??
@@ -268,7 +341,7 @@ export default function NewSale({
   );
 
   // ---- PAID? — one question, huge targets ----
-  if (step === "paid") {
+  if (shownStep === "paid") {
     return (
       <div className="space-y-6">
         {header(t("sale.title"))}
@@ -276,7 +349,7 @@ export default function NewSale({
           {formatCents(totalCents)}
         </p>
         <p className="text-center text-sm text-neutral-500">
-          {clientName.trim() || t("sale.noClient")} ·{" "}
+          {(knownClient?.name ?? clientName.trim()) || t("sale.noClient")} ·{" "}
           {lineItems.map((i) => i.name).join(", ") || t("sale.noItems")}
         </p>
         <h3 className="text-center text-lg font-semibold">
@@ -310,7 +383,7 @@ export default function NewSale({
   }
 
   // ---- CASH OR DIGITAL? ----
-  if (step === "method") {
+  if (shownStep === "method") {
     return (
       <div className="space-y-6">
         {header(t("sale.title"))}
@@ -354,7 +427,7 @@ export default function NewSale({
   }
 
   // ---- CHECKOUT ----
-  if (step === "checkout") {
+  if (shownStep === "checkout") {
     return (
       <div className="space-y-4">
         {header(t("sale.checkout"))}
@@ -391,7 +464,7 @@ export default function NewSale({
                           ? "bg-foreground text-background"
                           : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                       }`}
-                      onClick={() => setClientName(c.name)}
+                      onClick={() => chooseClientName(c.name)}
                     >
                       {c.name}
                     </button>
@@ -405,7 +478,7 @@ export default function NewSale({
             placeholder={t("sale.clientNamePlaceholder")}
             list="known-clients"
             value={clientName}
-            onChange={(e) => setClientName(e.target.value)}
+            onChange={(e) => chooseClientName(e.target.value)}
           />
           <datalist id="known-clients">
             {clients.map((c) => (
@@ -602,7 +675,7 @@ export default function NewSale({
   }
 
   // ---- WHO'S IT FOR? — first ONLY in the client-first order ----
-  if (step === "client") {
+  if (shownStep === "client") {
     const recent = rankClientsForProducts(clients, sales, []);
     return (
       <div className="space-y-4">
@@ -618,7 +691,7 @@ export default function NewSale({
             placeholder={t("sale.clientNamePlaceholder")}
             list="known-clients"
             value={clientName}
-            onChange={(e) => setClientName(e.target.value)}
+            onChange={(e) => chooseClientName(e.target.value)}
           />
           <datalist id="known-clients">
             {clients.map((c) => (
@@ -643,7 +716,7 @@ export default function NewSale({
                     ? "bg-foreground text-background"
                     : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
                 }`}
-                onClick={() => setClientName(c.name)}
+                onClick={() => chooseClientName(c.name)}
               >
                 {c.name}
               </button>
@@ -679,7 +752,7 @@ export default function NewSale({
 
       {services.length === 0 && (
         <p className="text-sm text-neutral-500">
-          {t("sale.noProducts")}
+          {t(desktop ? "desktop.noProducts" : "sale.noProducts")}
         </p>
       )}
 
@@ -689,11 +762,11 @@ export default function NewSale({
             <div key={service.id} className="space-y-2">
               <ProductCard
                 service={service}
-                quantity={quantities.get(service.id) ?? 0}
-                onStep={(delta) => step_(service.id, delta)}
+                quantity={qtyOf(service)}
+                onStep={(delta) => step_(service, delta)}
               />
               {service.pricing.type === "rate" &&
-                (quantities.get(service.id) ?? 0) > 0 && (
+                qtyOf(service) > 0 && (
                   <div className="flex items-center gap-2 px-2 text-sm">
                     <label htmlFor={`size-${service.id}`}>
                       {t(
@@ -709,19 +782,12 @@ export default function NewSale({
                       type="text"
                       inputMode="decimal"
                       className={`${fieldClass} w-24 text-center`}
-                      value={quantities.get(service.id) ?? 0}
+                      value={qtyOf(service)}
                       onChange={(e) => {
                         const size = Number.parseFloat(
                           e.target.value.replace(",", "."),
                         );
-                        setQuantities((current) => {
-                          const next = new Map(current);
-                          next.set(
-                            service.id,
-                            Number.isFinite(size) && size > 0 ? size : 0,
-                          );
-                          return next;
-                        });
+                        setQty(service, Number.isFinite(size) && size > 0 ? size : 0);
                       }}
                     />
                   </div>
@@ -792,7 +858,10 @@ export default function NewSale({
             className={fieldClass}
             placeholder="0.00"
             value={customAmount}
-            onChange={(e) => setCustomAmount(e.target.value)}
+            onChange={(e) => {
+              backToProductsIfEmptied();
+              setCustomAmount(e.target.value);
+            }}
           />
           <input
             aria-label={t("sale.customLabelAria")}

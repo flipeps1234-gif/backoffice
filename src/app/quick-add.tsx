@@ -131,7 +131,13 @@ export default function QuickAdd({
   const { t } = useLocale();
   const [cents, setCents] = useState(prefill?.amountCents ?? 0);
   const [payer, setPayer] = useState(prefill?.payer ?? "");
-  const [date, setDate] = useState(today);
+  // null = "follow the clock" (same rule and reason as new-sale.tsx): the
+  // desktop app keeps this keypad mounted behind other sections, and "Save
+  // & add another" keeps it open for days — a date copied from the clock
+  // at mount then logged Thursday's expense on Tuesday. A date the owner
+  // PICKS is still kept across "add another" (backlog entry).
+  const [dateOverride, setDate] = useState<string | null>(null);
+  const date = dateOverride ?? today();
   const [business, setBusiness] = useState(prefill?.business ?? true);
   const [direction, setDirection] = useState<TransactionDirection>(
     expense ? "out" : (prefill?.direction ?? "in"),
@@ -293,7 +299,8 @@ export default function QuickAdd({
       id: crypto.randomUUID(),
       payer: payer.trim(),
       amountCents: cents,
-      date,
+      // The clock NOW, not at the last render, unless the owner chose.
+      date: dateOverride ?? today(),
       memo: "",
       source: "manual",
       direction,

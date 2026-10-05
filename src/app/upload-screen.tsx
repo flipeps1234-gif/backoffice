@@ -1778,6 +1778,13 @@ function Ledger({
         });
       });
     }
+    // A payment that was still un-triaged when it was linked goes back to
+    // "to sort". If the batch UI has moved on (stage "upload"), nothing
+    // would show it — a row counted in the badge with no card to swipe.
+    // Bring the deck back.
+    if (stage === "upload" && matchUndo.some((undo) => undo.prevBusiness === null)) {
+      setStage("sort");
+    }
     setMatchUndo([]);
     setSaleNotice("");
   }
@@ -1847,7 +1854,7 @@ function Ledger({
       // FLOW.md: exactly one high-confidence hit → LINKED · PAID (undo);
       // several or none → candidates + "expected in next screenshots".
       const name = result.newClient?.name ?? clientNameOf(sale.clientId);
-      const candidates = txnCandidatesForSale(transactions, sale, name);
+      const candidates = txnCandidatesForSale(matchable, sale, name);
       if (candidates.length === 1) {
         const txn = candidates[0];
         sale = { ...sale, state: "paid", method: "digital", matchedTxnId: txn.id };
@@ -2108,6 +2115,21 @@ function Ledger({
 
   const pending = transactions.filter((tx) => tx.business === null);
   const sorted = transactions.filter((tx) => tx.business !== null);
+  /**
+   * What a sale may be matched against. While a batch is on the
+   * confirmation sheet its rows are UNCHECKED — amounts, payers and
+   * in/out are still guesses, and the sheet's edits are saved only by
+   * "Looks right" (confirmBatch), for rows still un-triaged. A sale that
+   * linked one early flipped it to business, so it left the sheet and its
+   * corrections were never written: the payment reverted on reload while
+   * the sale read paid. /app hid the hub during confirm; the desktop
+   * sections (and /app's own lg rail) stay live, so the rule lives here:
+   * unchecked rows are not candidates. The sale waits as EXPECTED and
+   * confirmBatch's rescan links it against checked data. Call sites:
+   * handleSaleDone's digital path and both "Find payment" handlers.
+   */
+  const matchable =
+    stage === "confirm" ? transactions.filter((tx) => tx.business !== null) : transactions;
   const lastBatch = transactions.filter((tx) => lastBatchIds.includes(tx.id));
 
   // The flow column shows exactly one thing at a time: a takeover — the
@@ -2121,6 +2143,7 @@ function Ledger({
       sales={sales}
       flowOrder={saleFlow}
       prefill={salePrefill ?? undefined}
+      desktop={desktop}
       onDone={handleSaleDone}
       onClose={() => {
         setShowNewSale(false);
@@ -2159,11 +2182,15 @@ function Ledger({
         const sale = sales.find((sl) => sl.id === saleId);
         if (!sale) return;
         const candidates = txnCandidatesForSale(
-          transactions,
+          matchable,
           sale,
           clientNameOf(sale.clientId),
           { relaxName: true },
         );
+        // Desktop: the answer (a notice or the pick-one cards) renders at
+        // the top of one long page; from far down the Owed list the button
+        // would seem to do nothing.
+        if (desktop) window.scrollTo({ top: 0 });
         if (candidates.length === 0) {
           setSaleNotice(t("home.noMatchFound"));
           return;
@@ -2290,6 +2317,7 @@ function Ledger({
 
   const settingsEl = (
     <SettingsPage
+      desktop={desktop}
       signedIn={accountId !== null}
       email={email}
       profile={profile}
@@ -2358,12 +2386,14 @@ function Ledger({
         );
       }}
       onOpenProducts={() => {
-        setShowSettings(false);
+        // /app swaps takeovers; desktop keeps Settings mounted (a typed
+        // business name survives, as it does via the sidebar).
+        if (!desktop) setShowSettings(false);
         setShowProducts(true);
         setSection("products");
       }}
       onOpenClients={() => {
-        setShowSettings(false);
+        if (!desktop) setShowSettings(false);
         // Desktop: an already-open Clients page keeps its focus and drafts
         // (same rule as the sidebar); /app never has it open here.
         if (!(desktop && showClients)) {
@@ -2779,18 +2809,48 @@ function Ledger({
     </>
   );
 
+  // The Personal / Business running totals — the core loop's payoff
+  // ("swipe, and the totals climb"). One element for both layouts.
+  const runningTotalsEl = (stage === "sort" || sorted.length > 0 || sales.length > 0) && (
+    <RunningTotals
+      transactions={transactions}
+      expectedCents={sales
+        .filter((s) => s.state === "expected")
+        .reduce((sum, s) => sum + saleTotalCents(s), 0)}
+      owedCents={owedCents(sales)}
+    />
+  );
+
+  // The camera input ("Snap a receipt…"): its own <input capture>, because
+  // a phone's plain image picker may not offer the camera at all.
+  const snapEl = stage === "upload" && (
+    <label
+      // Inert while a batch is in flight, for the same reason as the drop
+      // zone: a second upload mid-flight double-books the first.
+      className={`block rounded-lg border border-neutral-300 px-4 py-4 text-center text-base font-medium ${
+        status === "reading"
+          ? "pointer-events-none opacity-50"
+          : "cursor-pointer hover:bg-neutral-50"
+      }`}
+    >
+      {/* capture jumps straight into the camera on phones. */}
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        disabled={status === "reading"}
+        className="sr-only"
+        onChange={(event) => handleFiles(event.target.files)}
+      />
+      {t("home.snap")}
+    </label>
+  );
+
   // The main loop: totals, the upload targets, the sheet, the swipe deck.
   const mainLoop = (
     <div className="space-y-6">
-      {(stage === "sort" || sorted.length > 0 || sales.length > 0) && (
-        <RunningTotals
-          transactions={transactions}
-          expectedCents={sales
-            .filter((s) => s.state === "expected")
-            .reduce((sum, s) => sum + saleTotalCents(s), 0)}
-          owedCents={owedCents(sales)}
-        />
-      )}
+      {runningTotalsEl}
 
       {seasonNoticesEl}
 
@@ -2808,29 +2868,7 @@ function Ledger({
         />
       )}
 
-      {stage === "upload" && (
-        <label
-          // Inert while a batch is in flight, for the same reason as the drop
-          // zone: a second upload mid-flight double-books the first.
-          className={`block rounded-lg border border-neutral-300 px-4 py-4 text-center text-base font-medium ${
-            status === "reading"
-              ? "pointer-events-none opacity-50"
-              : "cursor-pointer hover:bg-neutral-50"
-          }`}
-        >
-          {/* capture jumps straight into the camera on phones. */}
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            multiple
-            disabled={status === "reading"}
-            className="sr-only"
-            onChange={(event) => handleFiles(event.target.files)}
-          />
-          {t("home.snap")}
-        </label>
-      )}
+      {snapEl}
 
       {stage !== "confirm" && (
         <div className="space-y-3">
@@ -3110,6 +3148,7 @@ function Ledger({
       onSkip={endSetup}
       saving={setupSaving}
       review={tourOpen}
+      desktop={desktop}
     />
   );
 
@@ -3173,7 +3212,10 @@ function Ledger({
       // only when the owner starts one (or "log again" prefills one), so
       // a mere visit never counts as an entry in flight.
       if (next === "products") setShowProducts(true);
-      if (next === "settings" && !showSettings) openSettings();
+      // Every visit, not just the first: Settings stays mounted on
+      // desktop, and openSettings is also what re-reads a pending
+      // deletion and retries a profile / alert-prefs load that failed.
+      if (next === "settings") openSettings();
       if (next === "clients" && !showClients) {
         // Opening Clients fresh shows the LIST — never a stale search
         // focus. Once open it stays mounted (hidden) like the forms: a
@@ -3217,7 +3259,7 @@ function Ledger({
         {noticesEl}
 
         {tourOpen && (
-          <section className={`${card} mx-auto w-full max-w-2xl space-y-6 p-6`}>
+          <section className={`${card} mx-auto w-full max-w-2xl space-y-6 p-4 lg:p-6`}>
             {/* Phones: the sidebar's account line is hidden, and the old
                 full-screen tour always offered Sign out. */}
             {accountLine && <div className="lg:hidden">{accountLine}</div>}
@@ -3250,7 +3292,7 @@ function Ledger({
               loadFailed={loadFailed}
               onOwed={() => navigate("owed")}
             />
-            <section className={`${card} p-6`}>
+            <section className={`${card} p-4 lg:p-6`}>
               <Dashboard
                 title={t("desktop.reports")}
                 transactions={transactions}
@@ -3270,13 +3312,20 @@ function Ledger({
         {show("upload") && (
           <>
             {heading(t("desktop.uploadTitle"), t("desktop.uploadSub"))}
-            <section className={`${card} flex flex-col gap-6 p-6`}>
+            <section className={`${card} flex flex-col gap-6 p-4 lg:p-4 lg:p-6`}>
+              {/* The running totals sit with the batch flow, as on /app:
+                  sorting is what makes them climb. */}
+              {runningTotalsEl && <div className="mx-auto w-full max-w-2xl">{runningTotalsEl}</div>}
               {stage === "upload" && (
                 <DropZone busy={status === "reading"} onFiles={handleFiles} />
               )}
               {status === "reading" && progress && (
                 <ProgressBar label={progress.label} detail={progress.detail} fraction={progress.fraction} />
               )}
+              {/* Phones only: the camera. The sidebar has no item for it
+                  (the owner's order), but a phone must still be able to
+                  photograph a receipt from here. */}
+              {snapEl && <div className="lg:hidden">{snapEl}</div>}
               {stage !== "upload" && <div className="mx-auto w-full max-w-2xl space-y-6">{reviewFlowEl}</div>}
             </section>
           </>
@@ -3287,14 +3336,14 @@ function Ledger({
             is closed, with "Log again" beside it. */}
         {showNewSale && (
           <div hidden={!show("sale")} className="flex flex-col gap-5">
-            <section className={`${card} max-w-2xl p-6`}>{newSaleEl}</section>
+            <section className={`${card} max-w-2xl p-4 lg:p-6`}>{newSaleEl}</section>
           </div>
         )}
         {show("sale") && !showNewSale && (
           <>
             {heading(t("desktop.nav.logSale"), t("desktop.saleSub"))}
             <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-              <section className={`${card} flex flex-col items-start gap-4 p-6`}>
+              <section className={`${card} flex flex-col items-start gap-4 p-4 lg:p-6`}>
                 <button
                   type="button"
                   className={primary}
@@ -3307,20 +3356,20 @@ function Ledger({
                   {t("desktop.startSale")}
                 </button>
               </section>
-              <section className={`${card} p-6`}>{recentSalesEl}</section>
+              <section className={`${card} p-4 lg:p-6`}>{recentSalesEl}</section>
             </div>
           </>
         )}
 
         {quickAddEl && (
           <div hidden={!show("expense")} className="flex flex-col gap-5">
-            <section className={`${card} max-w-2xl p-6`}>{quickAddEl}</section>
+            <section className={`${card} max-w-2xl p-4 lg:p-6`}>{quickAddEl}</section>
           </div>
         )}
         {show("expense") && !quickAddEl && (
           <>
             {heading(t("desktop.nav.logExpense"), t("desktop.expenseSub"))}
-            <section className={`${card} flex flex-col items-start gap-4 p-6`}>
+            <section className={`${card} flex flex-col items-start gap-4 p-4 lg:p-6`}>
               <button type="button" className={primary} onClick={() => setQuickAdd(true)}>
                 {t("desktop.startExpense")}
               </button>
@@ -3328,21 +3377,21 @@ function Ledger({
           </>
         )}
 
-        {show("owed") && <section className={`${card} p-6`}>{owedEl}</section>}
+        {show("owed") && <section className={`${card} p-4 lg:p-6`}>{owedEl}</section>}
 
         {showClients && (
-          <section hidden={!show("clients")} className={`${card} p-6`}>
+          <section hidden={!show("clients")} className={`${card} p-4 lg:p-6`}>
             {clientsEl}
           </section>
         )}
 
         {showProducts && (
-          <section hidden={!show("products")} className={`${card} p-6`}>
+          <section hidden={!show("products")} className={`${card} p-4 lg:p-6`}>
             {productsEl}
           </section>
         )}
         {show("products") && !showProducts && (
-          <section className={`${card} p-6`}>
+          <section className={`${card} p-4 lg:p-6`}>
             <button type="button" className={primary} onClick={() => setShowProducts(true)}>
               {t("desktop.nav.products")}
             </button>
@@ -3353,7 +3402,7 @@ function Ledger({
           <>
             {heading(t("desktop.nav.history"), t("desktop.historySub"))}
             {(sales.length > 0 || clients.length > 0 || transactions.length > 0) && (
-              <section className={`${card} p-6`}>
+              <section className={`${card} p-4 lg:p-6`}>
                 <SearchPanel
                   clients={clients}
                   sales={sales}
@@ -3362,7 +3411,7 @@ function Ledger({
                 />
               </section>
             )}
-            <section className={`${card} p-6`}>
+            <section className={`${card} p-4 lg:p-6`}>
               <HistoryList transactions={transactions} services={services} onLogAgain={routeLogAgain} />
             </section>
           </>
@@ -3371,11 +3420,11 @@ function Ledger({
         {showSettings && (
           <div hidden={!show("settings")} className="flex flex-col gap-5">
             <div className="lg:hidden">{accountLine}</div>
-            <section className={`${card} max-w-3xl p-6`}>{settingsEl}</section>
+            <section className={`${card} max-w-3xl p-4 lg:p-6`}>{settingsEl}</section>
           </div>
         )}
         {show("settings") && !showSettings && (
-          <section className={`${card} p-6`}>
+          <section className={`${card} p-4 lg:p-6`}>
             <button type="button" className={primary} onClick={openSettings}>
               {t("settings.title")}
             </button>
@@ -3434,7 +3483,7 @@ function Ledger({
               const sale = sales.find((sl) => sl.id === saleId);
               if (!sale) return;
               const candidates = txnCandidatesForSale(
-                transactions,
+                matchable,
                 sale,
                 clientNameOf(sale.clientId),
                 { relaxName: true },

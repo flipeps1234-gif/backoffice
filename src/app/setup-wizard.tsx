@@ -71,7 +71,11 @@ export default function SetupWizard({
   onSkip,
   saving,
   review,
+  desktop = false,
 }: {
+  /** The sidebar app: the last step names the menu's entries, not the
+   *  classic home screen's box and buttons. */
+  desktop?: boolean;
   /** Seeds the business fields: EMPTY on first use, the stored row in
    *  review. After Continue the fields are reseeded from what
    *  onSaveProfile resolves, not from this prop. */
@@ -328,11 +332,11 @@ export default function SetupWizard({
     case "done":
       body = (
         <div className="space-y-4">
-          <p className="text-sm">{t("setup.doneIntro")}</p>
+          <p className="text-sm">{t(desktop ? "desktop.doneIntro" : "setup.doneIntro")}</p>
           <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
-            <li>{t("setup.done1")}</li>
-            <li>{t("setup.done2")}</li>
-            <li>{t("setup.done3")}</li>
+            <li>{t(desktop ? "desktop.done1" : "setup.done1")}</li>
+            <li>{t(desktop ? "desktop.done2" : "setup.done2")}</li>
+            <li>{t(desktop ? "desktop.done3" : "setup.done3")}</li>
           </ul>
           <p className="text-xs text-neutral-500">{t("setup.doneAgain")}</p>
         </div>

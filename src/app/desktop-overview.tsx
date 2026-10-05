@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { revenueByService } from "@/lib/dashboard";
 import { expectedCentsIn, seriesMonths, yearSeries, yearsWithData } from "@/lib/desktop";
 import type { Sale } from "@/lib/sale";
@@ -54,6 +54,26 @@ const SERIES_COLOR: Record<Series, { line: string; fill: string; dot: string }> 
   out: { line: "stroke-red-500", fill: "fill-red-500", dot: "fill-red-500" },
 };
 
+/**
+ * Is this a phone-width screen? The chart is an SVG scaled to its card:
+ * drawn 820 units wide, its 12px labels shrink to ~4px on a 375px phone.
+ * Below 640px it is drawn 360 wide instead (single-letter months, a
+ * narrower callout) so the same labels land near 10px. Subscribed, not
+ * measured in an effect; the server and first paint assume wide.
+ */
+const NARROW = "(max-width: 639px)";
+const subscribeNarrow = (onChange: () => void) => {
+  const query = window.matchMedia(NARROW);
+  query.addEventListener("change", onChange);
+  return () => query.removeEventListener("change", onChange);
+};
+const useIsNarrow = (): boolean =>
+  useSyncExternalStore(
+    subscribeNarrow,
+    () => window.matchMedia(NARROW).matches,
+    () => false,
+  );
+
 function Chart({
   values,
   inCents,
@@ -67,7 +87,10 @@ function Chart({
   partialIndex,
   active,
   onActive,
+  compact,
 }: {
+  /** Phone-width drawing (see useIsNarrow). */
+  compact: boolean;
   values: number[];
   inCents: number[];
   outCents: number[];
@@ -83,10 +106,10 @@ function Chart({
   onActive: (i: number) => void;
 }) {
   const { t } = useLocale();
-  const W = 820;
-  const H = 340;
-  const L = 64;
-  const R = 24;
+  const W = compact ? 360 : 820;
+  const H = compact ? 280 : 340;
+  const L = compact ? 48 : 64;
+  const R = compact ? 12 : 24;
   const T = 16;
   const B = 36;
   const pw = W - L - R;
@@ -115,7 +138,8 @@ function Chart({
   // Wide enough for five-figure amounts in ES/PT ("$123,456.78 entró ·
   // $12,345.67 salió" measures ~194px in 11px Arial), and kept inside the
   // plot on both sides.
-  const boxW = 236;
+  // Compact: 200 wide with 14px/10px type holds the same strings.
+  const boxW = compact ? 200 : 236;
   const bx = Math.min(
     Math.max(active > (n - 1) / 2 ? x(active) - boxW - 16 : x(active) + 16, L),
     W - R - boxW,
@@ -174,7 +198,8 @@ function Chart({
       ))}
       {shortNames.map((m, i) => (
         <text
-          key={m}
+          // Index, not the label: narrow month names repeat (J, J, J).
+          key={i}
           x={x(i)}
           y={H - 10}
           textAnchor="middle"
@@ -190,10 +215,10 @@ function Chart({
         <text x={bx + 14} y={by + 24} fontSize="12" fill="#a3a3a3">
           {monthTitle}
         </text>
-        <text x={bx + 14} y={by + 46} fontSize="16" fontWeight={600} fill="#ededed">
+        <text x={bx + 14} y={by + 46} fontSize={compact ? 14 : 16} fontWeight={600} fill="#ededed">
           {money(values[active])} · {seriesLabel}
         </text>
-        <text x={bx + 14} y={by + 63} fontSize="11" fill="#a3a3a3">
+        <text x={bx + 14} y={by + 63} fontSize={compact ? 10 : 11} fill="#a3a3a3">
           {t("desktop.chart.split", {
             inAmount: formatCents(inCents[active]),
             outAmount: formatCents(outCents[active]),
@@ -287,6 +312,7 @@ export default function DesktopOverview({
   onOwed: () => void;
 }) {
   const { t, tag } = useLocale();
+  const compact = useIsNarrow();
   const today = localToday();
   const thisYear = Number(today.slice(0, 4));
   const thisMonth = Number(today.slice(5, 7));
@@ -317,7 +343,11 @@ export default function DesktopOverview({
     new Date(`${monthKey(i)}-01T00:00:00Z`).toLocaleDateString(tag, { month: "long", timeZone: "UTC" }),
   );
   const shortNames = Array.from({ length: monthCount }, (_, i) =>
-    new Date(`${monthKey(i)}-01T00:00:00Z`).toLocaleDateString(tag, { month: "short", timeZone: "UTC" }),
+    new Date(`${monthKey(i)}-01T00:00:00Z`).toLocaleDateString(tag, {
+      // One letter per month on a phone: twelve "sept." do not fit.
+      month: compact ? "narrow" : "short",
+      timeZone: "UTC",
+    }),
   );
 
   const values = series === "kept" ? keptCents : series === "in" ? inCents : outCents;
@@ -425,6 +455,7 @@ export default function DesktopOverview({
             outCents={outCents}
             monthNames={monthNames}
             shortNames={shortNames}
+            compact={compact}
             series={series}
             seriesLabel={seriesLabel}
             title={chartTitle}

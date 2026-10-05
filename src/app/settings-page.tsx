@@ -377,7 +377,11 @@ export default function SettingsPage({
   onOpenClients,
   onShowTour,
   onClose,
+  desktop = false,
 }: {
+  /** The sidebar app has no "home screen"; its failed-save banner sits
+   *  at the top of every section. */
+  desktop?: boolean;
   signedIn: boolean;
   email: string | null;
   profile: BusinessProfile;
@@ -691,7 +695,7 @@ export default function SettingsPage({
           {!signedIn
             ? t("settings.backupNone")
             : hasSaveError
-              ? t("settings.backupIssue")
+              ? t(desktop ? "desktop.backupIssue" : "settings.backupIssue")
               : t("settings.backupOk")}
         </p>
       </Section>

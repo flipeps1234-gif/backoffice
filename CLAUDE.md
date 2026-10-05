@@ -94,6 +94,49 @@ semantics, authz/exposure, copy-vs-behavior, a11y, resilience. NEVER
 run here: concurrency (two devices), privacy/data lifecycle,
 performance/bundle measurement, schema-drift — none touched by this
 branch (same Ledger, same writes), which is why they were not spent.
+PASS 5 (2026-10-04, owner re-ran find-and-fix "on the demo"; lenses
+never run here: PARITY matrix classic-vs-desktop, CONCURRENCY/stale
+state of the mounted-hidden forms, performance/bundle and deploy-headers
+by tooling, a width x theme x language browser sweep). Tooling: the new
+next advisory GHSA-vcvr-r3jv-pc5j (RCE in next/og ImageResponse,
+16.2.0-16.3.5, CVSS 9.5) REJECTED with evidence — it needs
+attacker-controlled values in ImageResponse SVG/styles; the one use
+(opengraph-image.tsx) is static and prerendered (x-vercel-cache HIT).
+The 16.3.6+ bump stays an owner decision, as before. Bundle: /demooo ==
+/app (283 KB br, same chunks), landing 207 KB br, supabase-js still
+absent from "/". Headers/noindex/sitemap identical to /app. Fixed
+(13): MED — the confirm-stage gate was "don't render the hub", so on
+desktop (and /app's lg rail) a sale could link a payment still on the
+confirmation sheet; the row left `pending`, confirmBatch never saved its
+sheet edits, and it reverted on reload while the sale read paid. The
+rule now lives in the data path: `matchable` (unchecked rows are not
+candidates while stage is "confirm") at handleSaleDone and both Find
+payment handlers; the sale waits EXPECTED and confirmBatch links it.
+MED — NewSale carried the client as a NAME: renamed in Clients while
+the form waited, finish() minted a duplicate under the old name
+(`pickedClientId`). MED — sale and expense forms copied the clock at
+mount; parked for a day they logged on the day they were opened (date
+is now null = follow the clock, read again at save; a picked date is
+kept). LOW — a rate quantity re-priced as flat after a pricing-type
+edit (1200 sq ft x $200): quantities remember their kind, a mismatched
+line is dropped and an emptied sale returns to the products step, never
+a $0.00 "Paid?". Parity: RunningTotals was never rendered on desktop
+(now in Upload, shared element); no camera input on phones (shared
+snapEl, lg:hidden in Upload); Settings re-checks ran only on first
+mount (every visit now) and its Products/Clients rows unmounted it;
+Find payment answered off-screen (scrolls to top); undoing a match
+while stage was "upload" stranded a to-sort row (stage returns to
+"sort"); tour/Settings/sale copy named the classic "home screen"
+(desktop.* variants via a `desktop` prop on NewSale, SettingsPage,
+SetupWizard). Phones: chart labels rendered ~4px (compact 360-wide
+drawing under 640px, narrow month names), cards p-4. CORRECTION to pass
+4: its "banner would cover RunningTotals on Upload" premise was false
+when written (RunningTotals was not on desktop at all — a reviewer
+claim I did not verify); the non-sticky-on-Upload rule is correct only
+as of this pass. OBSERVED, not fixed (pre-existing in /app, unchanged
+file): ProductCard's picker is a <button> containing the stepper
+<button>s (React warns: nested buttons); a sale notice keeps the
+language it was written in after the picker moves.
 
 ## Marketing site surface — 2026-09-14
 
