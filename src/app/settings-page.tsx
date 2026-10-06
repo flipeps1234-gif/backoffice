@@ -78,7 +78,7 @@ function Toggle({
     <label className="flex items-start gap-3 rounded-lg border border-neutral-300 p-3 dark:border-neutral-700">
       <input
         type="checkbox"
-        className="mt-0.5"
+        className="mt-0.5 h-5 w-5"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
       />
@@ -178,10 +178,10 @@ function ChannelAlerts({
             {/* Consent is the product here: default OFF, explicit, per
                 channel, and the tick time is stored — the proof both
                 WhatsApp policy and US A2P expect. */}
-            <label className="flex items-start gap-2 text-sm">
+            <label className="flex min-h-11 items-start gap-2 text-sm">
               <input
                 type="checkbox"
-                className="mt-0.5"
+                className="mt-0.5 h-5 w-5"
                 checked={consent}
                 onChange={(e) => setConsent(e.target.checked)}
               />
@@ -490,7 +490,7 @@ export default function SettingsPage({
         <h2 className="text-sm font-semibold">{t("settings.title")}</h2>
         <button
           type="button"
-          className="text-sm text-neutral-500 hover:underline"
+          className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
           onClick={onClose}
         >
           {t("common.close")}
@@ -622,7 +622,7 @@ export default function SettingsPage({
               ) : !deleteOpen ? (
                 <button
                   type="button"
-                  className="text-sm font-medium text-red-700 hover:underline dark:text-red-400"
+                  className="-mx-2 min-h-11 px-2 text-sm font-medium text-red-700 hover:underline dark:text-red-400"
                   onClick={() => {
                     setDeleteError(false);
                     setDeleteOpen(true);

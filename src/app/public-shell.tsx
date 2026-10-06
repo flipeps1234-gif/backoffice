@@ -82,9 +82,7 @@ function NavLinks() {
             key={item.href}
             href={item.href}
             aria-current={current ? "page" : undefined}
-            className={
-              current ? "font-medium" : "text-neutral-400 hover:underline"
-            }
+            className={`tap ${current ? "font-medium" : "text-neutral-400 hover:underline"}`}
           >
             {t(item.key)}
           </Link>
@@ -173,7 +171,7 @@ export function TextUs() {
         href={`https://wa.me/${SUPPORT_WHATSAPP}`}
         target="_blank"
         rel="noreferrer"
-        className="hover:underline"
+        className="tap hover:underline"
       >
         {t("landing.textUs")}
       </a>
@@ -187,7 +185,7 @@ export function EmailUs() {
   const { t } = useLocale();
   if (!SUPPORT_EMAIL) return null;
   return (
-    <a href={`mailto:${SUPPORT_EMAIL}`} className="hover:underline">
+    <a href={`mailto:${SUPPORT_EMAIL}`} className="tap hover:underline">
       {t("site.emailUs")}
     </a>
   );
@@ -209,7 +207,7 @@ function FooterColumn({
       <ul className="space-y-1.5 text-sm">
         {links.map((link) => (
           <li key={link.href}>
-            <Link href={link.href} className="hover:underline">
+            <Link href={link.href} className="tap hover:underline">
               {t(link.key)}
             </Link>
           </li>

@@ -112,6 +112,7 @@ import {
 } from "@/lib/supabase/transactions";
 import { useSession } from "@/lib/supabase/use-session";
 import { HOME_EVENT } from "./brand-home";
+import { clearSignInStarted, signInStartedHere } from "@/lib/return-to";
 import { acceptTerms, TERMS_VERSION } from "@/lib/terms";
 import type { Service } from "@/lib/service";
 import { formatCents, type Transaction } from "@/lib/transaction";
@@ -195,6 +196,9 @@ type SaveQueue = {
   stopped: boolean;
   /** Cuts the current wait short ("Try now", sign-out, unmount). */
   wake: (() => void) | null;
+  /** The person chose to lose a parked save by signing out: the unmount
+   *  cleanup must not flag it for the next account's first screen. */
+  consentedLoss: boolean;
   /** Resolvers of persist()'s promises that have not had an outcome yet. */
   outcomes: Set<() => void>;
 };
@@ -202,25 +206,26 @@ type SaveQueue = {
 /** Resolve when it is worth trying the parked save again: the browser says
  *  it is back online, the tab comes back to the front, the backoff runs
  *  out, or someone calls queue.wake. */
-const parkUntilRetry = (queue: SaveQueue, attempt: number): Promise<void> =>
+const parkUntilRetry = (queue: SaveQueue, attempt: number): Promise<"woken" | "timer"> =>
   new Promise((resolve) => {
     let done = false;
-    const finish = () => {
+    const finish = (why: "woken" | "timer") => {
       if (done) return;
       done = true;
       window.clearTimeout(timer);
-      window.removeEventListener("online", finish);
+      window.removeEventListener("online", woken);
       document.removeEventListener("visibilitychange", onVisible);
-      if (queue.wake === finish) queue.wake = null;
-      resolve();
+      if (queue.wake === woken) queue.wake = null;
+      resolve(why);
     };
+    const woken = () => finish("woken");
     const onVisible = () => {
-      if (document.visibilityState === "visible") finish();
+      if (document.visibilityState === "visible") woken();
     };
-    const timer = window.setTimeout(finish, retryDelayMs(attempt));
-    window.addEventListener("online", finish);
+    const timer = window.setTimeout(() => finish("timer"), retryDelayMs(attempt));
+    window.addEventListener("online", woken);
     document.addEventListener("visibilitychange", onVisible);
-    queue.wake = finish;
+    queue.wake = woken;
   });
 
 export default function UploadScreen({
@@ -238,6 +243,20 @@ export default function UploadScreen({
   const accepted = useAcceptedTerms();
   const { user, loading, isConfigured } = useSession();
   const { locale, t } = useLocale();
+  // Did this page open with tokens in its URL? Read on the first render,
+  // before useSession's effect builds the client that consumes (and
+  // clears) the hash. Null on the server; this screen renders client-side.
+  const [arrivedByLink] = useState(
+    () => typeof window !== "undefined" && /[#&]access_token=/.test(window.location.hash),
+  );
+  // ...and was that sign-in started on THIS device? If not, the session
+  // is shown and confirmed before anything is entered under it
+  // (lib/return-to.ts explains the attack this stops).
+  const [startedHere] = useState(() => !arrivedByLink || signInStartedHere());
+  const [linkConfirmed, setLinkConfirmed] = useState(false);
+  useEffect(() => {
+    if (user && arrivedByLink) clearSignInStarted();
+  }, [user, arrivedByLink]);
 
   // The one owner of the .dark class after first paint (the layout's
   // inline script owns the paint before hydration).
@@ -341,6 +360,17 @@ export default function UploadScreen({
     return gate(<SignIn returnTo={returnTo} />);
   }
 
+  // Signed in by a link this device never asked for: say who, ask first.
+  if (user && arrivedByLink && !startedHere && !linkConfirmed) {
+    return gate(
+      <LinkSignedIn
+        email={user.email ?? ""}
+        onContinue={() => setLinkConfirmed(true)}
+        onSignOut={() => void getSupabase()?.auth.signOut({ scope: "local" })}
+      />,
+    );
+  }
+
   return (
     <Ledger
       key={user?.id ?? "anon"}
@@ -349,6 +379,43 @@ export default function UploadScreen({
       isConfigured={isConfigured}
       layout={layout}
     />
+  );
+}
+
+/** "This link signed this device in as X" — the one screen between a
+ *  token that arrived in the URL and the ledger, when no sign-in was
+ *  started here. Continue is the honest path for a link opened on another
+ *  device; Sign out (this device only) is the way out of someone else's
+ *  account. */
+function LinkSignedIn({
+  email,
+  onContinue,
+  onSignOut,
+}: {
+  email: string;
+  onContinue: () => void;
+  onSignOut: () => void;
+}) {
+  const { t } = useLocale();
+  return (
+    <div className="mx-auto w-full max-w-sm space-y-4 pt-4 text-center lg:pt-10">
+      <h2 className="text-lg font-semibold">{t("signin.linkedTitle")}</h2>
+      <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("signin.linkedBody", { email })}</p>
+      <button
+        type="button"
+        className="w-full rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90"
+        onClick={onContinue}
+      >
+        {t("signin.linkedContinue")}
+      </button>
+      <button
+        type="button"
+        className="min-h-11 w-full text-sm text-neutral-500 hover:underline"
+        onClick={onSignOut}
+      >
+        {t("signin.linkedNotMe")}
+      </button>
+    </div>
   );
 }
 
@@ -423,7 +490,10 @@ function Ledger({
   const [saveWaiting, setSaveWaiting] = useState(false);
   /** "Back online — everything is saved", for a few seconds after that. */
   const [saveRecovered, setSaveRecovered] = useState(false);
-  const saveQueue = useRef<SaveQueue>({ waiting: false, stopped: false, wake: null, outcomes: new Set() });
+  const saveQueue = useRef<SaveQueue>({ waiting: false, stopped: false, wake: null, consentedLoss: false, outcomes: new Set() });
+  /** "Try now" was tapped and the attempt is running (or waiting on
+   *  auth-js, which caches a failed token refresh for a minute). */
+  const [saveTrying, setSaveTrying] = useState(false);
   useEffect(() => {
     const queue = saveQueue.current;
     queue.stopped = false;
@@ -431,7 +501,7 @@ function Ledger({
       // The Ledger is going away (account switch, a sign-out in another
       // tab): nothing may keep retrying into the next account's session.
       // What was still parked is lost — say so on the next signed-in mount.
-      if (queue.waiting) lostWritesWhileSignedOut = true;
+      if (queue.waiting && !queue.consentedLoss) lostWritesWhileSignedOut = true;
       queue.stopped = true;
       queue.wake?.();
     };
@@ -732,11 +802,20 @@ function Ledger({
                 parked = true;
                 queue.waiting = true;
                 setSaveWaiting(true);
+                setSaveTrying(false);
                 setSaveRecovered(false);
                 // Everyone awaiting a queued save has their answer: parked.
                 for (const done of queue.outcomes) done();
-                await parkUntilRetry(queue, attempt);
-                if (!queue.stopped) continue;
+                const why = await parkUntilRetry(queue, attempt);
+                if (!queue.stopped) {
+                  // Back online, tab in front, "Try now": start the short
+                  // 2/5/15 s steps again — auth-js caches a FAILED token
+                  // refresh for a minute, so the first attempt after a
+                  // long outage can still answer "offline" and only the
+                  // next one lands.
+                  if (why === "woken") attempt = -1;
+                  continue;
+                }
               }
               console.error("Save failed:", cause);
               // translate + currentLocale, not `t`: this callback (and the load
@@ -758,6 +837,7 @@ function Ledger({
           if (parked) {
             queue.waiting = false;
             setSaveWaiting(false);
+            setSaveTrying(false);
           }
           queue.outcomes.delete(settle);
           settle();
@@ -1844,9 +1924,18 @@ function Ledger({
           ),
         );
       }
-      const claimed = await claimTxnForSale(txn.id, claimPatch);
+      let claimed = await claimTxnForSale(txn.id, claimPatch);
       if (!claimed) {
-        // This payment was spent on another device since this tab loaded.
+        // Either this payment was spent on another device since this tab
+        // loaded — or this is a RETRY of this very work after its own
+        // claim landed and the network dropped before the settle (the
+        // claim's conditional update reads its own earlier success as
+        // "taken"). Ask the database which: a link to THIS sale is ours,
+        // and the settle below still has to happen.
+        const linked = await findLinkedTxn(saleId);
+        if (linked?.id === txn.id) claimed = true;
+      }
+      if (!claimed) {
         rollBack();
         return;
       }
@@ -2616,19 +2705,46 @@ function Ledger({
     // fail RLS, and be dropped with its error banner unmounted —
     // silent loss at the exact moment no UI remains to report it.
     const queue = saveQueue.current;
-    // A save still waiting for the network cannot be drained: signing out
-    // now loses it. That is the owner's call, asked once.
-    if (queue.waiting && !window.confirm(t("home.signOutUnsaved"))) return;
+    const supabase = getSupabase();
+    if (queue.waiting) {
+      // A save still waiting for the network cannot be drained: signing
+      // out loses it. That is the owner's call, asked once — and the loss
+      // must be the PRICE of signing out, not a side effect of trying:
+      // offline with an expired token auth-js refuses to sign out (it
+      // keeps the session rather than strand it), so the save stays
+      // parked until the sign-out actually happens. Success unmounts this
+      // Ledger, whose cleanup stops the queue; `consentedLoss` keeps that
+      // cleanup from flagging the next account's first screen.
+      if (!window.confirm(t("home.signOutUnsaved"))) return;
+      queue.consentedLoss = true;
+      let failed = false;
+      try {
+        const result = await supabase?.auth.signOut({ scope: "global" });
+        failed = Boolean(result?.error);
+      } catch {
+        failed = true;
+      }
+      if (failed) {
+        // Still here, still parked: say what sign-out needs.
+        queue.consentedLoss = false;
+        setError(translate(currentLocale(), "home.signOutOffline"));
+        setStatus("error");
+      }
+      return;
+    }
+    // Nothing parked: stop retries, drain, then revoke. "global" (auth-js's
+    // default, spelled out): GoTrue revokes every session for the account,
+    // not just this device's. Whether sign-out should be per-device
+    // instead is an owner call, not a fix.
     queue.stopped = true;
     queue.wake?.();
-    await writeChain.current;
-    // "global" (auth-js's default, spelled out): GoTrue revokes
-    // every session for the account, not just this device's.
-    // Whether sign-out should be per-device instead is an owner
-    // call, not a fix.
-    await getSupabase()?.auth.signOut({ scope: "global" });
-    // Still here (the sign-out itself failed): saves may retry again.
-    queue.stopped = false;
+    try {
+      await writeChain.current;
+      await supabase?.auth.signOut({ scope: "global" });
+    } finally {
+      // Still here (the sign-out itself failed): saves may retry again.
+      queue.stopped = false;
+    }
   }
 
   /** The write queue's own line, beside the red error banner: amber while
@@ -2640,11 +2756,15 @@ function Ledger({
         role="alert"
         className={`${where === "sidebar-sticky" ? "sticky top-2 z-20 " : where === "phone" ? "mb-4 " : ""}flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-sm text-amber-900`}
       >
-        <span className="py-1">{t("home.saveWaiting")}</span>
+        <span className="py-1">{t(saveTrying ? "home.saveTrying" : "home.saveWaiting")}</span>
         <button
           type="button"
-          className="min-h-11 shrink-0 px-2 font-medium underline"
-          onClick={() => saveQueue.current.wake?.()}
+          className="min-h-11 shrink-0 px-2 font-medium underline disabled:no-underline disabled:opacity-60"
+          disabled={saveTrying}
+          onClick={() => {
+            setSaveTrying(true);
+            saveQueue.current.wake?.();
+          }}
         >
           {t("home.saveRetryNow")}
         </button>
@@ -2967,7 +3087,7 @@ function Ledger({
               </p>
               <button
                 type="button"
-                className="text-sm text-neutral-500 hover:underline"
+                className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
                 onClick={undo}
                 disabled={decided.length === 0}
               >
@@ -3192,7 +3312,7 @@ function Ledger({
               transient failure doesn't show the safe state forever. */}
           <button
             type="button"
-            className="mt-4 w-full text-center text-sm text-neutral-500 hover:underline"
+            className="mt-4 min-h-11 w-full text-center text-sm text-neutral-500 hover:underline"
             onClick={openSettings}
           >
             {t("settings.title")}

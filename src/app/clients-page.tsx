@@ -157,7 +157,7 @@ export default function ClientsPage({
         <div className="flex items-baseline justify-between">
           <button
             type="button"
-            className="text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
             onClick={() => {
               setOpenId(null);
               setEditing(false);
@@ -167,7 +167,7 @@ export default function ClientsPage({
           </button>
           <button
             type="button"
-            className="text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
             onClick={onClose}
           >
             {t("common.close")}
@@ -261,7 +261,7 @@ export default function ClientsPage({
             )}
             <button
               type="button"
-              className="mt-1 text-sm text-neutral-500 hover:underline"
+              className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
               onClick={() => {
                 setName(detail.name);
                 setNotes(detail.notes);
@@ -329,14 +329,14 @@ export default function ClientsPage({
                         <div className="flex shrink-0 gap-2">
                           <button
                             type="button"
-                            className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                            className="min-h-11 rounded-md border border-neutral-300 px-3 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
                             onClick={() => startTemplateEdit(tpl)}
                           >
                             {t("common.edit")}
                           </button>
                           <button
                             type="button"
-                            className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                            className="min-h-11 rounded-md border border-neutral-300 px-3 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
                             onClick={() =>
                               onUpdateTemplate(tpl.id, {
                                 active: !tpl.active,
@@ -628,7 +628,7 @@ export default function ClientsPage({
                     </span>
                     <button
                       type="button"
-                      className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                      className="min-h-11 rounded-md border border-neutral-300 px-3 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
                       onClick={() => onLogAgain(sale)}
                     >
                       {t("common.logAgain")}
@@ -678,7 +678,7 @@ export default function ClientsPage({
         <h2 className="text-sm font-semibold">{t("clients.title")}</h2>
         <button
           type="button"
-          className="text-sm text-neutral-500 hover:underline"
+          className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
           onClick={onClose}
         >
           {t("common.close")}

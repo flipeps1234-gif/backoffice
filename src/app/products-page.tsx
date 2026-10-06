@@ -209,7 +209,7 @@ export default function ProductsPage({
         <h2 className="text-sm font-semibold">{t("products.title")}</h2>
         <button
           type="button"
-          className="text-sm text-neutral-500 hover:underline"
+          className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
           onClick={onClose}
         >
           {t("common.close")}

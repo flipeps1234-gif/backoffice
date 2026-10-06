@@ -20,6 +20,39 @@ type SaleLike = { state: string; date: string; lineItems: LineLike[] };
 
 export type YearSeries = { inCents: number[]; outCents: number[]; keptCents: number[] };
 
+/**
+ * Where the month chart's callout box goes (its top edge, in drawing
+ * units). Above the active point when that spot is clear of every dot
+ * the box would span; else below the lowest of those dots, inside the
+ * shaded area (the running month is usually the LOW one, and a box above
+ * it hid four months of dots on a phone); else just below the active
+ * point; else the top edge. The box never leaves the plot and — unless
+ * the plot is too short for it at all — never covers the active dot
+ * (pass-2 review: the first version's last fallback did, on a tall month
+ * tapped on a phone).
+ */
+export function calloutTop(a: {
+  top: number;
+  plotHeight: number;
+  boxX: number;
+  boxWidth: number;
+  boxHeight: number;
+  activeX: number;
+  activeY: number;
+  points: { x: number; y: number }[];
+}): number {
+  const { top, plotHeight, boxX, boxWidth, boxHeight, activeY, points } = a;
+  const floor = top + plotHeight - (boxHeight + 4);
+  const under = points.filter((p) => p.x >= boxX - 6 && p.x <= boxX + boxWidth + 6);
+  const above = activeY - (boxHeight + 12);
+  const clearAbove = above >= top && under.every((p) => p.y < above - 6 || p.y > above + boxHeight + 6);
+  if (clearAbove) return above;
+  const below = Math.max(activeY, ...under.map((p) => p.y)) + 14;
+  if (below <= floor) return below;
+  if (activeY + 14 <= floor) return activeY + 14;
+  return Math.min(Math.max(above, top), floor);
+}
+
 const saleCents = (sale: SaleLike): number =>
   sale.lineItems.reduce((sum, line) => sum + Math.round(line.quantity * line.unitCents), 0);
 

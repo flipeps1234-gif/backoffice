@@ -97,6 +97,85 @@ regenerating. Queued for pass 2: tap targets under 44px on the phone
 (Settings link 20px, "Not a payment" 16px, Got cash / Log again 30px —
 design-tokens.md says 44).
 
+PASS 2 — NOT CLEAN (count 0). Three reviewers (two newcode over the
+pass-1 commit 6ce1cf9, one AUTH/SESSION/ABUSE — a lens never run as
+such) plus TOUCH ERGONOMICS by tooling (a measuring script over every
+phone screen, signed in against the mock). All three reviewers stalled
+once when the connection dropped and were re-run.
+- AUTH/SESSION (1 finding, MED): the implicit flow consumes any
+  `#access_token` in the URL with nothing proving this browser asked —
+  an attacker's link (their own fresh tokens) signed the victim's device
+  into the ATTACKER's account, silently replacing an existing session,
+  and everything typed after that was readable there. Fixed without
+  breaking cross-device links: SignIn marks `contado.signinStarted`
+  (1 h) when a link or Google sign-in starts; UploadScreen reads the
+  hash on its first render (before auth-js consumes it) and, if a
+  session arrived by URL with no marker, shows "Signed in from a link …
+  as {email}" with Continue / "Not me — sign out" (local scope) before
+  the Ledger. PKCE was the alternative (rejected: it ends the "link signs
+  in whichever browser opens it" promise; the owner may still choose
+  it). Clean with evidence: token leakage (fragments, GA, Referer,
+  logs), enumeration, every API route's auth, RLS 0021–0025, sign-out
+  residue, deletion; the *.vercel.app alias 307s to the apex (checked).
+- NEWCODE over the save queue (3 findings + 1 LOW): MED — signOut set
+  `stopped` and dropped the parked save BEFORE auth-js agreed to sign
+  out; offline with an EXPIRED token auth-js refuses (keeps the session)
+  so the user lost the save and stayed signed in, and a thrown signOut
+  left `stopped` true for the Ledger's life. Now a parked queue is never
+  stopped: sign out first; success unmounts the Ledger (cleanup stops
+  the queue; `consentedLoss` keeps it from flagging the next mount),
+  failure shows home.signOutOffline and leaves the save parked; the
+  drain path resets `stopped` in a finally. MED — linkSaleToTxn's work
+  was not safe to re-run: its own landed claim (`matched_sale_id is
+  null` filter) read as "spent elsewhere" on the retry → rollBack + a
+  green "everything is saved" over an open sale whose payment is
+  claimed; now a failed claim asks findLinkedTxn and treats a link to
+  THIS sale as its own. LOW — auth-js caches a failed token refresh for
+  60 s, so `online`/visible/"Try now" could re-park: a wake now restarts
+  the 2/5/15 s steps and "Try now" shows "Trying again — this can take
+  up to a minute" while it runs. LOW, recorded: `beforeunload` is
+  desktop-only (iOS fires pagehide; Android shows no dialog) — on a
+  phone the parked save's protection is the copy. Verified clean:
+  strict ordering behind a parked head (harness), every insert keyed by
+  a client id, RevertedWrite never retried (right), isNetworkSaveError
+  against the real libs (postgrest-js `${name}: ${message}`, status 0;
+  5xx bodies dropped), no stuck states, banners consistent, sign-in URL
+  strip cannot race a successful hash, file inputs safe in every browser.
+- NEWCODE over the rest (3 findings): MED — the new callout fallback
+  COVERED the active dot on the compact chart (tall month tapped on a
+  phone); placement is now pure `calloutTop` in lib/desktop.ts (tested
+  over six series × every month: in the plot, off the active dot), the
+  demo's copy has the same fallback. LOW — csv.ts: `;"=cmd` (the quote
+  the quoting step doubles) slipped between the separator and the
+  trigger; the class is `[\s"]*` now, with the cases in the test. LOW —
+  0025's quantity ≤ 1e9 had no twin in the client; validateLineItems and
+  the size field now share MAX_QUANTITY, so operator and owner total a
+  row the same way. Verified clean: 0025 raises on nothing (scalars,
+  nests, 1e308, 200 lines of 1e17, 1e-16383), CASE order holds, admin
+  screen renders account data as text only, every CSV column passes
+  through field() or is an enum/number, the size field reconciles with
+  the stepper/prefill/kind change, nameTaken matches lower(name) (Turkish
+  İ aside), one <main>/<h1> per page, `pointer-fine:` exists in TW 4.3.3.
+- TOUCH ERGONOMICS (tooling; design-tokens.md's 44px rule): every form
+  field was 14px — iOS Safari zooms the page on focus and leaves it so;
+  an unlayered rule makes `.text-sm`/`.text-xs` fields 16px on
+  `(pointer: coarse)`. Every screen's Close/Back/Edit/Delete text link
+  (20px) is a 44px row (`-mx-2 min-h-11 px-2`, text where it was); Got
+  cash / Log again / history Log again are 44px; category and client
+  chips 40px; the sheet's direction pill and "Not a payment", the
+  header language pills and the public nav/footer links keep their look
+  and gain a 12×8px hit area (`tap` utility in globals.css — verified
+  elementFromPoint 9px above the pill resolves to it); checkbox rows are
+  44px with 20px boxes. Re-measured after: nothing under 40px except the
+  brand link and the Settings Save (40).
+Checked against the mock, signed in: link without marker → confirm
+screen; "Not me" → signed out; link with marker → straight in;
+parked save + Sign out offline → asked, signed out, save lost by
+consent, nothing flagged; the amber banner on the phone layout; a
+1.5-hour sale, Got cash, duplicate-name refusal (pass 1) still hold.
+Owner-side, from the auth review: nothing new (Turnstile for the
+auth-email bucket is already recorded).
+
 ## Phone demo at /demoo — 2026-10-04
 
 Owner: "turn it into an interactive demo and put it at /demoo" — look B

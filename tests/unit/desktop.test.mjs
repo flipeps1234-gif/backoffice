@@ -16,7 +16,7 @@ const load = (relative, globals = {}) => {
   return exports;
 };
 
-const { yearSeries, yearsWithData, seriesMonths, expectedCentsIn } = load('../../src/lib/desktop.ts');
+const { yearSeries, yearsWithData, seriesMonths, expectedCentsIn, calloutTop } = load('../../src/lib/desktop.ts');
 
 const tx = (date, amountCents, extra = {}) => ({ business: true, date, direction: 'in', amountCents, ...extra });
 const sale = (date, state, lines) => ({ date, state, lineItems: lines.map(([quantity, unitCents]) => ({ quantity, unitCents })) });
@@ -122,6 +122,87 @@ test('returnTo: blocked storage never throws', () => {
   const { rememberReturnTo, takeReturnTo } = load('../../src/lib/return-to.ts', { localStorage });
   assert.doesNotThrow(() => rememberReturnTo('/demooo'));
   assert.equal(takeReturnTo(), '/app');
+});
+
+test('signInStarted: the marker says a sign-in began here within the hour, is not consumed by a read, and clears', () => {
+  const localStorage = fakeStorage();
+  const { markSignInStarted, signInStartedHere, clearSignInStarted } = load('../../src/lib/return-to.ts', { localStorage });
+  assert.equal(signInStartedHere(), false);                      // a link on a device that never asked: confirm first
+  markSignInStarted(1000);
+  assert.equal(signInStartedHere(2000), true);
+  assert.equal(signInStartedHere(2000), true);                   // React may run an initializer twice
+  assert.equal(signInStartedHere(1000 + 60 * 60 * 1000), false); // a magic link's own lifetime
+  assert.equal(signInStartedHere(500), false);                   // a clock set back
+  clearSignInStarted();
+  assert.equal(signInStartedHere(2000), false);
+  localStorage.setItem('contado.signinStarted', 'soon');
+  assert.equal(signInStartedHere(), false);
+});
+
+test('signInStarted: blocked storage answers "not started" (the confirmation screen) and never throws', () => {
+  const localStorage = {
+    getItem() { throw new Error('blocked'); },
+    setItem() { throw new Error('blocked'); },
+    removeItem() { throw new Error('blocked'); },
+  };
+  const { markSignInStarted, signInStartedHere, clearSignInStarted } = load('../../src/lib/return-to.ts', { localStorage });
+  assert.doesNotThrow(() => markSignInStarted());
+  assert.equal(signInStartedHere(), false);
+  assert.doesNotThrow(() => clearSignInStarted());
+});
+
+// ---- the chart callout ----
+
+/** The compact Chart's geometry (desktop-overview.tsx), reproduced. */
+const compactChart = (values) => {
+  const W = 360, H = 280, L = 48, R = 12, T = 16, B = 36, boxW = 200, boxH = 72;
+  const pw = W - L - R, ph = H - T - B, n = values.length;
+  const hi = Math.max(...values, 0), lo = Math.min(...values, 0);
+  const span = Math.max(hi - lo, 1);
+  const STEPS = [1000, 2000, 2500, 5000, 10000, 20000, 25000, 50000, 100000, 200000, 250000, 500000, 1000000, 2000000, 2500000, 5000000];
+  const step = STEPS.find((s) => Math.ceil(span / s) <= 6) ?? 5000000;
+  const top = Math.max(Math.ceil(hi / step) * step, step), bottom = Math.floor(lo / step) * step;
+  const x = (i) => (n === 1 ? L + pw / 2 : L + (pw * i) / (n - 1));
+  const y = (v) => T + ph - ((v - bottom) / (top - bottom)) * ph;
+  return (active) => {
+    const bx = Math.min(Math.max(active > (n - 1) / 2 ? x(active) - boxW - 16 : x(active) + 16, L), W - R - boxW);
+    const by = calloutTop({ top: T, plotHeight: ph, boxX: bx, boxWidth: boxW, boxHeight: boxH, activeX: x(active), activeY: y(values[active]), points: values.map((v, i) => ({ x: x(i), y: y(v) })) });
+    return { by, px: x(active), py: y(values[active]), T, ph, boxH };
+  };
+};
+
+test('callout: in the plot, never on the active dot — a steady year with a low running month, spikes, negatives, one month', () => {
+  const series = [
+    [80000, 90000, 85000, 95000, 100000, 92000, 88000, 97000, 91000, 5000],   // pass-2 review: months 3 and 4 were covered
+    [120000, 160000, 140000, 210000, 190000, 240000, 220000, 260000, 230000, 72000],
+    [0, 0, 0, 0, 900000, 0, 0],
+    [-30000, 50000, -20000, 80000, -60000, 40000, 10000, -5000],
+    [12345],
+    Array(12).fill(0),
+  ];
+  for (const values of series) {
+    const place = compactChart(values);
+    for (let active = 0; active < values.length; active += 1) {
+      const { by, py, T, ph, boxH } = place(active);
+      assert.ok(Number.isFinite(by), `finite for ${values} @${active}`);
+      assert.ok(by >= T && by + boxH <= T + ph, `inside the plot for ${values} @${active}: ${by}`);
+      assert.ok(py < by - 6 || py > by + boxH + 6, `off the active dot for ${values} @${active}: dot ${py}, box ${by}..${by + boxH}`);
+    }
+  }
+});
+
+test('callout: a low running month puts the box below the earlier dots, not over them', () => {
+  const values = [120000, 160000, 140000, 210000, 190000, 240000, 220000, 260000, 230000, 72000];
+  const place = compactChart(values);
+  const { by, boxH } = place(9);
+  const pts = values.map((v, i) => ({ v, i }));
+  // every dot the box spans horizontally (x >= bx-6) sits above the box
+  const W = 360, L = 48, pw = 300; const x = (i) => L + (pw * i) / 9;
+  const bx = Math.min(Math.max(x(9) - 200 - 16, L), W - 12 - 200);
+  const yOf = (v) => 16 + 228 - (v / 300000) * 228;
+  // a dot is drawn with radius 3.5: its centre must clear the box edge by that
+  for (const { v, i } of pts) if (i !== 9 && x(i) >= bx - 6) assert.ok(yOf(v) < by - 3.5, `month ${i} dot ${yOf(v)} above box top ${by}`);
+  assert.ok(by + boxH <= 16 + 228);
 });
 
 // ---- the desktop dictionary ----

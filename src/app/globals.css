@@ -43,6 +43,34 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Touch ergonomics (find-and-fix pass 2, 2026-10-05). design-tokens.md
+   says 44px on real buttons; a sweep of every phone screen found the
+   screens' Close/Back links at 20px, list buttons at 26–30px and the
+   header's language pills at 24px. Two tools:
+
+   `tap` grows an element's HIT AREA by 12px above/below and 8px either
+   side without moving a pixel of layout — for text links and pills whose
+   drawn size is the design. (A ::before of the element itself, so a touch
+   on it fires the element's own click.)
+
+   The media rule: iOS Safari zooms the page in when a focused field's
+   font is under 16px, and leaves it zoomed. Every form field here is
+   text-sm (14px). On touch screens they render at 16px instead; unlayered
+   on purpose so it outranks the utility classes. */
+@utility tap {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -0.75rem -0.5rem;
+  }
+}
+@media (pointer: coarse) {
+  :is(input, select, textarea):is(.text-sm, .text-xs) {
+    font-size: 1rem;
+  }
+}
+
 /* The indeterminate progress stripe — see progress-bar.tsx for why some
    states genuinely have no percentage to report. */
 @keyframes progress-sweep {

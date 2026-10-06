@@ -123,7 +123,7 @@ export default function Dashboard({
         <div className="flex items-baseline justify-between print:hidden">
           <button
             type="button"
-            className="text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
             onClick={() => setProofOpen(false)}
           >
             {t("common.back")}
@@ -219,7 +219,7 @@ export default function Dashboard({
         {onClose && (
           <button
             type="button"
-            className="text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
             onClick={onClose}
           >
             {t("common.close")}

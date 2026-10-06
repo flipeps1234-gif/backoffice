@@ -17,6 +17,7 @@ import {
   type RecurringTemplate,
 } from "@/lib/recurring";
 import {
+  MAX_QUANTITY,
   lineFromService,
   saleTotalCents,
   type LineItem,
@@ -171,7 +172,7 @@ export default function NewSale({
     kindChanged(service) ? undefined : sizeText.get(service.id);
   function typeSize(service: Service, text: string) {
     const size = Number.parseFloat(text.replace(",", "."));
-    setQty(service, Number.isFinite(size) && size > 0 ? size : 0);
+    setQty(service, Number.isFinite(size) && size > 0 && size <= MAX_QUANTITY ? size : 0);
     // After setQty: its updater drops the entry, this one puts the new text back.
     setSizeText((current) => new Map(current).set(service.id, text));
   }
@@ -371,7 +372,7 @@ export default function NewSale({
       <h2 className="text-sm font-semibold">{title}</h2>
       <button
         type="button"
-        className="text-sm text-neutral-500 hover:underline"
+        className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
         onClick={onClose}
       >
         {t("common.close")}
@@ -412,7 +413,7 @@ export default function NewSale({
         </div>
         <button
           type="button"
-          className="w-full text-sm text-neutral-500 hover:underline"
+          className="min-h-11 w-full text-sm text-neutral-500 hover:underline"
           onClick={() => setStep("checkout")}
         >
           {t("sale.backToDetails")}
@@ -456,7 +457,7 @@ export default function NewSale({
         )}
         <button
           type="button"
-          className="w-full text-sm text-neutral-500 hover:underline"
+          className="min-h-11 w-full text-sm text-neutral-500 hover:underline"
           onClick={() => setStep("paid")}
         >
           {t("common.back")}
@@ -498,7 +499,7 @@ export default function NewSale({
                       key={c.id}
                       type="button"
                       aria-pressed={knownClient?.id === c.id}
-                      className={`rounded-full px-3 py-1.5 text-sm font-medium ${
+                      className={`min-h-10 rounded-full px-3 text-sm font-medium ${
                         knownClient?.id === c.id
                           ? "bg-foreground text-background"
                           : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
@@ -525,9 +526,10 @@ export default function NewSale({
             ))}
           </datalist>
           {unknownName && (
-            <label className="mt-2 flex items-center gap-2 text-sm">
+            <label className="mt-2 flex min-h-11 items-center gap-2 text-sm">
               <input
                 type="checkbox"
+                className="h-5 w-5"
                 checked={saveClient}
                 onChange={(e) => setSaveClient(e.target.checked)}
               />
@@ -557,7 +559,7 @@ export default function NewSale({
           {!showProof && !notes && !photo ? (
             <button
               type="button"
-              className="text-sm font-medium text-neutral-500 hover:underline"
+              className="-mx-2 min-h-11 px-2 text-sm font-medium text-neutral-500 hover:underline"
               onClick={() => setShowProof(true)}
             >
               {t("sale.addProof")}
@@ -588,7 +590,7 @@ export default function NewSale({
                     />
                     <button
                       type="button"
-                      className="text-sm text-neutral-500 hover:underline"
+                      className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
                       onClick={() => setPhoto(null)}
                     >
                       {t("sale.photoRemove")}
@@ -620,9 +622,10 @@ export default function NewSale({
         </div>
 
         <div className="rounded-lg border border-neutral-300 p-3 dark:border-neutral-700">
-          <label className="flex items-center gap-2 text-sm font-medium">
+          <label className="flex min-h-11 items-center gap-2 text-sm font-medium">
             <input
               type="checkbox"
+              className="h-5 w-5"
               checked={recurring}
               disabled={!clientName.trim()}
               onChange={(e) => setRecurring(e.target.checked)}
@@ -704,7 +707,7 @@ export default function NewSale({
         </button>
         <button
           type="button"
-          className="w-full text-sm text-neutral-500 hover:underline"
+          className="min-h-11 w-full text-sm text-neutral-500 hover:underline"
           onClick={() => setStep("pick")}
         >
           {t("sale.backToProducts")}
@@ -774,7 +777,7 @@ export default function NewSale({
         {!clientName.trim() && (
           <button
             type="button"
-            className="w-full text-sm text-neutral-500 hover:underline"
+            className="min-h-11 w-full text-sm text-neutral-500 hover:underline"
             onClick={() => setStep("pick")}
           >
             {t("sale.skipForNow")}
@@ -930,7 +933,7 @@ export default function NewSale({
       {flowOrder === "client-first" && !prefill && (
         <button
           type="button"
-          className="w-full text-sm text-neutral-500 hover:underline"
+          className="min-h-11 w-full text-sm text-neutral-500 hover:underline"
           onClick={() => setStep("client")}
         >
           {t("sale.backToClient")}

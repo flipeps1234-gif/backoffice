@@ -48,7 +48,7 @@ export default function RecentSales({
         <h2 className="text-sm font-semibold">{t("common.logAgain")}</h2>
         <button
           type="button"
-          className="text-sm text-neutral-500 hover:underline"
+          className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
           onClick={onClose}
         >
           {t("common.close")}

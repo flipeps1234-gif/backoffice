@@ -85,7 +85,7 @@ export default function OwedTab({
         {onClose && (
           <button
             type="button"
-            className="text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
             onClick={onClose}
           >
             {t("common.close")}
@@ -144,14 +144,14 @@ export default function OwedTab({
                   </span>
                   <button
                     type="button"
-                    className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                    className="min-h-11 rounded-md border border-neutral-300 px-3 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
                     onClick={() => onMarkCash(sale.id)}
                   >
                     {t("common.gotCash")}
                   </button>
                   <button
                     type="button"
-                    className="rounded-md border border-neutral-300 px-2 py-1.5 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+                    className="min-h-11 rounded-md border border-neutral-300 px-3 text-xs font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
                     onClick={() => onLogAgain(sale)}
                   >
                     {t("common.logAgain")}

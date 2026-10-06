@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { rememberReturnTo } from "@/lib/return-to";
+import { markSignInStarted, rememberReturnTo } from "@/lib/return-to";
 import { getSupabase } from "@/lib/supabase/client";
 import type { MessageKey } from "@/lib/i18n";
 import { currentLocale } from "@/lib/locale";
@@ -232,6 +232,7 @@ export default function SignIn({
     setBusy(true);
     setError("");
     rememberReturnTo(returnTo);
+    markSignInStarted();
 
     const { error: sendError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
@@ -271,6 +272,7 @@ export default function SignIn({
     setBusy(true);
     setError("");
     rememberReturnTo(returnTo);
+    markSignInStarted();
     // Lands on the bare origin like the magic link (the only allowed
     // redirect); the landing forwards the tokens to /app. select_account
     // so a person with two Google accounts gets to choose every time.

@@ -157,7 +157,7 @@ export default function SwipeDeck({
 
       <button
         type="button"
-        className="text-sm text-neutral-500 hover:underline disabled:opacity-40 disabled:hover:no-underline"
+        className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline disabled:opacity-40 disabled:hover:no-underline"
         disabled={!canUndo}
         onClick={onUndo}
       >

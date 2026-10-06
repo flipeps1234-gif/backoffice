@@ -141,6 +141,9 @@ export const EXPECTED_FLAG_DAYS = 14;
  * parse, and money must be a whole number of cents in range.
  */
 export const MAX_CENTS = 99_999_999;
+/** Hours, rooms or square feet on one line: a billion is already absurd,
+ *  and the database total ignores anything above it (migration 0025). */
+export const MAX_QUANTITY = 1_000_000_000;
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
@@ -157,10 +160,13 @@ export const validateLineItems = (raw: unknown): LineItem[] => {
     if (!isObject(entry)) continue;
     const unitCents = asCents(entry.unitCents);
     if (unitCents === null) continue;
+    // Bounded above too (1e9), the bound admin_overview() (0025) uses, so
+    // the owner's screen and the operator's never total a row differently.
     const quantity =
       typeof entry.quantity === "number" &&
       Number.isFinite(entry.quantity) &&
-      entry.quantity > 0
+      entry.quantity > 0 &&
+      entry.quantity <= MAX_QUANTITY
         ? entry.quantity
         : null;
     if (quantity === null) continue;

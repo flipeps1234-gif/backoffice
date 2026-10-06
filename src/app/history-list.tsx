@@ -71,7 +71,7 @@ export default function HistoryList({
         {onClose && (
           <button
             type="button"
-            className="text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
             onClick={onClose}
           >
             {t("common.close")}
@@ -129,7 +129,7 @@ export default function HistoryList({
                     </span>
                     <button
                       type="button"
-                      className="rounded-md border border-neutral-300 px-2 py-1 text-xs font-medium text-neutral-900 hover:bg-neutral-50"
+                      className="min-h-11 rounded-md border border-neutral-300 px-3 text-xs font-medium text-neutral-900 hover:bg-neutral-50"
                       onClick={() =>
                         onLogAgain({
                           payer: tx.payer,

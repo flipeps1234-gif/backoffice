@@ -36,6 +36,16 @@ export const messages = {
     es: "Parte de esto está solo en pantalla por ahora. Deja esta página abierta — se guarda solo cuando vuelva la conexión.",
     pt: "Parte disto está só na tela por enquanto. Deixe esta página aberta — salva sozinho quando a conexão voltar.",
   },
+  "home.saveTrying": {
+    en: "Trying again — this can take up to a minute.",
+    es: "Intentando de nuevo — puede tardar hasta un minuto.",
+    pt: "Tentando de novo — pode levar até um minuto.",
+  },
+  "home.signOutOffline": {
+    en: "Couldn't sign out — that needs a connection. Your unsaved changes are still waiting and save when you're back online.",
+    es: "No se pudo cerrar sesión — hace falta conexión. Tus cambios sin guardar siguen en espera y se guardan cuando vuelva la conexión.",
+    pt: "Não deu para sair — isso precisa de conexão. Suas mudanças não salvas continuam esperando e são salvas quando a conexão voltar.",
+  },
   "home.signOutUnsaved": {
     en: "Some changes haven't saved to your account yet. Sign out anyway? They will be lost.",
     es: "Algunos cambios todavía no se guardaron en tu cuenta. ¿Cerrar sesión de todos modos? Se perderán.",

@@ -112,7 +112,7 @@ export default function ConfirmationSheet({
               <button
                 type="button"
                 aria-pressed={tx.direction === "out"}
-                className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                className={`tap inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                   tx.direction === "out"
                     ? "bg-red-50 text-red-700 ring-1 ring-red-200"
                     : "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
@@ -131,7 +131,7 @@ export default function ConfirmationSheet({
               {canRemove && (
                 <button
                   type="button"
-                  className="text-xs text-neutral-500 hover:underline"
+                  className="tap text-xs text-neutral-500 hover:underline"
                   onClick={() => onRemove?.(tx.id)}
                 >
                   {t("sheet.notAPayment")}

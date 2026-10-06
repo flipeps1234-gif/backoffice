@@ -36,7 +36,10 @@ import type { Transaction } from "./transaction";
  * trigger character at the start AND after every ";".
  */
 const field = (value: string): string => {
-  const safe = value.replace(/\t/g, " ").replace(/(^|;)(\s*)([=+\-@\r])/g, "$1$2'$3");
+  // `[\s"]*`: the quoting step below doubles a quote, and `;""=cmd` is the
+  // exact "a quote that opens the ;-cell and closes at once" shape a
+  // ;-locale reader strips before it looks at the first character.
+  const safe = value.replace(/\t/g, " ").replace(/(^|;)([\s"]*)([=+\-@\r])/g, "$1$2'$3");
   return /[",;\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 };
 

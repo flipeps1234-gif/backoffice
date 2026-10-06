@@ -115,6 +115,24 @@ export const messages = {
     es: "Ese inicio de sesión no se completó. Intenta de nuevo abajo.",
     pt: "Esse login não foi concluído. Tente de novo abaixo.",
   },
+  // The confirmation shown when a session arrives in the URL on a device
+  // that never started a sign-in (upload-screen.tsx LinkSignedIn).
+  "signin.linkedTitle": {
+    en: "Signed in from a link",
+    es: "Sesión iniciada desde un enlace",
+    pt: "Login feito por um link",
+  },
+  "signin.linkedBody": {
+    en: "This link signed this device in as {email}. If that's you, continue. If it isn't, sign out — anything you add here would go into that account.",
+    es: "Este enlace inició sesión en este dispositivo como {email}. Si eres tú, continúa. Si no, cierra sesión — todo lo que agregues aquí iría a esa cuenta.",
+    pt: "Este link entrou neste aparelho como {email}. Se for você, continue. Se não for, saia — tudo o que você adicionar aqui iria para essa conta.",
+  },
+  "signin.linkedContinue": { en: "Continue", es: "Continuar", pt: "Continuar" },
+  "signin.linkedNotMe": {
+    en: "Not me — sign out",
+    es: "No soy yo — cerrar sesión",
+    pt: "Não sou eu — sair",
+  },
   "signin.googleFailed": {
     en: "Google sign-in didn't go through. Use the email link instead.",
     es: "No se pudo entrar con Google. Usa el enlace por correo.",

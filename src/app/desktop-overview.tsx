@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { revenueByService } from "@/lib/dashboard";
-import { expectedCentsIn, seriesMonths, yearSeries, yearsWithData } from "@/lib/desktop";
+import { expectedCentsIn, seriesMonths, yearSeries, yearsWithData, calloutTop } from "@/lib/desktop";
 import type { Sale } from "@/lib/sale";
 import type { Service } from "@/lib/service";
 import { formatCents, type Transaction } from "@/lib/transaction";
@@ -144,20 +144,19 @@ function Chart({
     Math.max(active > (n - 1) / 2 ? x(active) - boxW - 16 : x(active) + 16, L),
     W - R - boxW,
   );
-  // Above the point when that spot is clear. The month still in progress
-  // — the one the chart opens on — is usually LOWER than the ones before
-  // it, and the box would then sit on their dots (on the compact drawing
-  // it is wider than half the plot: four months hidden). So when any dot
-  // falls under it, it goes below the lowest of them instead, inside the
-  // shaded area; only when neither fits does it fall back to the top edge.
-  const py = y(values[active]);
-  const under = values
-    .map((v, i) => ({ px: x(i), py: y(v) }))
-    .filter((p) => p.px >= bx - 6 && p.px <= bx + boxW + 6);
-  const above = py - 84;
-  const clearAbove = above >= T && under.every((p) => p.py < above - 6 || p.py > above + 78);
-  const below = Math.max(py, ...under.map((p) => p.py)) + 14;
-  const by = clearAbove ? above : below <= T + ph - 76 ? below : Math.min(Math.max(above, T), T + ph - 76);
+  // Placement is pure and tested (lib/desktop.ts calloutTop): above the
+  // point when clear, else below the dots it would cover, never on the
+  // active dot.
+  const by = calloutTop({
+    top: T,
+    plotHeight: ph,
+    boxX: bx,
+    boxWidth: boxW,
+    boxHeight: 72,
+    activeX: x(active),
+    activeY: y(values[active]),
+    points: values.map((v, i) => ({ x: x(i), y: y(v) })),
+  });
   const monthTitle =
     active === partialIndex
       ? t("desktop.chart.soFar", { month: monthNames[active] })

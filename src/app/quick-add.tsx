@@ -529,7 +529,7 @@ export default function QuickAdd({
         </h2>
         <button
           type="button"
-          className="text-sm text-neutral-500 hover:underline"
+          className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
           onClick={onClose}
         >
           {t("common.close")}
@@ -589,7 +589,7 @@ export default function QuickAdd({
               key={id}
               type="button"
               aria-pressed={category === id}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+              className={`min-h-10 rounded-full px-3 text-xs font-medium ${
                 category === id
                   ? "bg-foreground text-background"
                   : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
@@ -613,7 +613,7 @@ export default function QuickAdd({
               key={service.id}
               type="button"
               aria-pressed={selected?.id === service.id}
-              className={`rounded-full px-3 py-2 text-sm font-medium ${
+              className={`min-h-10 rounded-full px-3 text-sm font-medium ${
                 selected?.id === service.id
                   ? "bg-emerald-600 text-white"
                   : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"

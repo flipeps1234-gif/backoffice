@@ -58,6 +58,8 @@ test('csv: no cell starts a formula under comma, semicolon or tab splitting', ()
     ['Bob', 'tip\t=1+1\tx'],
     ['Eve; +1', 'a;\r=2'],
     [' =1+1', ';-2+3'],
+    ['Ana;"=cmd|calc"', 'x;" "=HYPERLINK(1)'],
+    ['"=1+1', ';""@SUM(1)'],
   ];
   for (const make of [taxCsv, (rows) => everythingCsv(rows, [], [], [], [])]) {
     const csv = make(hostile.map(([p, m]) => row(p, m)), []);

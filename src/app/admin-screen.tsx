@@ -195,7 +195,7 @@ function Overview({
         <button
           type="button"
           onClick={onRefresh}
-          className="text-sm text-neutral-500 hover:underline"
+          className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
           title={`Fetched ${fetchedAt.toLocaleTimeString()}`}
         >
           Refresh

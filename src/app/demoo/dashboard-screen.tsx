@@ -97,7 +97,13 @@ function MonthChart({
   const above = py - 84;
   const clearAbove = above >= T && under.every((p) => p.py < above - 6 || p.py > above + 78);
   const below = Math.max(py, ...under.map((p) => p.py)) + 14;
-  const by = clearAbove ? above : below <= T + ph - 76 ? below : Math.min(Math.max(above, T), T + ph - 76);
+  const by = clearAbove
+    ? above
+    : below <= T + ph - 76
+      ? below
+      : py + 14 <= T + ph - 76
+        ? py + 14 // at least off the tapped dot
+        : Math.min(Math.max(above, T), T + ph - 76);
   const monthTitle = (i: number) => (i === partial ? `${MONTH_NAMES[i]} so far` : MONTH_NAMES[i]);
 
   return (
