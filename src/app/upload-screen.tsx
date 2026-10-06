@@ -208,6 +208,10 @@ type SaveQueue = {
   consentedLoss: boolean;
   /** Resolvers of persist()'s promises that have not had an outcome yet. */
   outcomes: Set<() => void>;
+  /** Items enqueued and not yet finished (running, parked or waiting). */
+  size: number;
+  /** The running item's first-outcome promise, while one is running. */
+  running: Promise<void> | null;
 };
 
 /** Resolve when it is worth trying the parked save again: the browser says
@@ -414,8 +418,28 @@ export default function UploadScreen({
         email={user.email ?? ""}
         onContinue={settleLink}
         onSignOut={() => {
-          settleLink();
-          void getSupabase()?.auth.signOut({ scope: "local" });
+          // Sign out FIRST; the gate falls only once the session is gone.
+          // Settling on the tap mounted the disowned account's Ledger for
+          // one /logout round-trip — long enough for its loads, the lang
+          // stamp and any due recurring sales to write into it (pass-6
+          // state enumeration). A refused sign-out (expired token offline)
+          // keeps the question up, which is the safe side.
+          void (async () => {
+            const supabase = getSupabase();
+            try {
+              await supabase?.auth.signOut({ scope: "local" });
+            } catch {
+              // Decided by the session check below.
+            }
+            let gone = true;
+            try {
+              const res = await supabase?.auth.getSession();
+              gone = !res?.data.session && !res?.error;
+            } catch {
+              gone = false;
+            }
+            if (gone) settleLink();
+          })();
         }}
       />,
     );
@@ -540,7 +564,15 @@ function Ledger({
   const [saveWaiting, setSaveWaiting] = useState(false);
   /** "Back online — everything is saved", for a few seconds after that. */
   const [saveRecovered, setSaveRecovered] = useState(false);
-  const saveQueue = useRef<SaveQueue>({ waiting: false, stopped: false, wake: null, consentedLoss: false, outcomes: new Set() });
+  const saveQueue = useRef<SaveQueue>({
+    waiting: false,
+    stopped: false,
+    wake: null,
+    consentedLoss: false,
+    outcomes: new Set(),
+    size: 0,
+    running: null,
+  });
   /** "Try now" was tapped and the attempt is running (or waiting on
    *  auth-js, which caches a failed token refresh for a minute). */
   const [saveTrying, setSaveTrying] = useState(false);
@@ -551,6 +583,11 @@ function Ledger({
   useEffect(() => {
     if (!saveRecovered || !focusRecovered.current) return;
     focusRecovered.current = false;
+    // Only if focus really was lost with the button: the person may have
+    // moved on to a field by now, and a phone's keyboard must not close
+    // under them because a save landed (pass-6 review).
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
     recoveredRef.current?.focus({ preventScroll: true });
   }, [saveRecovered]);
   useEffect(() => {
@@ -810,9 +847,11 @@ function Ledger({
         settle = resolve;
       });
       queue.outcomes.add(settle);
+      queue.size += 1;
       if (queue.waiting) settle();
       const next = writeChain.current.then(async () => {
         let parked = false;
+        queue.running = outcome;
         try {
           if (!isConfigured || !accountId) return;
           for (let attempt = 0; ; attempt += 1) {
@@ -862,6 +901,8 @@ function Ledger({
                 queue.waiting = true;
                 setSaveWaiting(true);
                 setSaveTrying(false);
+                // The "Try now" that may have started this attempt is over.
+                focusRecovered.current = false;
                 setSaveRecovered(false);
                 // Everyone awaiting a queued save has their answer: parked.
                 for (const done of queue.outcomes) done();
@@ -875,6 +916,12 @@ function Ledger({
                   if (why === "woken") attempt = -1;
                   continue;
                 }
+              }
+              // A network failure after the queue was stopped (this Ledger is
+              // unmounting under a write still in flight): nothing retries
+              // it, so say so on the next signed-in mount instead of nothing.
+              if (!reverted && queue.stopped && isNetworkSaveError(cause)) {
+                lostWritesWhileSignedOut = true;
               }
               console.error("Save failed:", cause);
               // translate + currentLocale, not `t`: this callback (and the load
@@ -899,6 +946,8 @@ function Ledger({
             setSaveTrying(false);
           }
           queue.outcomes.delete(settle);
+          queue.size -= 1;
+          if (queue.running === outcome) queue.running = null;
           settle();
         }
       });
@@ -2779,6 +2828,15 @@ function Ledger({
     // the session it was for (privacy lens: it is the one identifier the
     // app writes to the device).
     clearSignInStarted();
+    // Let every save already in the queue reach its FIRST outcome — landed,
+    // refused, or parked — with the retries untouched. Stopping the queue
+    // first made a network failure on a save still in flight count as
+    // "failed for good" on a Ledger about to unmount: the save the queue
+    // exists to protect, lost with no confirm and no trace (pass-6 state
+    // enumeration). Tick when an item is queued but not yet running.
+    while (!queue.waiting && queue.size > 0) {
+      await (queue.running ?? Promise.resolve());
+    }
     if (queue.waiting) {
       // A save still waiting for the network cannot be drained: signing
       // out loses it. That is the owner's call, asked once — and the loss
@@ -2841,8 +2899,26 @@ function Ledger({
    *  show beside the amber line (pass-5 review: a blanket gate hid them).
    *  Compared against the copy in every language, since `error` was
    *  translated when it was set. */
-  const errorIsSaveFailed =
-    error !== "" && LOCALES.some((l) => translate(l, "home.errSaveFailed") === error);
+  const errorIs = (key: "home.errSaveFailed" | "home.signOutOffline") =>
+    error !== "" && LOCALES.some((l) => translate(l, key) === error);
+  const errorIsSaveFailed = errorIs("home.errSaveFailed");
+  /** The red line, HIDDEN rather than unmounted when it yields (a remount
+   *  of a role=alert is announced as a fresh failure): the refused-save
+   *  copy yields while a save is parked (above), and "sign-out needs a
+   *  connection" yields once nothing is parked any more — its premise
+   *  ("your changes are still waiting") has ended (pass-6 review). */
+  const errorHidden =
+    (saveWaiting && errorIsSaveFailed) || (!saveWaiting && errorIs("home.signOutOffline"));
+  const errorLineEl = (extra = "") =>
+    status === "error" ? (
+      <p
+        role="alert"
+        hidden={errorHidden}
+        className={`${extra}rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900`}
+      >
+        {error}
+      </p>
+    ) : null;
 
   /** The write queue's own line, in the red error banner's slot — which it
    *  takes from the refused-save line while a save is parked (see above).
@@ -2850,11 +2926,11 @@ function Ledger({
    *  queue drains. Amber while
    *  a save waits for the network (with a way to try at once), then a
    *  short confirmation when it lands. Nothing when all is well. */
-  const saveQueueEl = (where: "phone" | "sidebar" | "sidebar-sticky" = "phone") =>
+  const saveQueueEl = (where: "phone" | "sidebar" = "phone") =>
     saveWaiting ? (
       <p
         role="alert"
-        className={`${where === "sidebar-sticky" ? "sticky top-2 z-20 " : where === "phone" ? "mb-4 " : ""}flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-sm text-amber-900`}
+        className={`${where === "phone" ? "mb-4 " : ""}flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-sm text-amber-900`}
       >
         <span className="py-1">{t(saveTrying ? "home.saveTrying" : "home.saveWaiting")}</span>
         {/* aria-disabled, not disabled: a disabled control drops focus to
@@ -2881,9 +2957,9 @@ function Ledger({
         ref={recoveredRef}
         tabIndex={-1}
         role="status"
-        className={`${where === "sidebar-sticky" ? "sticky top-2 z-20 " : where === "phone" ? "mb-4 " : ""}rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 outline-none`}
+        className={`${where === "phone" ? "mb-4 " : ""}rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 outline-none`}
       >
-        {t(saveFailed ? "home.saveRecoveredPartial" : "home.saveRecovered")}
+        {t(status === "error" && errorIsSaveFailed ? "home.saveRecoveredPartial" : "home.saveRecovered")}
       </p>
     ) : null;
 
@@ -3210,9 +3286,18 @@ function Ledger({
                 {t("home.addMore")}
               </button>
               {accountId && saveWaiting ? (
-                <p className="text-xs text-amber-700 dark:text-amber-400">
-                  {t("home.saveWaitingNote")}
-                </p>
+                <>
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    {t("home.saveWaitingNote")}
+                  </p>
+                  {/* Both, when both are true: the waiting note alone promised
+                      that everything here would save itself (pass-6 review). */}
+                  {saveFailed && (
+                    <p className="text-xs text-red-700 dark:text-red-400">
+                      {t("home.saveFailedNote")}
+                    </p>
+                  )}
+                </>
               ) : accountId && !saveFailed ? (
                 <p className="text-xs text-neutral-500">
                   {t("home.savedToAccount")}
@@ -3613,11 +3698,7 @@ function Ledger({
             while the tour is up. Without this an offline Save shows a
             card under copy that says it is saved, and the red line
             appears only after Finish, about nothing on screen. */}
-        {status === "error" && !(saveWaiting && errorIsSaveFailed) && (
-          <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-            {error}
-          </p>
-        )}
+        {errorLineEl()}
         {saveQueueEl()}
         {setupWizardEl}
       </div>
@@ -3694,17 +3775,15 @@ function Ledger({
         {/* Sticky: every section is one scrolling page here, and a "Got
             cash" far down a long Owed list must still SHOW its failed save
             (on /app the banner sits in the sticky flow column). */}
-        {status === "error" && !(saveWaiting && errorIsSaveFailed) && (
-          <p
-            role="alert"
-            // Not on Upload: the sort stage's RunningTotals is itself
-            // sticky at the top, and the banner would cover the totals.
-            className={`${show("upload") ? "" : "sticky top-2 z-20 "}rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900`}
-          >
-            {error}
-          </p>
-        )}
-        {saveQueueEl(show("upload") ? "sidebar" : "sidebar-sticky")}
+        {/* ONE sticky block for the red line and the queue's line: two
+            sticky siblings at the same offset pin over each other, and the
+            later (amber) one covered the red (pass-6 review). Not on
+            Upload: the sort stage's RunningTotals is itself sticky at the
+            top, and the block would cover the totals. */}
+        <div className={`${show("upload") ? "" : "sticky top-2 z-20 "}flex flex-col gap-2 empty:hidden`}>
+          {errorLineEl()}
+          {saveQueueEl("sidebar")}
+        </div>
         {noticesEl}
 
         {tourOpen && (
@@ -3906,11 +3985,7 @@ function Ledger({
             spoken, and the "Got cash" button that was focused has just
             unmounted. role="alert" makes the insertion itself announce
             (the sign-in errors carry the same role). */}
-        {status === "error" && !(saveWaiting && errorIsSaveFailed) && (
-          <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-            {error}
-          </p>
-        )}
+        {errorLineEl("mb-4 ")}
         {saveQueueEl()}
         {takeover ?? mainLoop}
       </div>

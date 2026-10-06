@@ -34,9 +34,9 @@ export const messages = {
   // The same moment, when an EARLIER save had been refused by the server:
   // the waiting ones landed; the red line below is still about that one.
   "home.saveRecoveredPartial": {
-    en: "Back online — the changes that were waiting are saved. The earlier problem below still needs a reload.",
-    es: "Volvió la conexión — los cambios que esperaban quedaron guardados. El problema anterior de abajo aún necesita recargar la página.",
-    pt: "A conexão voltou — as mudanças que esperavam foram salvas. O problema anterior abaixo ainda precisa de um recarregamento.",
+    en: "Back online — the changes that were waiting are saved. An earlier save was refused: reload the page to see what was saved.",
+    es: "Volvió la conexión — los cambios que esperaban quedaron guardados. Un guardado anterior fue rechazado: recarga la página para ver qué quedó guardado.",
+    pt: "A conexão voltou — as mudanças que esperavam foram salvas. Um salvamento anterior foi recusado: recarregue a página para ver o que ficou salvo.",
   },
   "home.saveWaitingNote": {
     en: "Some of this is on screen only for now. Keep this page open — it saves by itself when you're back online.",

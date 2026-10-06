@@ -19,6 +19,8 @@
 // Control (never affected by "offline"):
 //   POST /__mock/offline?on=1|0   drop every REST/auth request (a dead network)
 //   POST /__mock/reject?n=1       answer the next n writes with 409 / 23505
+//   POST /__mock/hold?n=1         keep the next n writes open (in flight) until…
+//   POST /__mock/drop             …this destroys them (a connection that died mid-request)
 //   GET  /__mock/state            tables + a log of every write
 //   POST /__mock/reset            back to the seed
 import http from "node:http";
@@ -33,6 +35,8 @@ const seed = () => ({
 let tables = seed();
 let offline = false;
 let rejectNext = 0;
+let holdNext = 0;
+const held = new Set();
 const log = [];
 
 const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "GET,POST,PATCH,DELETE,OPTIONS,HEAD", "access-control-expose-headers": "content-range" };
@@ -64,8 +68,13 @@ http.createServer(async (req, res) => {
   if (url.pathname === "/__mock/offline") { offline = url.searchParams.get("on") === "1"; return send(res, 200, { offline }); }
   if (url.pathname === "/__mock/state") return send(res, 200, { offline, tables, log });
   if (url.pathname === "/__mock/reset") { tables = seed(); log.length = 0; offline = false; return send(res, 200, { ok: true }); }
+  if (url.pathname === "/__mock/hold") { holdNext = Number(url.searchParams.get("n") ?? 1); return send(res, 200, { holdNext }); }
+  if (url.pathname === "/__mock/drop") { const n = held.size; for (const r of held) r.socket.destroy(); held.clear(); log.push(`DROPPED ${n} HELD`); return send(res, 200, { dropped: n }); }
   if (url.pathname === "/__mock/reject") { rejectNext = Number(url.searchParams.get("n") ?? 1); return send(res, 200, { rejectNext }); }
   if (offline) { log.push(`DROPPED ${req.method} ${url.pathname}`); req.socket.destroy(); return; }
+  if (holdNext > 0 && req.method !== "GET" && url.pathname.startsWith("/rest/v1/")) {
+    holdNext -= 1; held.add(req); log.push(`HELD ${req.method} ${url.pathname}`); return;
+  }
   if (rejectNext > 0 && req.method !== "GET" && url.pathname.startsWith("/rest/v1/")) {
     rejectNext -= 1; log.push(`REJECTED ${req.method} ${url.pathname}`);
     return send(res, 409, { code: "23505", message: 'duplicate key value violates unique constraint "mock_reject"', details: null, hint: null });
@@ -76,6 +85,7 @@ http.createServer(async (req, res) => {
   const json = body ? JSON.parse(body) : undefined;
 
   if (url.pathname.startsWith("/auth/v1/")) {
+    log.push(`AUTH ${req.method} ${url.pathname.slice(8)}`);
     if (url.pathname.endsWith("/settings")) return send(res, 200, { external: { google: false } });
     if (url.pathname.endsWith("/user")) return send(res, 200, { id: UID, email: "mock@example.invalid" });
     if (url.pathname.endsWith("/logout")) return send(res, 204);

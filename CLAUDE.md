@@ -339,6 +339,52 @@ after an earlier refusal → the partial green. Trend: P1 2H+7M → P2 4M →
 P3 1MH+3M → P4 1M+… → P5 1M+1ML+1M; every pass's MED has been a defect
 in the previous pass's own fix.
 
+PASS 6 — NOT CLEAN (count 0). Lenses: newcode over the pass-5 commit
+5d9665c; STATE-MACHINE ENUMERATION of every mechanism this loop added
+(never run on it); BUNDLE/DEBUG by tooling (coordinator: +2 KB brotli per
+route over the whole loop — /app 286→288 — no console.log outside the
+API routes, no debugger).
+- NEWCODE (4, none above MED-LOW): on the sidebar layout the red line and
+  the amber line were two sticky siblings at one offset — the later
+  (amber) one covered the red, so the un-hidden "sign-out needs a
+  connection" and upload errors were invisible when scrolled; both now
+  live in ONE sticky block. `focusRecovered` stayed armed after a "Try
+  now" whose attempt re-parked, so a landing minutes later stole focus
+  from a field (a phone's keyboard closing mid-amount); it is disarmed on
+  re-park and moves focus only when focus really sits on <body>.
+  home.saveRecoveredPartial said "the problem BELOW" while the red line is
+  ABOVE in every layout and may be gone or a different message; the copy
+  is non-positional now and the branch is keyed on the refused-save line
+  actually showing. The red line is HIDDEN (`hidden` attribute) rather
+  than unmounted when it yields, so a role=alert never remounts and
+  re-announces a stale failure. "Couldn't sign out — your changes are
+  still waiting" yields once nothing is waiting.
+- STATE MACHINE (4): MED — Sign out while a save was IN FLIGHT (not yet
+  parked — the one state with no banner) set `stopped` before draining,
+  so a network death of that request became "failed for good" on an
+  unmounting Ledger: no confirm, no flag, no trace. signOut now lets every
+  queued save reach its first outcome (queue.size / queue.running) with
+  retries untouched; a park on the way becomes the parked case (confirm),
+  and a network failure after an unmount's `stopped` sets the lost-writes
+  flag for the next mount. Verified against the mock with a held
+  request: Sign out waits, the connection dies, the save parks, the
+  question is asked, declining keeps it, online lands it. LOW-MED — "Not
+  me" settled the gate on the tap, one /logout round-trip before the
+  session was removed: the disowned account's Ledger mounted, its loads
+  ran and the lang stamp (and any due recurring sales) wrote into it.
+  Sign-out now comes first and the gate falls only when getSession shows
+  no session (verified: no ledger flash, only POST /logout then the
+  sign-in page, with the device on PT and the account on EN). LOW — the
+  finish screen showed only the waiting note when a refused save was also
+  on record; both notes show. The fourth (stale sign-out copy after the
+  drain) was the same as newcode's. Fully handled tables: the queue's
+  item × event matrix, the link gate's arrival × marker × storage × user
+  cells, the error slot's writer × state matrix, app-frame's pick ×
+  event.
+Trend: P6 1M+2ML+… — still one MED per pass, still in the previous
+pass's own fix (this time pass 4's sign-out branch, whose "nothing
+parked" case was never enumerated).
+
 ## Phone demo at /demoo — 2026-10-04
 
 Owner: "turn it into an interactive demo and put it at /demoo" — look B
