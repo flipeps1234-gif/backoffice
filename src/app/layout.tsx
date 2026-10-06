@@ -61,6 +61,26 @@ export default function RootLayout({
             __html: `try{var t=localStorage.getItem("contado.theme");var d=t==="dark"||(t!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d)}catch(e){}`,
           }}
         />
+        <script
+          // Next 16 and Tailwind 4 are built for Safari 16.4+ (class static
+          // blocks in the runtime chunk): on Safari 15–16.3 — every iPhone
+          // 6s/7/SE-1, iPads on iOS 15 — the server HTML paints, the script
+          // throws at parse, and /app sat on "Loading…" forever with no word
+          // why (compat lens, 2026-10-05). RegExp lookbehind arrived in the
+          // same Safari release, is a plain constructor call (no eval, CSP
+          // allows it), and throws on exactly those browsers; the notice is
+          // in the server HTML, so it shows precisely when nothing else runs.
+          dangerouslySetInnerHTML={{
+            __html: `try{new RegExp("(?<=a)b")}catch(e){document.documentElement.classList.add("old-browser")}`,
+          }}
+        />
+        <p className="old-browser-note hidden border-b border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">
+          This browser is too old for contado — update iOS, or open this page in Chrome.
+          <br />
+          Este navegador es demasiado antiguo para contado — actualiza iOS o abre esta página en Chrome.
+          <br />
+          Este navegador é antigo demais para o contado — atualize o iOS ou abra esta página no Chrome.
+        </p>
         {children}
         {/* Public-site analytics only: gated on an env var, never on /app,
             honors Do Not Track — see analytics.tsx. */}

@@ -124,31 +124,66 @@ test('returnTo: blocked storage never throws', () => {
   assert.equal(takeReturnTo(), '/app');
 });
 
-test('signInStarted: the marker says a sign-in began here within the hour, is not consumed by a read, and clears', () => {
+test('signInStarted: the marker is bound to the address it was started for, lives an hour, survives a re-read, and clears', () => {
   const localStorage = fakeStorage();
-  const { markSignInStarted, signInStartedHere, clearSignInStarted } = load('../../src/lib/return-to.ts', { localStorage });
-  assert.equal(signInStartedHere(), false);                      // a link on a device that never asked: confirm first
-  markSignInStarted(1000);
-  assert.equal(signInStartedHere(2000), true);
-  assert.equal(signInStartedHere(2000), true);                   // React may run an initializer twice
-  assert.equal(signInStartedHere(1000 + 60 * 60 * 1000), false); // a magic link's own lifetime
-  assert.equal(signInStartedHere(500), false);                   // a clock set back
+  const { markSignInStarted, signInStartedHereFor, clearSignInStarted } = load('../../src/lib/return-to.ts', { localStorage });
+  assert.equal(signInStartedHereFor('ana@x.test'), false);                 // a link on a device that never asked: confirm first
+  markSignInStarted(' Ana@X.test ', 1000);
+  assert.equal(signInStartedHereFor('ana@x.test', 2000), true);
+  assert.equal(signInStartedHereFor('ana@x.test', 2000), true);            // React may run an initializer twice
+  assert.equal(signInStartedHereFor('attacker@evil.test', 2000), false);   // the other link in the same inbox
+  assert.equal(signInStartedHereFor(null, 2000), false);
+  assert.equal(signInStartedHereFor('ana@x.test', 1000 + 60 * 60 * 1000), false); // a magic link's own lifetime
+  assert.equal(signInStartedHereFor('ana@x.test', 500), false);            // a clock set back
   clearSignInStarted();
-  assert.equal(signInStartedHere(2000), false);
-  localStorage.setItem('contado.signinStarted', 'soon');
-  assert.equal(signInStartedHere(), false);
+  assert.equal(signInStartedHereFor('ana@x.test', 2000), false);
+  markSignInStarted('google', 1000);
+  assert.equal(signInStartedHereFor('anyone@x.test', 2000), true);         // Google: no address known at start
+  localStorage.setItem('contado.signinStarted', '{not json');
+  assert.equal(signInStartedHereFor('ana@x.test'), false);
 });
 
-test('signInStarted: blocked storage answers "not started" (the confirmation screen) and never throws', () => {
+test('linkPending: persisted, readable by every tab, cleared on confirm', () => {
+  const localStorage = fakeStorage();
+  const listeners = {};
+  const window = {
+    addEventListener: (k, f) => { (listeners[k] ??= []).push(f); },
+    removeEventListener: (k, f) => { listeners[k] = (listeners[k] ?? []).filter((x) => x !== f); },
+    dispatchEvent: (e) => { for (const f of listeners[e.type] ?? []) f(e); return true; },
+  };
+  const Event = class { constructor(type) { this.type = type; } };
+  const { markLinkPending, clearLinkPending, subscribeLinkPending, linkPendingSnapshot } = load('../../src/lib/return-to.ts', { localStorage, window, Event });
+  let changes = 0;
+  const stop = subscribeLinkPending(() => { changes += 1; });
+  assert.equal(linkPendingSnapshot(), false);
+  markLinkPending();
+  assert.equal(linkPendingSnapshot(), true); assert.equal(changes, 1);
+  window.dispatchEvent({ type: 'storage', key: 'contado.linkPending' });    // another tab wrote it
+  assert.equal(changes, 2);
+  window.dispatchEvent({ type: 'storage', key: 'contado.theme' });          // unrelated key: ignored
+  assert.equal(changes, 2);
+  clearLinkPending();
+  assert.equal(linkPendingSnapshot(), false); assert.equal(changes, 3);
+  stop();
+  markLinkPending();
+  assert.equal(changes, 3);
+});
+
+test('signInStarted / linkPending: blocked storage answers "confirm first" and never throws', () => {
   const localStorage = {
     getItem() { throw new Error('blocked'); },
     setItem() { throw new Error('blocked'); },
     removeItem() { throw new Error('blocked'); },
   };
-  const { markSignInStarted, signInStartedHere, clearSignInStarted } = load('../../src/lib/return-to.ts', { localStorage });
-  assert.doesNotThrow(() => markSignInStarted());
-  assert.equal(signInStartedHere(), false);
-  assert.doesNotThrow(() => clearSignInStarted());
+  const window = { addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } };
+  const Event = class { constructor(type) { this.type = type; } };
+  const api = load('../../src/lib/return-to.ts', { localStorage, window, Event });
+  assert.doesNotThrow(() => api.markSignInStarted('ana@x.test'));
+  assert.equal(api.signInStartedHereFor('ana@x.test'), false);
+  assert.doesNotThrow(() => api.clearSignInStarted());
+  assert.doesNotThrow(() => api.markLinkPending());
+  assert.equal(api.linkPendingSnapshot(), false);
+  assert.doesNotThrow(() => api.clearLinkPending());
 });
 
 // ---- the chart callout ----

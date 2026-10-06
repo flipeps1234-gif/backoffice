@@ -112,7 +112,14 @@ import {
 } from "@/lib/supabase/transactions";
 import { useSession } from "@/lib/supabase/use-session";
 import { HOME_EVENT } from "./brand-home";
-import { clearSignInStarted, signInStartedHere } from "@/lib/return-to";
+import {
+  clearLinkPending,
+  clearSignInStarted,
+  linkPendingSnapshot,
+  markLinkPending,
+  signInStartedHereFor,
+  subscribeLinkPending,
+} from "@/lib/return-to";
 import { acceptTerms, TERMS_VERSION } from "@/lib/terms";
 import type { Service } from "@/lib/service";
 import { formatCents, type Transaction } from "@/lib/transaction";
@@ -241,21 +248,33 @@ export default function UploadScreen({
   returnTo?: "/app" | "/demooo";
 } = {}) {
   const accepted = useAcceptedTerms();
-  const { user, loading, isConfigured } = useSession();
-  const { locale, t } = useLocale();
   // Did this page open with tokens in its URL? Read on the first render,
-  // before useSession's effect builds the client that consumes (and
-  // clears) the hash. Null on the server; this screen renders client-side.
+  // before useSession's effect (below) builds the client that consumes
+  // (and clears) the hash. Null on the server; this screen renders
+  // client-side.
   const [arrivedByLink] = useState(
     () => typeof window !== "undefined" && /[#&]access_token=/.test(window.location.hash),
   );
-  // ...and was that sign-in started on THIS device? If not, the session
-  // is shown and confirmed before anything is entered under it
-  // (lib/return-to.ts explains the attack this stops).
-  const [startedHere] = useState(() => !arrivedByLink || signInStartedHere());
-  const [linkConfirmed, setLinkConfirmed] = useState(false);
+  // Declared BEFORE useSession so it runs first: the pending flag must be
+  // in storage before auth-js saves the session and broadcasts it to the
+  // other tabs (lib/return-to.ts explains the attack this stops).
   useEffect(() => {
-    if (user && arrivedByLink) clearSignInStarted();
+    if (arrivedByLink) markLinkPending();
+  }, [arrivedByLink]);
+  const { user, loading, isConfigured } = useSession();
+  const { locale, t } = useLocale();
+  // A session from a URL that nobody on this device has confirmed —
+  // persisted and shared by every tab, so closing the tab that carried
+  // the hash, or having /app open in another, cannot skip the question.
+  const linkPending = useSyncExternalStore(subscribeLinkPending, linkPendingSnapshot, () => false);
+  useEffect(() => {
+    if (!user || !arrivedByLink) return;
+    // The link this device asked for, for this address (or via Google):
+    // no question to ask. Any other arrival stays pending.
+    if (signInStartedHereFor(user.email)) {
+      clearSignInStarted();
+      clearLinkPending();
+    }
   }, [user, arrivedByLink]);
 
   // The one owner of the .dark class after first paint (the layout's
@@ -298,6 +317,9 @@ export default function UploadScreen({
       pushedLang.current = null;
       return;
     }
+    // Not while a session from a link is waiting to be confirmed: this
+    // writes to the account, and it may not be this person's.
+    if (linkPending) return;
     const stored =
       typeof user.user_metadata?.lang === "string"
         ? user.user_metadata.lang
@@ -335,7 +357,7 @@ export default function UploadScreen({
       .catch(() => {
         if (pushedLang.current === stamp) pushedLang.current = null;
       });
-  }, [user, locale, reconcileTick]);
+  }, [user, locale, reconcileTick, linkPending]);
 
   // Don't flash the sign-in form at someone who is already signed in, and
   // don't flash the terms at someone who has already accepted them: `accepted`
@@ -361,12 +383,18 @@ export default function UploadScreen({
   }
 
   // Signed in by a link this device never asked for: say who, ask first.
-  if (user && arrivedByLink && !startedHere && !linkConfirmed) {
+  if (user && linkPending) {
     return gate(
       <LinkSignedIn
         email={user.email ?? ""}
-        onContinue={() => setLinkConfirmed(true)}
-        onSignOut={() => void getSupabase()?.auth.signOut({ scope: "local" })}
+        onContinue={() => {
+          clearSignInStarted();
+          clearLinkPending();
+        }}
+        onSignOut={() => {
+          clearLinkPending();
+          void getSupabase()?.auth.signOut({ scope: "local" });
+        }}
       />,
     );
   }
@@ -1241,20 +1269,24 @@ function Ledger({
       detail: t("home.progressToShrink", { count: images.length }),
       fraction: 0,
     });
-    const compressed = await Promise.all(
-      images.map(async (file) => {
-        const out = await compressImage(file);
-        readied += 1;
-        setProgress({
-          label: t("home.progressReady"),
-          detail: t("home.progressOf", { done: readied, total: images.length }),
-          // Compression is the quick part; it owns the first slice of the bar
-          // so the long wait that follows still has most of it to travel.
-          fraction: READY_SHARE * (readied / images.length),
-        });
-        return out;
-      }),
-    );
+    // One at a time, not Promise.all: createImageBitmap decodes a 12–24 MP
+    // camera photo into a 50–100 MB bitmap, and twenty of them alive at
+    // once is past what iOS gives a tab on a 3 GB phone — Safari reloaded
+    // the page mid "Getting ready" and the batch was gone (compat lens,
+    // 2026-10-05). Sequential, the peak is one photo, and the bar below
+    // finally moves the way its counter always said it did.
+    const compressed: Awaited<ReturnType<typeof compressImage>>[] = [];
+    for (const file of images) {
+      compressed.push(await compressImage(file));
+      readied += 1;
+      setProgress({
+        label: t("home.progressReady"),
+        detail: t("home.progressOf", { done: readied, total: images.length }),
+        // Compression is the quick part; it owns the first slice of the bar
+        // so the long wait that follows still has most of it to travel.
+        fraction: READY_SHARE * (readied / images.length),
+      });
+    }
 
     // Allowlist AFTER compressing, not before: compressImage re-encodes to
     // JPEG whenever the browser can decode the original, so an iPhone HEIC
@@ -2717,14 +2749,23 @@ function Ledger({
       // cleanup from flagging the next account's first screen.
       if (!window.confirm(t("home.signOutUnsaved"))) return;
       queue.consentedLoss = true;
-      let failed = false;
+      let stillHere = false;
       try {
-        const result = await supabase?.auth.signOut({ scope: "global" });
-        failed = Boolean(result?.error);
+        await supabase?.auth.signOut({ scope: "global" });
       } catch {
-        failed = true;
+        // Fall through to the check below: the error says nothing by itself.
       }
-      if (failed) {
+      // auth-js 2.111 answers `{error}` for a dead network AND still removes
+      // the local session when the token was valid (SIGNED_OUT follows); it
+      // keeps the session only when the token had expired and could not be
+      // refreshed. So the session, not the error, says whether we are
+      // signed out (pass-3 review).
+      try {
+        stillHere = Boolean((await supabase?.auth.getSession())?.data.session);
+      } catch {
+        stillHere = true;
+      }
+      if (stillHere) {
         // Still here, still parked: say what sign-out needs.
         queue.consentedLoss = false;
         setError(translate(currentLocale(), "home.signOutOffline"));

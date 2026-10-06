@@ -39,7 +39,7 @@ export default function LocalePicker({
           key={option}
           type="button"
           aria-pressed={locale === option}
-          className={`tap rounded-md px-2 py-1 text-xs font-medium ${
+          className={`tap-y rounded-md px-2 py-1 text-xs font-medium ${
             locale === option
               ? "bg-foreground text-background"
               : onDark

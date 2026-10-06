@@ -176,6 +176,69 @@ consent, nothing flagged; the amber banner on the phone layout; a
 Owner-side, from the auth review: nothing new (Turnstile for the
 auth-email bucket is already recorded).
 
+PASS 3 — NOT CLEAN (count 0). Lenses: newcode over the pass-2 commit
+915b39c; BROWSER/DEVICE COMPATIBILITY (never run); INFORMATION EXPOSURE
+by tooling (coordinator: the built chunks hold no secret or server-only
+name — the two string hits are supabase-js's key-prefix check and the
+admin page's own setup note — no source maps, generic error bodies on
+every route, phones masked in logs, /app/admin?sample=1 compiled out in
+production, no x-powered-by).
+- NEWCODE (4 findings, the pass-2 auth fix was INCOMPLETE): MED-HIGH —
+  the "Signed in from a link" gate lived in the tab that carried the
+  hash, while auth-js persists the session and broadcasts it to every
+  tab: closing that tab, or having /app open in another tab, skipped
+  the question (and the lang stamp wrote onto the unconfirmed account).
+  Now `contado.linkPending` is written to storage the moment a page
+  opens with tokens (an effect declared BEFORE useSession, so it exists
+  before the session is saved), read by every UploadScreen through
+  useSyncExternalStore (own-tab event + the cross-tab `storage` event),
+  cleared only by Continue / Not me / a matching marker; the lang stamp
+  waits while it is pending. LOW-MED — the marker proved intent, not
+  identity: any sign-in started within the hour let ANY arriving session
+  through (the attacker's link in the same inbox). The marker now stores
+  the address it was started for (Google: any) and is checked against
+  `user.email` on arrival. MED — the parked-save sign-out branch assumed
+  auth-js keeps the session whenever /logout fails; auth-js 2.111 removes
+  it (and fires SIGNED_OUT) for a dead network while the token is valid,
+  keeping it only for an expired token — so the "sign-out needs a
+  connection" error landed on an unmounting Ledger and the consent flag
+  was reset in time for the cleanup to flag the loss. The code now asks
+  getSession() after signOut and believes the session, not the error.
+  LOW — `tap` on the compact language pills (gap-1) gave the later pill
+  the earlier one's right edge: pills use `tap-y` (above/below only).
+  Verified clean: terms-gate ordering, hydration, own-link/expired-marker
+  behaviour, no cross-account write can land (RLS with check), linkSale
+  fallback, calloutTop geometry = the component's, csv/MAX_QUANTITY
+  tests, the unlayered 16px rule, every min-h/-mx edit's layout.
+- COMPATIBILITY (3 findings): MED — Next 16 + Tailwind 4 target Safari
+  16.4+ and the runtime chunk uses a class static block: on Safari
+  15–16.3 (iPhone 6s/7/SE-1, iPads on iOS 15, Catalina) the server HTML
+  painted — Tailwind's fallbacks make it look healthy — and /app sat on
+  "Loading…" forever. layout.tsx now runs a one-line probe
+  (`new RegExp("(?<=a)b")`, lookbehind = the same Safari release, no
+  eval) and a server-rendered EN/ES/PT notice shows when it throws. MED —
+  compression decoded every picked photo at once (`Promise.all` over
+  createImageBitmap, 50–100 MB each): a batch of camera photos could
+  exceed iOS's tab memory and reload the page mid "Getting ready"; one
+  photo at a time now. LOW — downloadCsv revoked its blob URL in the same
+  task and never attached the anchor; in-app browsers (Instagram,
+  Facebook, mail WebViews) have no download manager: the anchor is
+  attached, the URL lives a minute, and where `download` is unsupported
+  and the Web Share API can carry a file, the share sheet is used.
+  Safe for the audience (with why): crypto.randomUUID, Array.at,
+  AbortSignal.timeout (inside a try), decimal-comma parsing everywhere,
+  date inputs, the swipe deck's pointer capture, the camera input, the
+  retry signals, localStorage guards, viewport meta, `inert`, `:has()`
+  cosmetic-only, Intl.
+Checked against the mock: link without marker → confirm, persists
+across a reload of /app without the hash, Continue clears both flags;
+marker for another address → confirm; marker for this address →
+straight in; sign out with a parked save on a dead network (valid
+token) → signed out, no error, nothing flagged. NOT checked in a
+browser: the two-tab case (the `storage` event path is unit-tested),
+any Safari or Android device — the compat findings rest on documented
+platform behaviour and the live bundle's syntax.
+
 ## Phone demo at /demoo — 2026-10-04
 
 Owner: "turn it into an interactive demo and put it at /demoo" — look B

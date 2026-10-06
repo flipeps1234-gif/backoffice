@@ -65,10 +65,27 @@ body {
     inset: -0.75rem -0.5rem;
   }
 }
+/* Pills in a tight row (gap-1): only above and below, or the later
+   pill's area would own its neighbour's right edge (pass-3 review). */
+@utility tap-y {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: -0.75rem 0;
+  }
+}
 @media (pointer: coarse) {
   :is(input, select, textarea):is(.text-sm, .text-xs) {
     font-size: 1rem;
   }
+}
+
+/* The notice layout.tsx renders for browsers the bundle cannot run in
+   (its probe script adds .old-browser to <html>). Unlayered: it must beat
+   the `hidden` utility on the element. */
+.old-browser .old-browser-note {
+  display: block;
 }
 
 /* The indeterminate progress stripe — see progress-bar.tsx for why some
