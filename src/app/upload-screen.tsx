@@ -59,7 +59,7 @@ import { chunkForUpload, compressImage } from "@/lib/compress-image";
 import { isSupportedImage } from "@/lib/extract/image-types";
 import { knownPayers, rememberedFor } from "@/lib/customer-memory";
 import type { Client } from "@/lib/client";
-import { translate } from "@/lib/i18n";
+import { translate, LOCALES } from "@/lib/i18n";
 import { currentLocale } from "@/lib/locale";
 import { matchBatch, txnCandidatesForSale } from "@/lib/matching";
 import { generateDue, type RecurringTemplate } from "@/lib/recurring";
@@ -292,6 +292,14 @@ export default function UploadScreen({
       stale = true;
     };
   }, [user, arrivedByLink]);
+  // Another tab's Continue settles this one too: a true→false move of the
+  // shared flag (never a flag that was false all along — that is what
+  // blocked storage looks like) ends the tab's own question.
+  const prevLinkPending = useRef(linkPending);
+  useEffect(() => {
+    if (prevLinkPending.current && !linkPending) setTabPending(false);
+    prevLinkPending.current = linkPending;
+  }, [linkPending]);
   const askFirst = linkPending || tabPending;
 
   // The one owner of the .dark class after first paint (the layout's
@@ -536,6 +544,15 @@ function Ledger({
   /** "Try now" was tapped and the attempt is running (or waiting on
    *  auth-js, which caches a failed token refresh for a minute). */
   const [saveTrying, setSaveTrying] = useState(false);
+  /** The green line, focused when it replaces the banner after "Try now":
+   *  the control that had focus has just unmounted. */
+  const recoveredRef = useRef<HTMLParagraphElement>(null);
+  const focusRecovered = useRef(false);
+  useEffect(() => {
+    if (!saveRecovered || !focusRecovered.current) return;
+    focusRecovered.current = false;
+    recoveredRef.current?.focus({ preventScroll: true });
+  }, [saveRecovered]);
   useEffect(() => {
     const queue = saveQueue.current;
     queue.stopped = false;
@@ -2436,7 +2453,13 @@ function Ledger({
       // to do nothing until Close. Go back to the hub and bring the answer
       // into view (after this render has put it there).
       setShowOwed(false);
-      requestAnimationFrame(() => noticesRef.current?.scrollIntoView({ block: "center" }));
+      requestAnimationFrame(() => {
+        // Focus first: the button that was activated has just unmounted,
+        // and a screen reader needs the answer to be where focus is, not
+        // just where the viewport is (a11y lens, 2026-10-05).
+        noticesRef.current?.focus({ preventScroll: true });
+        noticesRef.current?.scrollIntoView({ block: "center" });
+      });
     }
     if (waiting > 0) {
       setSaleNotice(
@@ -2810,11 +2833,21 @@ function Ledger({
     }
   }
 
+  /** Is the red line's text the refused-save copy? Only THAT line yields to
+   *  the amber one while a save is parked: its advice is "reload", the
+   *  amber line's is "keep this page open", and only one can be right at
+   *  a time (copy lens, 2026-10-05). Every other error — an upload that
+   *  failed, a format refused, sign-out needing a connection — must still
+   *  show beside the amber line (pass-5 review: a blanket gate hid them).
+   *  Compared against the copy in every language, since `error` was
+   *  translated when it was set. */
+  const errorIsSaveFailed =
+    error !== "" && LOCALES.some((l) => translate(l, "home.errSaveFailed") === error);
+
   /** The write queue's own line, in the red error banner's slot — which it
-   *  TAKES while a save is parked: the red line's advice is "reload", the
-   *  amber line's is "keep this page open", and only one can be right at a
-   *  time (copy lens, 2026-10-05). `error`/`status` are left as they are,
-   *  so the refused-save notice returns when the queue drains. Amber while
+   *  takes from the refused-save line while a save is parked (see above).
+   *  `error`/`status` are left as they are, so that line returns when the
+   *  queue drains. Amber while
    *  a save waits for the network (with a way to try at once), then a
    *  short confirmation when it lands. Nothing when all is well. */
   const saveQueueEl = (where: "phone" | "sidebar" | "sidebar-sticky" = "phone") =>
@@ -2824,11 +2857,16 @@ function Ledger({
         className={`${where === "sidebar-sticky" ? "sticky top-2 z-20 " : where === "phone" ? "mb-4 " : ""}flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-sm text-amber-900`}
       >
         <span className="py-1">{t(saveTrying ? "home.saveTrying" : "home.saveWaiting")}</span>
+        {/* aria-disabled, not disabled: a disabled control drops focus to
+            the page top in Firefox and Safari, and this is the one control
+            a keyboard user is on. */}
         <button
           type="button"
-          className="min-h-11 shrink-0 px-2 font-medium underline disabled:no-underline disabled:opacity-60"
-          disabled={saveTrying}
+          aria-disabled={saveTrying}
+          className={`min-h-11 shrink-0 px-2 font-medium underline ${saveTrying ? "no-underline opacity-60" : ""}`}
           onClick={() => {
+            if (saveTrying) return;
+            focusRecovered.current = true;
             setSaveTrying(true);
             saveQueue.current.wake?.();
           }}
@@ -2836,12 +2874,16 @@ function Ledger({
           {t("home.saveRetryNow")}
         </button>
       </p>
-    ) : saveRecovered && !saveFailed ? (
+    ) : saveRecovered ? (
+      // Said even when an earlier save was refused: the waiting ones DID
+      // land, and the red line that follows is about the earlier one.
       <p
+        ref={recoveredRef}
+        tabIndex={-1}
         role="status"
-        className={`${where === "sidebar-sticky" ? "sticky top-2 z-20 " : where === "phone" ? "mb-4 " : ""}rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900`}
+        className={`${where === "sidebar-sticky" ? "sticky top-2 z-20 " : where === "phone" ? "mb-4 " : ""}rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 outline-none`}
       >
-        {t("home.saveRecovered")}
+        {t(saveFailed ? "home.saveRecoveredPartial" : "home.saveRecovered")}
       </p>
     ) : null;
 
@@ -3388,7 +3430,7 @@ function Ledger({
       )}
 
       {/* The ref is findPaymentFor's scroll target. */}
-      <div ref={noticesRef} className="space-y-6 empty:hidden">
+      <div ref={noticesRef} tabIndex={-1} className="space-y-6 outline-none empty:hidden">
         {noticesEl}
       </div>
 
@@ -3571,7 +3613,7 @@ function Ledger({
             while the tour is up. Without this an offline Save shows a
             card under copy that says it is saved, and the red line
             appears only after Finish, about nothing on screen. */}
-        {status === "error" && !saveWaiting && (
+        {status === "error" && !(saveWaiting && errorIsSaveFailed) && (
           <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
             {error}
           </p>
@@ -3652,7 +3694,7 @@ function Ledger({
         {/* Sticky: every section is one scrolling page here, and a "Got
             cash" far down a long Owed list must still SHOW its failed save
             (on /app the banner sits in the sticky flow column). */}
-        {status === "error" && !saveWaiting && (
+        {status === "error" && !(saveWaiting && errorIsSaveFailed) && (
           <p
             role="alert"
             // Not on Upload: the sort stage's RunningTotals is itself
@@ -3864,7 +3906,7 @@ function Ledger({
             spoken, and the "Got cash" button that was focused has just
             unmounted. role="alert" makes the insertion itself announce
             (the sign-in errors carry the same role). */}
-        {status === "error" && !saveWaiting && (
+        {status === "error" && !(saveWaiting && errorIsSaveFailed) && (
           <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
             {error}
           </p>

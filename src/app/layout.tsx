@@ -78,11 +78,17 @@ export default function RootLayout({
           }}
         />
         <p className="old-browser-note hidden border-b border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">
-          This browser is too old for contado. It needs iOS 16.4 or newer (iPhone 8 and later — update in Settings), or a current Chrome, Firefox or Edge on a computer or Android phone.
+          <span lang="en">
+            This browser is too old for contado. It needs iOS 16.4 or newer (iPhone 8 and later — update in Settings), or a current Chrome, Firefox or Edge on a computer or Android phone.
+          </span>
           <br />
-          Este navegador es demasiado antiguo para contado. Hace falta iOS 16.4 o más reciente (iPhone 8 en adelante — actualiza en Ajustes), o un Chrome, Firefox o Edge actual en una computadora o un teléfono Android.
+          <span lang="es">
+            Este navegador es demasiado antiguo para contado. Hace falta iOS 16.4 o más reciente (iPhone 8 en adelante — actualiza en Ajustes), o un Chrome, Firefox o Edge actual en una computadora o un teléfono Android.
+          </span>
           <br />
-          Este navegador é antigo demais para o contado. É preciso iOS 16.4 ou mais novo (iPhone 8 em diante — atualize em Ajustes), ou um Chrome, Firefox ou Edge atual num computador ou celular Android.
+          <span lang="pt">
+            Este navegador é antigo demais para o contado. É preciso iOS 16.4 ou mais novo (iPhone 8 em diante — atualize em Ajustes), ou um Chrome, Firefox ou Edge atual num computador ou celular Android.
+          </span>
         </p>
         {children}
         {/* Public-site analytics only: gated on an env var, never on /app,

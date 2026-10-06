@@ -31,6 +31,13 @@ export const messages = {
     es: "Volvió la conexión — todo quedó guardado en tu cuenta.",
     pt: "A conexão voltou — tudo foi salvo na sua conta.",
   },
+  // The same moment, when an EARLIER save had been refused by the server:
+  // the waiting ones landed; the red line below is still about that one.
+  "home.saveRecoveredPartial": {
+    en: "Back online — the changes that were waiting are saved. The earlier problem below still needs a reload.",
+    es: "Volvió la conexión — los cambios que esperaban quedaron guardados. El problema anterior de abajo aún necesita recargar la página.",
+    pt: "A conexão voltou — as mudanças que esperavam foram salvas. O problema anterior abaixo ainda precisa de um recarregamento.",
+  },
   "home.saveWaitingNote": {
     en: "Some of this is on screen only for now. Keep this page open — it saves by itself when you're back online.",
     es: "Parte de esto está solo en pantalla por ahora. Deja esta página abierta — se guarda solo cuando vuelva la conexión.",

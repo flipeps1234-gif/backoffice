@@ -292,6 +292,53 @@ banner precedence, the landing drop note. NOT checked: a real expired
 token (the mock has no refresh endpoint) — the sign-out fix rests on the
 reviewer's auth-js harness; any Safari/Android device.
 
+PASS 5 — NOT CLEAN (count 0). Lenses: newcode over the pass-4 commit
+6662048; ACCESSIBILITY of everything this loop added (never run on it);
+SUPPLY CHAIN + ROLLOUT by tooling (coordinator: 448 locked packages, all
+from registry.npmjs.org with integrity hashes, one install script —
+unrs-resolver, a dev-only ESLint binary; the API contract changed only
+additively, so tabs open across the deploy keep working; the app shell
+has no client-side navigation, so stale chunk hashes cannot bite).
+- NEWCODE (3): MED — the pass-4 "sign-out needs a connection" message
+  went through the red error slot, which pass 4 had just hidden while a
+  save is parked — the exact state that message is for; silent again.
+  MED-LOW — that gate hid EVERY red message while parked (a failed
+  upload, a refused format, a failed load), not just the "reload" one.
+  Both fixed by gating only the refused-save copy (compared against
+  home.errSaveFailed in all three languages, since `error` is
+  translated when set). LOW — the hash-carrying tab kept asking after
+  another tab's Continue cleared the shared flag; a true→false move of
+  the shared flag now settles the tab's own question. Verified clean:
+  the digest marker without crypto.subtle (confirmation shown once, no
+  loop), the async check vs Continue/Not me/unmount, the `stillHere`
+  matrix line by line in auth-js 2.111, Object.hasOwn precedes class
+  static blocks in every engine and Next's polyfill cannot pre-empt the
+  probe, the landing note, every string's placeholders, the tests.
+- ACCESSIBILITY (4): MED — the phone's "Find the payment…" unmounted the
+  activated button and only scrolled: focus fell to <body> and the
+  answer was not announced; the notices wrapper is focusable
+  (tabIndex -1) and receives focus before the scroll. MED-LOW — "Try now"
+  was `disabled` while running (Firefox/Safari drop focus to the page
+  top) and the whole amber line unmounted when the save landed; it is
+  `aria-disabled` now and the green line (tabIndex -1) takes focus after
+  a "Try now". LOW — the old-browser note mixed three languages in one
+  <p> under lang="en": one <span lang> per sentence. LOW — when a parked
+  save landed while an earlier save had been refused, no green appeared
+  and the red alert REMOUNTED (re-announced as a fresh failure): the
+  green line now says the waiting changes are saved and the earlier
+  problem still needs a reload (home.saveRecoveredPartial). Verified
+  clean: the button inside role=alert, no double announcements, the
+  LinkSignedIn headings, the expired-link alert, every new contrast pair
+  (amber-900/50 8.8, emerald-900/50 9.2 …), tap/tap-y and focus rings,
+  label/control pairs after the size changes, the chart's focus-is-
+  activation months, 320px/200% reflow of the banners.
+Checked against the mock: refused → red; parked → amber alone; a
+non-image dropped while parked → its error beside the amber line; Try
+now keeps focus and the green line takes it when the save lands; drained
+after an earlier refusal → the partial green. Trend: P1 2H+7M → P2 4M →
+P3 1MH+3M → P4 1M+… → P5 1M+1ML+1M; every pass's MED has been a defect
+in the previous pass's own fix.
+
 ## Phone demo at /demoo — 2026-10-04
 
 Owner: "turn it into an interactive demo and put it at /demoo" — look B
