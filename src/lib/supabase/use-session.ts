@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { getSupabase, isConfigured } from "./client";
+import { readSession } from "./session";
 
 /**
  * Who's signed in. `loading` is true until we've asked Supabase, so the UI
@@ -23,8 +24,7 @@ export function useSession() {
     // Signed in once means signed in on the next open, even offline or on
     // driveway signal. Every actual query is still validated server-side,
     // so a revoked session fails loudly at use, not silently at the gate.
-    supabase.auth
-      .getSession()
+    readSession(supabase.auth)
       .then(({ data }) => setUser(data.session?.user ?? null))
       .catch(() => setUser(null))
       .finally(() => setLoading(false));

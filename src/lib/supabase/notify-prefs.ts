@@ -50,7 +50,11 @@ export const saveNotificationPrefs = async (
     phone: prefs.phone,
     whatsapp_consent_at: prefs.whatsappConsentAt,
     sms_consent_at: prefs.smsConsentAt,
-    opted_out_at: prefs.optedOutAt,
+    // opted_out_at is the webhooks' column (a STOP text): never written
+    // from here. A consent stamp dated after it is the re-opt-in
+    // (hasActiveConsent), and a client write that nulled it — parked
+    // offline, landing hours later — erased a STOP texted in between
+    // (pass-7 concurrency review).
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(error.message);

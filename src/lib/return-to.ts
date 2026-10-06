@@ -133,12 +133,33 @@ const notifyPending = () => {
   }
 };
 
-/** A session arrived (or is arriving) from a URL on this device and has
- *  not been confirmed. Written before the session exists; the flag, not
- *  the id, is the state. */
-export function markLinkPending(): void {
+/** The subject (account id) of the access token in a URL fragment, read
+ *  WITHOUT verification — it only says which account the link signs in,
+ *  so that tabs ask about that account and no other; the server verifies
+ *  the token itself. null when the fragment has no readable token. */
+export function tokenSubject(hash: string): string | null {
   try {
-    localStorage.setItem(PENDING_KEY, "1");
+    const token = new URLSearchParams(hash.replace(/^#/, "")).get("access_token");
+    const payload = token?.split(".")[1];
+    if (!payload) return null;
+    const padded = payload.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(payload.length / 4) * 4, "=");
+    const sub = (JSON.parse(atob(padded)) as { sub?: unknown }).sub;
+    return typeof sub === "string" && sub !== "" ? sub : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A session arrived (or is arriving) from a URL on this device and has
+ *  not been confirmed. Written before the session exists, so it carries
+ *  what the URL itself says — the token's subject — and a tab asks only
+ *  once its session IS that account (an anonymous flag made every tab
+ *  drop the account it held and ask about the holder's own address for a
+ *  round-trip; pass-7 concurrency review). `sub` null = an unreadable
+ *  token: every tab asks. */
+export function markLinkPending(sub: string | null): void {
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify({ sub }));
   } catch {
     // No storage: the tab that opened the link still asks through its own
     // state (upload-screen.tsx tabPending); other tabs cannot be told.
@@ -169,10 +190,23 @@ export function subscribeLinkPending(onChange: () => void): () => void {
   };
 }
 
-export function linkPendingSnapshot(): boolean {
+/** For useSyncExternalStore: the stored value itself ("" when unset or
+ *  unreadable) — a primitive, so an unchanged flag is an unchanged snapshot. */
+export function linkPendingSnapshot(): string {
   try {
-    return localStorage.getItem(PENDING_KEY) === "1";
+    return localStorage.getItem(PENDING_KEY) ?? "";
   } catch {
-    return false;
+    return "";
+  }
+}
+
+export function parseLinkPending(raw: string): { set: boolean; sub: string | null } {
+  if (raw === "") return { set: false, sub: null };
+  try {
+    const sub = (JSON.parse(raw) as { sub?: unknown }).sub;
+    return { set: true, sub: typeof sub === "string" && sub !== "" ? sub : null };
+  } catch {
+    // "1" (the flag's first shape) or anything else: set, no subject.
+    return { set: true, sub: null };
   }
 }

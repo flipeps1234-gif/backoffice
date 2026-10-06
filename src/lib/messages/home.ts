@@ -58,6 +58,21 @@ export const messages = {
     es: "Algunos cambios todavía no se guardaron en tu cuenta. ¿Cerrar sesión de todos modos? Se perderán.",
     pt: "Algumas mudanças ainda não foram salvas na sua conta. Sair mesmo assim? Elas serão perdidas.",
   },
+  "home.signOutUnsavedElsewhere": {
+    en: "Changes made in another tab haven't saved to your account yet — they're waiting for the connection. Signing out here loses them. Sign out anyway?",
+    es: "Cambios hechos en otra pestaña todavía no se guardaron en tu cuenta — esperan la conexión. Cerrar sesión aquí los pierde. ¿Cerrar sesión de todos modos?",
+    pt: "Mudanças feitas em outra aba ainda não foram salvas na sua conta — estão esperando a conexão. Sair aqui as perde. Sair mesmo assim?",
+  },
+  "home.errLostEarlier": {
+    en: "An earlier change on this device was lost before it reached your account and can't be recovered. Check your latest entries.",
+    es: "Un cambio anterior en este dispositivo se perdió antes de llegar a tu cuenta y no se puede recuperar. Revisa tus últimas entradas.",
+    pt: "Uma mudança anterior neste aparelho se perdeu antes de chegar à sua conta e não pode ser recuperada. Confira seus últimos lançamentos.",
+  },
+  "home.saveRecoveredLate": {
+    en: "They waited a while — if you entered any of them again on another device, check for a double entry.",
+    es: "Esperaron un buen rato — si volviste a anotar alguno en otro dispositivo, revisa que no quede duplicado.",
+    pt: "Elas esperaram um bom tempo — se você lançou alguma de novo em outro aparelho, confira se não ficou duplicada.",
+  },
   // The two writes that take their own data back OFF the screen before
   // failing — "saved on screen" would be a lie for them.
   "home.errRecurringNotSaved": {

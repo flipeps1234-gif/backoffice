@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { takeReturnTo } from "@/lib/return-to";
+import { readSession } from "@/lib/supabase/session";
 
 /** The sign-in forward target, decided once per page load (see below). */
 let landingForward: string | null = null;
@@ -96,7 +97,7 @@ export default function Landing() {
     void import("@/lib/supabase/client").then(async ({ getSupabase }) => {
       const supabase = getSupabase();
       if (!supabase) return;
-      const { data } = await supabase.auth.getSession();
+      const { data } = await readSession(supabase.auth);
       if (data.session) window.location.replace("/app");
     });
   }, []);

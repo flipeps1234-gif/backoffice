@@ -16,6 +16,7 @@ import {
   type Overview,
 } from "@/lib/admin/overview";
 import { getSupabase } from "@/lib/supabase/client";
+import { readSession } from "@/lib/supabase/session";
 import { useSession } from "@/lib/supabase/use-session";
 import { formatCents } from "@/lib/transaction";
 
@@ -47,7 +48,7 @@ async function fetchOverview(sample: boolean): Promise<State> {
   }
   const supabase = getSupabase();
   if (!supabase) return { kind: "dark" };
-  const { data } = await supabase.auth.getSession();
+  const { data } = await readSession(supabase.auth);
   const token = data.session?.access_token;
   if (!token) return { kind: "signed-out" };
   try {

@@ -385,6 +385,88 @@ Trend: P6 1M+2ML+… — still one MED per pass, still in the previous
 pass's own fix (this time pass 4's sign-out branch, whose "nothing
 parked" case was never enumerated).
 
+PASS 7 — NOT CLEAN (count 0). Lenses: newcode over the pass-6 commit
+cd24f98; MULTI-TAB / MULTI-DEVICE CONCURRENCY (never run); i18n by
+tooling (770 calls, 0 issues). The concurrency findings went through a
+Workflow of eight adversarial verifiers (a MECHANICAL and an IMPACT
+refuter per finding): 8/8 CONFIRMED. Every fix below was run against the
+mock in the browser (two tabs where the finding needs two).
+- NEWCODE (4): HIGH — pass 6's sign-out pre-loop awaited `queue.running`,
+  which was the item's `outcome` promise — PRE-SETTLED for every save
+  queued behind a parked one — so Sign out during the second save's
+  flight spun the microtask queue forever: the tab froze (harness: two
+  million iterations in 55 ms, the fetch timer never ran). Each run has
+  its own promise now (`run`/`runDone`) and an idle tick is a macrotask.
+  Verified: A parked, B queued, online → A lands, B held → Sign out → the
+  tab answers and the loop waits; B's connection dies → B parks → the
+  confirm asks once → consented → signed out. LOW-MED — the green
+  "partial" copy was keyed on the red line being VISIBLE; an upload in
+  between clears it while `saveFailed` stays — keyed on the flag again.
+  LOW — the sidebar's sticky block collapsed with `:empty`, which never
+  matches a hidden <p>: a 20 px void stayed under a yielded sign-out
+  error; collapsed by state now (measured: display none, content at
+  <main>'s 32 px padding). LOW — "Not me" was a silent no-op when auth-js
+  refused the sign-out (expired token, offline): it says so now
+  (signin.linkedNotMeFailed) and keeps the question — verified with a
+  40 s token offline (alert in 3 s); back online one tap refreshed
+  through the mock's new /token and signed out.
+- CONCURRENCY (5): MED — two tabs reconnecting together both refresh the
+  same token; auth-js 2.111 DISCARDS the loser's refresh
+  (AuthRefreshDiscardedError 409: session null WITH an error while the
+  rotated session sits in storage) and persist dropped that save for
+  good and poisoned the lost-writes flag. `readSession()`
+  (lib/supabase/session.ts) re-reads up to twice on a discard and is
+  used at every getSession site (persist, Sign out, Not me, the upload's
+  bearer token, use-session, landing, admin); isNetworkSaveError accepts
+  the error so an exhausted re-read parks instead of dropping. MED
+  (security) — the link-pending flag was anonymous ("1"): every other tab
+  tore down the account it held and asked "Signed in from a link as <its
+  OWN address>" for one /user round-trip, and a Continue there bypassed
+  the gate. The flag carries the token's `sub` (return-to.ts
+  tokenSubject, an unverified decode — it only says which account to ask
+  about); other tabs ask only once their session BECAME that account
+  (`userBeforeLink`, tracked while the flag is down, so a same-account
+  link changes nothing); the arriving tab drops an orphaned flag when
+  the link fails. Verified with the mock holding /user for 3 s: tab A,
+  polled every 100 ms, stayed on its hub with the flag already naming Y,
+  then asked about Y — never X; a failed link (offline) → nobody asks,
+  flag cleared. MED — Sign out in tab A with a save parked in tab B
+  asked nothing and lost it; the only later trace was a note under the
+  next finished upload, worded about a different batch. A per-tab marker
+  (`contado.saveParked.<tab>`, stamped on every retry, stale after 90 s)
+  makes A's Sign out ask (home.signOutUnsavedElsewhere); the loss is
+  noted PER ACCOUNT (`contado.lostWrites.<account>`, in-memory fallback)
+  and said once, as its own red line, at that account's next mount here
+  (home.errLostEarlier) — no longer through `saveFailed`. Verified in two
+  tabs: declining keeps the session, accepting signs both out, the note
+  shows at the next mount and is consumed. LOW (the verifiers: LOW while
+  the notification pipeline is dark, MED once it is live) — the Settings
+  upsert wrote `opted_out_at: null` on re-consent; parked offline for
+  hours it would land over a STOP texted in between and erase it. The
+  client never writes that column now (a consent stamp newer than the
+  STOP is the re-opt-in — hasActiveConsent); verified: the upsert row has
+  no opted_out_at. LOW — a parked save that lands after ≥10 minutes says
+  so (home.saveRecoveredLate, shown 15 s): a double entry on another
+  device is plausible by then.
+- COORDINATOR (1): the green "everything is saved" showed when the
+  PARKED save landed while the next queued save was still in flight; it
+  waits for the last queued save now (queue.recoveredPending).
+- Recorded, not fixed: opening the app OFFLINE with a token inside
+  auth-js's 90 s refresh margin shows "Loading…" for up to ~30 s (auth-js
+  retries the refresh with back-off before INITIAL_SESSION; a cold load
+  offline cannot load the ledger anyway). Two tabs mounting the same
+  account within the same millisecond can both show the lost-write note
+  (both read the key before either removes it). saveProfile stays a
+  whole-row last-writer-wins (pre-existing; the park lengthens the
+  window; the fields are retypeable). Tooling: scripts/mock-supabase.mjs
+  gained /token refresh (tokenlife, refreshfail), hold?skip=&auth=,
+  /release, and a /user that answers with the bearer's subject.
+Trend: P7 1H+3M+… — the HIGH was the previous pass's own fix again (the
+fifth pass in a row), and a lens never run before (concurrency) found
+three MEDs in code from passes 1–3: the lens set, not the defect set, was
+what had converged. Not tested: real GoTrue refresh-token reuse (the
+harness fakes /token); the discarded-refresh path in a browser.
+
 ## Phone demo at /demoo — 2026-10-04
 
 Owner: "turn it into an interactive demo and put it at /demoo" — look B

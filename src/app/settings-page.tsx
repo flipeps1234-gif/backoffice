@@ -230,11 +230,10 @@ function ChannelAlerts({
                   ? channelConsentAt
                   : now
                 : null;
-            // Nulling optedOutAt below erases the STOP from the row, so a
-            // pre-STOP stamp on the OTHER channel would suddenly read as
-            // uninterrupted consent too. Dead evidence is dropped: the
-            // other channel keeps its stamp only if no STOP postdates it
-            // (re-selecting that channel later forces a fresh tick anyway).
+            // A pre-STOP stamp on the OTHER channel is dead evidence —
+            // dropped: the other channel keeps its stamp only if no STOP
+            // postdates it (re-selecting that channel later forces a
+            // fresh tick anyway).
             const carried = (at: string | null) => (stillValid(at) ? at : null);
             onSave({
               channel: consent || channel === "off" ? channel : "off",
@@ -249,8 +248,12 @@ function ChannelAlerts({
                 channel === "sms"
                   ? kept(prefs.channel === "sms" ? prefs.smsConsentAt : null)
                   : carried(prefs.smsConsentAt),
-              // A fresh tick on either channel is an explicit re-opt-in.
-              optedOutAt: consent ? null : prefs.optedOutAt,
+              // The STOP stays on the row as evidence; a fresh tick dated
+              // after it IS the re-opt-in (hasActiveConsent). Nulling it
+              // here used to travel in the save — and a save parked offline
+              // for hours landed over a STOP texted in between, erasing it
+              // (pass-7 concurrency review).
+              optedOutAt: prefs.optedOutAt,
             });
             setSavedFlash(true);
             setTimeout(() => setSavedFlash(false), 2000);

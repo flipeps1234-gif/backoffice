@@ -133,6 +133,11 @@ export const messages = {
     es: "No soy yo — cerrar sesión",
     pt: "Não sou eu — sair",
   },
+  "signin.linkedNotMeFailed": {
+    en: "Couldn't sign out — that needs a connection. Try again when you're back online.",
+    es: "No se pudo cerrar sesión — hace falta conexión. Inténtalo de nuevo cuando vuelva la conexión.",
+    pt: "Não deu para sair — isso precisa de conexão. Tente de novo quando a conexão voltar.",
+  },
   "signin.googleFailed": {
     en: "Google sign-in didn't go through. Use the email link instead.",
     es: "No se pudo entrar con Google. Usa el enlace por correo.",

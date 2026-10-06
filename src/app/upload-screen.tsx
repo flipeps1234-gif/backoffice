@@ -73,8 +73,19 @@ import {
 import { dedupe, isDuplicate } from "@/lib/extract/dedupe";
 import type { ExtractionWarning } from "@/lib/extract/types";
 import { isAuthRetryableFetchError } from "@supabase/supabase-js";
-import { isNetworkSaveError, retryDelayMs } from "@/lib/save-retry";
+import {
+  clearParked,
+  isNetworkSaveError,
+  LATE_LANDING_MS,
+  markParked,
+  noteLostWrites,
+  otherTabParked,
+  retryDelayMs,
+  TAB_ID,
+  takeLostWrites,
+} from "@/lib/save-retry";
 import { getSupabase } from "@/lib/supabase/client";
+import { isDiscardedRefresh, readSession } from "@/lib/supabase/session";
 import {
   insertClient,
   loadClients,
@@ -117,8 +128,10 @@ import {
   clearSignInStarted,
   linkPendingSnapshot,
   markLinkPending,
+  parseLinkPending,
   signInStartedHereFor,
   subscribeLinkPending,
+  tokenSubject,
 } from "@/lib/return-to";
 import { acceptTerms, TERMS_VERSION } from "@/lib/terms";
 import type { Service } from "@/lib/service";
@@ -175,12 +188,13 @@ type Stage = "upload" | "confirm" | "sort";
  * account's rows structurally cannot survive into another's session on a
  * shared device: the component holding them is gone.
  */
-// Set by persist() when a queued write finds no session — the other tab
-// signed out (auth-js clears the SHARED storage key and broadcasts
-// SIGNED_OUT) after this tab enqueued work. The Ledger that owned the
-// write is unmounted by then, so this survives it and the next signed-in
-// mount raises the save-failed banner instead of losing the write silently.
-let lostWritesWhileSignedOut = false;
+// A queued write lost with its Ledger (the other tab signed out — auth-js
+// clears the SHARED storage key and broadcasts SIGNED_OUT — or a link for
+// another account arrived) is noted per account on the device
+// (lib/save-retry.ts noteLostWrites) and said once, as its own red line,
+// at that account's next mount here. It used to be a module flag read
+// into `saveFailed`, which rendered nowhere on the first screen and, where
+// it did render, blamed a different batch (pass-7 concurrency review).
 
 // A queued write that deliberately took its own data back OFF the screen
 // before failing (a generated instance whose insert failed; a "Got cash"
@@ -210,8 +224,16 @@ type SaveQueue = {
   outcomes: Set<() => void>;
   /** Items enqueued and not yet finished (running, parked or waiting). */
   size: number;
-  /** The running item's first-outcome promise, while one is running. */
+  /** Resolves at the running item's first outcome. Its own promise — NOT
+   *  the item's `outcome`: persist pre-settles outcomes queued behind a
+   *  parked save, and awaiting an already-resolved promise in a loop
+   *  yields only to the microtask queue, freezing the tab (pass-7 review). */
   running: Promise<void> | null;
+  /** A parked save landed while more were queued: the green line waits for
+   *  the LAST of them — "everything is saved" was said with a save still
+   *  in flight (pass-7). "late" when the wait was long enough that a
+   *  double entry on another device is plausible. */
+  recoveredPending: "" | "now" | "late";
 };
 
 /** Resolve when it is worth trying the parked save again: the browser says
@@ -259,18 +281,39 @@ export default function UploadScreen({
   const [arrivedByLink] = useState(
     () => typeof window !== "undefined" && /[#&]access_token=/.test(window.location.hash),
   );
+  // Which account the link signs in: the token's subject, read unverified
+  // from the URL (the server verifies the token itself). The shared flag
+  // carries it so other tabs ask only once THEIR session has become that
+  // account — an anonymous flag made every tab tear down the account it
+  // held and ask about the holder's own address for one round-trip
+  // (pass-7 concurrency review).
+  const [linkSub] = useState(() =>
+    typeof window !== "undefined" ? tokenSubject(window.location.hash) : null,
+  );
   // Declared BEFORE useSession so it runs first: the pending flag must be
   // in storage before auth-js saves the session and broadcasts it to the
   // other tabs (lib/return-to.ts explains the attack this stops).
   useEffect(() => {
-    if (arrivedByLink) markLinkPending();
-  }, [arrivedByLink]);
+    if (arrivedByLink) markLinkPending(linkSub);
+  }, [arrivedByLink, linkSub]);
   const { user, loading, isConfigured } = useSession();
   const { locale, t } = useLocale();
+  /** "Not me" could not sign out (expired token, offline): shown on the question. */
+  const [notMeError, setNotMeError] = useState("");
   // A session from a URL that nobody on this device has confirmed —
   // persisted and shared by every tab, so closing the tab that carried
   // the hash, or having /app open in another, cannot skip the question.
-  const linkPending = useSyncExternalStore(subscribeLinkPending, linkPendingSnapshot, () => false);
+  const pending = parseLinkPending(
+    useSyncExternalStore(subscribeLinkPending, linkPendingSnapshot, () => ""),
+  );
+  // The account this tab held before the flag went up. A link for the SAME
+  // account changes nothing here, so this tab neither asks nor unmounts
+  // its Ledger (a parked save would go with it). Unknown (undefined) when
+  // the page opened with the flag already up: then it asks — the safe side.
+  // Tracked while the flag is down and frozen while it is up (state set
+  // during render, React's way of deriving from the previous render).
+  const [userBeforeLink, setUserBeforeLink] = useState<string | null | undefined>(undefined);
+  if (!pending.set && userBeforeLink !== (user?.id ?? null)) setUserBeforeLink(user?.id ?? null);
   // This tab's own copy of the question: with storage blocked (Safari's
   // "Block all cookies") the shared flag cannot be written, and auth-js
   // keeps the session in memory — the gate must still exist here
@@ -299,12 +342,30 @@ export default function UploadScreen({
   // Another tab's Continue settles this one too: a true→false move of the
   // shared flag (never a flag that was false all along — that is what
   // blocked storage looks like) ends the tab's own question.
-  const prevLinkPending = useRef(linkPending);
+  const prevLinkPending = useRef(pending.set);
   useEffect(() => {
-    if (prevLinkPending.current && !linkPending) setTabPending(false);
-    prevLinkPending.current = linkPending;
-  }, [linkPending]);
-  const askFirst = linkPending || tabPending;
+    if (prevLinkPending.current && !pending.set) setTabPending(false);
+    prevLinkPending.current = pending.set;
+  }, [pending.set]);
+  // The link did not become this tab's session (a used or expired token:
+  // auth-js keeps whatever session there was and raises nothing): the
+  // shared flag has no subject to wait for — drop it, or every tab would
+  // carry it until someone found a Continue to tap. This tab's own
+  // question is already silent (ownAsk below needs the link's account).
+  useEffect(() => {
+    if (!arrivedByLink || loading || !tabPending || linkSub === null) return;
+    if (user?.id !== linkSub) clearLinkPending();
+  }, [arrivedByLink, loading, tabPending, linkSub, user]);
+  // Other tabs: the shared flag names an account, and this tab's session
+  // has become it (and was not it already). This tab: its own question,
+  // once the link's account is the one signed in. An unreadable token
+  // (no subject) asks everywhere, as the flag always did.
+  const sharedAsk =
+    pending.set &&
+    (pending.sub === null ||
+      (pending.sub === user?.id && pending.sub !== userBeforeLink));
+  const ownAsk = tabPending && (linkSub === null || linkSub === user?.id);
+  const askFirst = sharedAsk || ownAsk;
 
   // The one owner of the .dark class after first paint (the layout's
   // inline script owns the paint before hydration).
@@ -416,6 +477,7 @@ export default function UploadScreen({
     return gate(
       <LinkSignedIn
         email={user.email ?? ""}
+        error={notMeError}
         onContinue={settleLink}
         onSignOut={() => {
           // Sign out FIRST; the gate falls only once the session is gone.
@@ -423,7 +485,9 @@ export default function UploadScreen({
           // one /logout round-trip — long enough for its loads, the lang
           // stamp and any due recurring sales to write into it (pass-6
           // state enumeration). A refused sign-out (expired token offline)
-          // keeps the question up, which is the safe side.
+          // keeps the question up, which is the safe side — and says so:
+          // a silent no-op left Continue as the only exit (pass-7 review).
+          setNotMeError("");
           void (async () => {
             const supabase = getSupabase();
             try {
@@ -433,12 +497,13 @@ export default function UploadScreen({
             }
             let gone = true;
             try {
-              const res = await supabase?.auth.getSession();
+              const res = supabase ? await readSession(supabase.auth) : undefined;
               gone = !res?.data.session && !res?.error;
             } catch {
               gone = false;
             }
             if (gone) settleLink();
+            else setNotMeError(t("signin.linkedNotMeFailed"));
           })();
         }}
       />,
@@ -463,10 +528,13 @@ export default function UploadScreen({
  *  account. */
 function LinkSignedIn({
   email,
+  error,
   onContinue,
   onSignOut,
 }: {
   email: string;
+  /** A refused "Not me" (expired token, offline): say so, keep the question. */
+  error: string;
   onContinue: () => void;
   onSignOut: () => void;
 }) {
@@ -489,6 +557,11 @@ function LinkSignedIn({
       >
         {t("signin.linkedNotMe")}
       </button>
+      {error && (
+        <p role="alert" className="text-sm text-red-700 dark:text-red-400">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -505,7 +578,13 @@ function Ledger({
   layout: "classic" | "desktop";
 }) {
   const { t, tag } = useLocale();
-  const [status, setStatus] = useState<Status>("idle");
+  /** A write of THIS account's that an earlier Ledger on this device lost
+   *  (lib/save-retry.ts noteLostWrites): said once, as the first screen's
+   *  red line — not as `saveFailed`, whose copy ("some of this is on screen
+   *  only… reload") describes a different situation. Read once, at mount:
+   *  the initial `status`/`error` below carry it. */
+  const [lostEarlier] = useState(() => (accountId ? takeLostWrites(accountId) : false));
+  const [status, setStatus] = useState<Status>(lostEarlier ? "error" : "idle");
   const [stage, setStage] = useState<Stage>("upload");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -521,7 +600,9 @@ function Ledger({
     detail?: string;
     fraction: number | null;
   } | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    lostEarlier ? translate(currentLocale(), "home.errLostEarlier") : "",
+  );
   const [decided, setDecided] = useState<string[]>([]);
   const [quickAdd, setQuickAdd] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -551,19 +632,13 @@ function Ledger({
   /** Ids of the most recently read batch — what the insights describe. */
   const [lastBatchIds, setLastBatchIds] = useState<string[]>([]);
   /** Set when any database write failed — see the finish copy. */
-  const [saveFailed, setSaveFailed] = useState(() => {
-    // A write that another tab's sign-out stranded (see persist below)
-    // surfaces here, on the next signed-in mount, as the sticky banner.
-    if (!lostWritesWhileSignedOut) return false;
-    lostWritesWhileSignedOut = false;
-    return true;
-  });
+  const [saveFailed, setSaveFailed] = useState(false);
   /** True while the write queue is parked on a save that never reached
    *  the server (no signal) and is being retried — see persist. Not sticky:
    *  it clears when the save lands. */
   const [saveWaiting, setSaveWaiting] = useState(false);
   /** "Back online — everything is saved", for a few seconds after that. */
-  const [saveRecovered, setSaveRecovered] = useState(false);
+  const [saveRecovered, setSaveRecovered] = useState<"" | "now" | "late">("");
   const saveQueue = useRef<SaveQueue>({
     waiting: false,
     stopped: false,
@@ -572,6 +647,7 @@ function Ledger({
     outcomes: new Set(),
     size: 0,
     running: null,
+    recoveredPending: "",
   });
   /** "Try now" was tapped and the attempt is running (or waiting on
    *  auth-js, which caches a failed token refresh for a minute). */
@@ -597,14 +673,23 @@ function Ledger({
       // The Ledger is going away (account switch, a sign-out in another
       // tab): nothing may keep retrying into the next account's session.
       // What was still parked is lost — say so on the next signed-in mount.
-      if (queue.waiting && !queue.consentedLoss) lostWritesWhileSignedOut = true;
+      // What was still parked is lost — say so at this account's next
+      // mount on this device (the owner who chose the loss already knows).
+      if (queue.waiting) {
+        if (!queue.consentedLoss && accountId) noteLostWrites(accountId);
+        clearParked(TAB_ID);
+      }
       queue.stopped = true;
       queue.wake?.();
     };
-  }, []);
+  }, [accountId]);
   useEffect(() => {
     if (!saveRecovered) return;
-    const timer = window.setTimeout(() => setSaveRecovered(false), 6000);
+    // Longer when it asks the owner to check for a double entry.
+    const timer = window.setTimeout(
+      () => setSaveRecovered(""),
+      saveRecovered === "late" ? 15000 : 6000,
+    );
     return () => window.clearTimeout(timer);
   }, [saveRecovered]);
   // While a save is parked, closing or reloading the tab loses it (nothing
@@ -851,7 +936,12 @@ function Ledger({
       if (queue.waiting) settle();
       const next = writeChain.current.then(async () => {
         let parked = false;
-        queue.running = outcome;
+        let parkedAt = 0;
+        let runDone = () => {};
+        const run = new Promise<void>((resolve) => {
+          runDone = resolve;
+        });
+        queue.running = run;
         try {
           if (!isConfigured || !accountId) return;
           for (let attempt = 0; ; attempt += 1) {
@@ -871,7 +961,8 @@ function Ledger({
               // below is an AuthRetryableFetchError, which the catch parks).
               // Only a session-less, error-less read (storage really cleared)
               // takes the quiet flag path.
-              const res = await getSupabase()?.auth.getSession();
+              const auth = getSupabase()?.auth;
+              const res = auth ? await readSession(auth) : undefined;
               if (!res?.data.session) {
                 if (res?.error) {
                   // auth-js removes the stored session and broadcasts
@@ -879,35 +970,48 @@ function Ledger({
                   // refresh failure — a revoked refresh token, say — so the
                   // throw below lands on nobody; remember the loss for the next
                   // signed-in mount. A retryable failure keeps the session and
-                  // this Ledger.
-                  if (!isAuthRetryableFetchError(res.error)) {
-                    lostWritesWhileSignedOut = true;
+                  // this Ledger; so does a refresh that another tab's refresh
+                  // DISCARDED (readSession re-read twice already; the throw
+                  // parks, and the park's 2 s step reads the rotated session
+                  // from storage — pass-7 concurrency review).
+                  if (!isAuthRetryableFetchError(res.error) && !isDiscardedRefresh(res.error)) {
+                    noteLostWrites(accountId);
                   }
                   throw res.error;
                 }
-                lostWritesWhileSignedOut = true;
+                noteLostWrites(accountId);
                 return;
               }
               await work();
-              // It waited and it landed. If more saves are queued behind
-              // it and the network drops again, the next one re-parks.
-              if (parked) setSaveRecovered(true);
+              // It waited and it landed. The green line comes once the LAST
+              // queued save is in (the finally below), not now: "everything
+              // is saved" was said here with the next save still in flight.
+              // If the network drops again, the next one re-parks.
+              if (parked && queue.recoveredPending !== "late") {
+                queue.recoveredPending = Date.now() - parkedAt > LATE_LANDING_MS ? "late" : "now";
+              }
               return;
             } catch (cause) {
               const reverted = cause instanceof RevertedWrite;
               if (!reverted && !queue.stopped && isNetworkSaveError(cause)) {
                 console.warn("Save waiting for the network:", cause);
                 parked = true;
+                if (!parkedAt) parkedAt = Date.now();
                 queue.waiting = true;
+                // Other tabs' Sign out asks before losing this (signOut below).
+                markParked(TAB_ID);
                 setSaveWaiting(true);
                 setSaveTrying(false);
                 // The "Try now" that may have started this attempt is over.
                 focusRecovered.current = false;
-                setSaveRecovered(false);
+                setSaveRecovered("");
                 // Everyone awaiting a queued save has their answer: parked.
                 for (const done of queue.outcomes) done();
+                runDone();
                 const why = await parkUntilRetry(queue, attempt);
                 if (!queue.stopped) {
+                  // Still parked, still here: the marker's age says so.
+                  markParked(TAB_ID);
                   // Back online, tab in front, "Try now": start the short
                   // 2/5/15 s steps again — auth-js caches a FAILED token
                   // refresh for a minute, so the first attempt after a
@@ -921,7 +1025,7 @@ function Ledger({
               // unmounting under a write still in flight): nothing retries
               // it, so say so on the next signed-in mount instead of nothing.
               if (!reverted && queue.stopped && isNetworkSaveError(cause)) {
-                lostWritesWhileSignedOut = true;
+                noteLostWrites(accountId);
               }
               console.error("Save failed:", cause);
               // translate + currentLocale, not `t`: this callback (and the load
@@ -942,12 +1046,21 @@ function Ledger({
         } finally {
           if (parked) {
             queue.waiting = false;
+            clearParked(TAB_ID);
             setSaveWaiting(false);
             setSaveTrying(false);
           }
+          // The last queued save is done — landed, or refused (the red line
+          // says so; the green keeps its own truth about the ones that
+          // waited): now the green line. Batched with setSaveWaiting above.
+          if (queue.recoveredPending && queue.size === 1 && !queue.waiting) {
+            setSaveRecovered(queue.recoveredPending);
+            queue.recoveredPending = "";
+          }
           queue.outcomes.delete(settle);
           queue.size -= 1;
-          if (queue.running === outcome) queue.running = null;
+          if (queue.running === run) queue.running = null;
+          runDone();
           settle();
         }
       });
@@ -1387,7 +1500,8 @@ function Ledger({
     // The paid extraction path is gated on being signed in; the token proves
     // it. Unconfigured local dev sends none and gets the free mock.
     const headers: Record<string, string> = {};
-    const session = (await getSupabase()?.auth.getSession())?.data.session;
+    const auth = getSupabase()?.auth;
+    const session = auth ? (await readSession(auth)).data.session : null;
     if (session) headers.authorization = `Bearer ${session.access_token}`;
 
     const collected: Transaction[] = [];
@@ -2258,13 +2372,11 @@ function Ledger({
         );
       }
     } else {
+      // ||, not ??: clientNameOf answers "" for a sale with no client, and
+      // the notice read "Saved —  owes $80.00."
       setSaleNotice(
         t("home.savedOwes", {
-          name:
-            result.newClient?.name ??
-            // ||, not ??: clientNameOf answers "" for a sale with no
-            // client, and the notice read "Saved —  owes $80.00."
-            (clientNameOf(sale.clientId) || t("home.fallbackClient")),
+          name: result.newClient?.name ?? (clientNameOf(sale.clientId) || t("home.fallbackClient")),
           amount: formatCents(saleTotalCents(sale)),
         }),
       );
@@ -2833,9 +2945,11 @@ function Ledger({
     // first made a network failure on a save still in flight count as
     // "failed for good" on a Ledger about to unmount: the save the queue
     // exists to protect, lost with no confirm and no trace (pass-6 state
-    // enumeration). Tick when an item is queued but not yet running.
+    // enumeration). A whole task's tick when an item is queued but not yet
+    // running (or bookkeeping ever slips): a microtask tick here would spin
+    // the tab without letting the save's own response in.
     while (!queue.waiting && queue.size > 0) {
-      await (queue.running ?? Promise.resolve());
+      await (queue.running ?? new Promise<void>((tick) => setTimeout(tick)));
     }
     if (queue.waiting) {
       // A save still waiting for the network cannot be drained: signing
@@ -2863,7 +2977,7 @@ function Ledger({
       // shape persist reads above), so an error means "still here" too
       // (pass-4 review).
       try {
-        const res = await supabase?.auth.getSession();
+        const res = supabase ? await readSession(supabase.auth) : undefined;
         stillHere = Boolean(res?.data.session) || Boolean(res?.error);
       } catch {
         stillHere = true;
@@ -2876,10 +2990,16 @@ function Ledger({
       }
       return;
     }
-    // Nothing parked: stop retries, drain, then revoke. "global" (auth-js's
-    // default, spelled out): GoTrue revokes every session for the account,
-    // not just this device's. Whether sign-out should be per-device
-    // instead is an owner call, not a fix.
+    // Nothing parked HERE — but another tab of this browser may be holding
+    // a save the network refused (its marker, stamped on every retry; a
+    // tab that is gone leaves one that goes stale). Signing out clears the
+    // session every tab shares, so that save is lost too: ask, as above
+    // (pass-7 concurrency review).
+    if (otherTabParked(TAB_ID) && !window.confirm(t("home.signOutUnsavedElsewhere"))) return;
+    // Stop retries, drain, then revoke. "global" (auth-js's default,
+    // spelled out): GoTrue revokes every session for the account, not just
+    // this device's. Whether sign-out should be per-device instead is an
+    // owner call, not a fix.
     queue.stopped = true;
     queue.wake?.();
     try {
@@ -2959,7 +3079,10 @@ function Ledger({
         role="status"
         className={`${where === "phone" ? "mb-4 " : ""}rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900 outline-none`}
       >
-        {t(status === "error" && errorIsSaveFailed ? "home.saveRecoveredPartial" : "home.saveRecovered")}
+        {/* The sticky flag, not the red line: an upload in between clears
+            `error`, and the batch it reported is still unsaved (pass-7). */}
+        {t(saveFailed ? "home.saveRecoveredPartial" : "home.saveRecovered")}
+        {saveRecovered === "late" && ` ${t("home.saveRecoveredLate")}`}
       </p>
     ) : null;
 
@@ -3780,7 +3903,13 @@ function Ledger({
             later (amber) one covered the red (pass-6 review). Not on
             Upload: the sort stage's RunningTotals is itself sticky at the
             top, and the block would cover the totals. */}
-        <div className={`${show("upload") ? "" : "sticky top-2 z-20 "}flex flex-col gap-2 empty:hidden`}>
+        <div
+          className={`${show("upload") ? "" : "sticky top-2 z-20 "}flex flex-col gap-2`}
+          // `:empty` cannot do this: the red line stays mounted (hidden) so
+          // its role=alert does not remount, and a 0-height flex item still
+          // costs <main>'s gap (pass-7 review).
+          hidden={!((status === "error" && !errorHidden) || saveWaiting || saveRecovered !== "")}
+        >
           {errorLineEl()}
           {saveQueueEl("sidebar")}
         </div>

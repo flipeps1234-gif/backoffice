@@ -19,7 +19,11 @@
 // Control (never affected by "offline"):
 //   POST /__mock/offline?on=1|0   drop every REST/auth request (a dead network)
 //   POST /__mock/reject?n=1       answer the next n writes with 409 / 23505
-//   POST /__mock/hold?n=1         keep the next n writes open (in flight) until…
+//   POST /__mock/tokenlife?s=3600  lifetime of access tokens minted by the refresh endpoint
+//   POST /__mock/refreshfail?n=1  answer the next n token refreshes with 503 (auth-js: retryable)
+//   POST /__mock/hold?n=1&skip=0  let `skip` writes through, then keep the next n open (in flight) until…
+//        (&auth=1: hold GET /auth/v1/user — the magic-link arrival's user lookup — instead of writes)
+//   POST /__mock/release          …this answers them normally (a slow connection that recovered), or
 //   POST /__mock/drop             …this destroys them (a connection that died mid-request)
 //   GET  /__mock/state            tables + a log of every write
 //   POST /__mock/reset            back to the seed
@@ -36,6 +40,28 @@ let tables = seed();
 let offline = false;
 let rejectNext = 0;
 let holdNext = 0;
+let holdSkip = 0;
+let holdAuth = false;
+let tokenLife = 3600;
+let refreshFail = 0;
+let refreshes = 0;
+const userFromToken = (tok) => {
+  try {
+    const p = JSON.parse(Buffer.from(tok.split(".")[1], "base64url").toString());
+    if (typeof p.sub === "string") return { id: p.sub, email: p.email ?? "mock@example.invalid", aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {}, created_at: "2026-01-01T00:00:00Z" };
+  } catch { /* not a JWT */ }
+  return { id: UID, email: "mock@example.invalid" };
+};
+const b64url = (o) => Buffer.from(JSON.stringify(o)).toString("base64url");
+// A made-up JWT (nothing verifies the signature here) for UID, expiring in `tokenLife` s.
+const mintSession = () => {
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + tokenLife;
+  refreshes += 1;
+  const user = { id: UID, email: "mock@example.invalid", aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: { lang: "en" }, created_at: "2026-01-01T00:00:00Z" };
+  const access_token = `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({ sub: UID, email: user.email, role: "authenticated", aud: "authenticated", exp, iat: now })}.mock`;
+  return { access_token, token_type: "bearer", expires_in: tokenLife, expires_at: exp, refresh_token: `mock-refresh-${refreshes}`, user };
+};
 const held = new Set();
 const log = [];
 
@@ -66,14 +92,26 @@ http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://x");
   if (req.method === "OPTIONS") return send(res, 204);
   if (url.pathname === "/__mock/offline") { offline = url.searchParams.get("on") === "1"; return send(res, 200, { offline }); }
-  if (url.pathname === "/__mock/state") return send(res, 200, { offline, tables, log });
+  if (url.pathname === "/__mock/state") return send(res, 200, { offline, refreshes, tables, log });
+  if (url.pathname === "/__mock/tokenlife") { tokenLife = Number(url.searchParams.get("s") ?? 3600); return send(res, 200, { tokenLife }); }
+  if (url.pathname === "/__mock/refreshfail") { refreshFail = Number(url.searchParams.get("n") ?? 1); return send(res, 200, { refreshFail }); }
   if (url.pathname === "/__mock/reset") { tables = seed(); log.length = 0; offline = false; return send(res, 200, { ok: true }); }
-  if (url.pathname === "/__mock/hold") { holdNext = Number(url.searchParams.get("n") ?? 1); return send(res, 200, { holdNext }); }
-  if (url.pathname === "/__mock/drop") { const n = held.size; for (const r of held) r.socket.destroy(); held.clear(); log.push(`DROPPED ${n} HELD`); return send(res, 200, { dropped: n }); }
+  if (url.pathname === "/__mock/hold") { holdNext = Number(url.searchParams.get("n") ?? 1); holdSkip = Number(url.searchParams.get("skip") ?? 0); holdAuth = url.searchParams.get("auth") === "1"; return send(res, 200, { holdNext, holdSkip, holdAuth }); }
+  if (url.pathname === "/__mock/release") { const n = held.size; for (const h of held) h.resume(); held.clear(); log.push(`RELEASED ${n} HELD`); return send(res, 200, { released: n }); }
+  if (url.pathname === "/__mock/drop") { const n = held.size; for (const h of held) { h.req.socket.destroy(); h.resume(); } held.clear(); log.push(`DROPPED ${n} HELD`); return send(res, 200, { dropped: n }); }
   if (url.pathname === "/__mock/reject") { rejectNext = Number(url.searchParams.get("n") ?? 1); return send(res, 200, { rejectNext }); }
   if (offline) { log.push(`DROPPED ${req.method} ${url.pathname}`); req.socket.destroy(); return; }
-  if (holdNext > 0 && req.method !== "GET" && url.pathname.startsWith("/rest/v1/")) {
-    holdNext -= 1; held.add(req); log.push(`HELD ${req.method} ${url.pathname}`); return;
+  const holdable = holdAuth
+    ? url.pathname === "/auth/v1/user"
+    : req.method !== "GET" && url.pathname.startsWith("/rest/v1/");
+  if (holdNext > 0 && holdable) {
+    if (holdSkip > 0) holdSkip -= 1;
+    else {
+      holdNext -= 1; log.push(`HELD ${req.method} ${url.pathname}`);
+      await new Promise((resume) => held.add({ req, resume }));
+      if (req.socket.destroyed) return;
+      log.push(`RELEASED ${req.method} ${url.pathname}`);
+    }
   }
   if (rejectNext > 0 && req.method !== "GET" && url.pathname.startsWith("/rest/v1/")) {
     rejectNext -= 1; log.push(`REJECTED ${req.method} ${url.pathname}`);
@@ -87,8 +125,15 @@ http.createServer(async (req, res) => {
   if (url.pathname.startsWith("/auth/v1/")) {
     log.push(`AUTH ${req.method} ${url.pathname.slice(8)}`);
     if (url.pathname.endsWith("/settings")) return send(res, 200, { external: { google: false } });
-    if (url.pathname.endsWith("/user")) return send(res, 200, { id: UID, email: "mock@example.invalid" });
+    // The user the bearer token names (its unverified payload), so a link for
+    // ANOTHER account can be played against a tab signed in as UID.
+    if (url.pathname.endsWith("/user")) return send(res, 200, userFromToken((req.headers.authorization ?? "").replace(/^Bearer /, "")));
     if (url.pathname.endsWith("/logout")) return send(res, 204);
+    if (url.pathname.endsWith("/token") && url.searchParams.get("grant_type") === "refresh_token") {
+      if (refreshFail > 0) { refreshFail -= 1; log.push("REFRESH 503"); return send(res, 503, { code: 503, msg: "mock refresh failure" }); }
+      log.push(`REFRESH ok (${json?.refresh_token})`);
+      return send(res, 200, mintSession());
+    }
     return send(res, 400, { error: "unsupported in the mock" });
   }
   if (url.pathname.startsWith("/rest/v1/rpc/")) { log.push(`RPC ${url.pathname.slice(13)}`); return send(res, 200, null); }

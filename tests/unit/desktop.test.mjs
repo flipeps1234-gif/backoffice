@@ -18,6 +18,9 @@ const load = (relative, globals = {}) => {
 
 const { yearSeries, yearsWithData, seriesMonths, expectedCentsIn, calloutTop } = load('../../src/lib/desktop.ts');
 
+/** deepEqual across the vm realm (its objects carry another Object.prototype). */
+const sameValue = (actual, expected) => assert.equal(JSON.stringify(actual), JSON.stringify(expected));
+
 const tx = (date, amountCents, extra = {}) => ({ business: true, date, direction: 'in', amountCents, ...extra });
 const sale = (date, state, lines) => ({ date, state, lineItems: lines.map(([quantity, unitCents]) => ({ quantity, unitCents })) });
 
@@ -159,21 +162,38 @@ test('linkPending: persisted, readable by every tab, cleared on confirm', () => 
     dispatchEvent: (e) => { for (const f of listeners[e.type] ?? []) f(e); return true; },
   };
   const Event = class { constructor(type) { this.type = type; } };
-  const { markLinkPending, clearLinkPending, subscribeLinkPending, linkPendingSnapshot } = load('../../src/lib/return-to.ts', { localStorage, window, Event });
+  const { markLinkPending, clearLinkPending, subscribeLinkPending, linkPendingSnapshot, parseLinkPending } = load('../../src/lib/return-to.ts', { localStorage, window, Event });
   let changes = 0;
   const stop = subscribeLinkPending(() => { changes += 1; });
-  assert.equal(linkPendingSnapshot(), false);
-  markLinkPending();
-  assert.equal(linkPendingSnapshot(), true); assert.equal(changes, 1);
+  sameValue(parseLinkPending(linkPendingSnapshot()), { set: false, sub: null });
+  markLinkPending('user-y');
+  sameValue(parseLinkPending(linkPendingSnapshot()), { set: true, sub: 'user-y' }); assert.equal(changes, 1);
   window.dispatchEvent({ type: 'storage', key: 'contado.linkPending' });    // another tab wrote it
   assert.equal(changes, 2);
   window.dispatchEvent({ type: 'storage', key: 'contado.theme' });          // unrelated key: ignored
   assert.equal(changes, 2);
   clearLinkPending();
-  assert.equal(linkPendingSnapshot(), false); assert.equal(changes, 3);
+  assert.equal(linkPendingSnapshot(), ''); assert.equal(changes, 3);
   stop();
-  markLinkPending();
+  markLinkPending(null);
   assert.equal(changes, 3);
+  sameValue(parseLinkPending(linkPendingSnapshot()), { set: true, sub: null });    // unreadable token: everyone asks
+  sameValue(parseLinkPending('1'), { set: true, sub: null });                      // the flag's first shape
+  sameValue(parseLinkPending('{"sub":""}'), { set: true, sub: null });
+  sameValue(parseLinkPending('{not json'), { set: true, sub: null });
+});
+
+test('tokenSubject: the account a link signs in, from the URL fragment alone; nothing readable → null', () => {
+  const { tokenSubject } = load('../../src/lib/return-to.ts', { atob, URLSearchParams });   // web globals the vm realm lacks
+  const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const jwt = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: '9b2f6d1e-3c4a-4f7b-8a1d-000000000002', email: 'y@example.invalid', exp: 2e9 })}.sig`;
+  assert.equal(tokenSubject(`#access_token=${jwt}&refresh_token=r&expires_in=3600&token_type=bearer&type=magiclink`), '9b2f6d1e-3c4a-4f7b-8a1d-000000000002');
+  assert.equal(tokenSubject(`#type=magiclink&access_token=${jwt}`), '9b2f6d1e-3c4a-4f7b-8a1d-000000000002');  // position does not matter
+  assert.equal(tokenSubject(''), null);
+  assert.equal(tokenSubject('#error=access_denied&error_code=otp_expired'), null);
+  assert.equal(tokenSubject('#access_token=not.a-jwt'), null);
+  assert.equal(tokenSubject(`#access_token=${b64({})}.${b64({ sub: 7 })}.x`), null);                       // a non-string subject
+  assert.equal(tokenSubject(`#access_token=${b64({})}.${Buffer.from('{"sub":"a"', 'utf8').toString('base64url')}.x`), null); // broken payload
 });
 
 test('signInStarted / linkPending: blocked storage never throws; the marker reads "not started" (confirm first) and the SHARED flag reads false — the tab-local gate in upload-screen.tsx covers that case', async () => {
@@ -188,8 +208,9 @@ test('signInStarted / linkPending: blocked storage never throws; the marker read
   await assert.doesNotReject(() => api.markSignInStarted('ana@x.test'));
   assert.equal(await api.signInStartedHereFor('ana@x.test'), false);
   assert.doesNotThrow(() => api.clearSignInStarted());
-  assert.doesNotThrow(() => api.markLinkPending());
-  assert.equal(api.linkPendingSnapshot(), false);
+  assert.doesNotThrow(() => api.markLinkPending('user-y'));
+  assert.equal(api.linkPendingSnapshot(), '');
+  sameValue(api.parseLinkPending(api.linkPendingSnapshot()), { set: false, sub: null });
   assert.doesNotThrow(() => api.clearLinkPending());
 });
 
