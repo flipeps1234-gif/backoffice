@@ -1,3 +1,4 @@
+import { roundCents } from "./sale";
 /**
  * The services catalog. A service is a thing you sell — "Lawn mowing",
  * "Haircut" — with either a flat price or a per-unit rate. Money is
@@ -32,7 +33,7 @@ export const UNIT_LABELS: Record<RateUnit, string> = {
 export const priceFor = (service: Service, quantity = 1): number => {
   if (service.pricing.type === "flat") return service.pricing.cents;
   if (!Number.isFinite(quantity) || quantity <= 0) return 0;
-  return Math.round(service.pricing.cents * quantity);
+  return roundCents(service.pricing.cents * quantity);
 };
 
 /** Chip label: "Lawn mowing · $65" or "Cleaning · $0.18/sq ft". */

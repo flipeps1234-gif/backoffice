@@ -272,3 +272,23 @@ test('admin_overview survives hostile account rows: malformed line_items count a
   await db.exec('DELETE FROM public.sales;');
   await db.query('DELETE FROM auth.users WHERE id IN ($1,$2)', [user, other]);
 });
+
+test("0026: opted_out_at is the webhooks' column — a client insert gets NULL, a client update keeps the stored STOP, the service role sets it", async () => {
+  const uid = '00000000-0000-4000-8000-00000000a026';
+  await db.exec(`RESET ROLE; INSERT INTO auth.users(id,email) VALUES ('${uid}','optout@example.test') ON CONFLICT DO NOTHING; DELETE FROM public.notification_prefs WHERE account_id='${uid}';`);
+  await asUser(uid, 'optout@example.test');
+  await db.query("INSERT INTO public.notification_prefs(account_id,channel,phone,whatsapp_consent_at,sms_consent_at,opted_out_at,updated_at) VALUES ($1,'whatsapp','+15555550126',now(),null,'2026-01-01T00:00:00Z',now())", [uid]);
+  let { rows } = await db.query('SELECT opted_out_at FROM public.notification_prefs WHERE account_id=$1', [uid]);
+  assert.equal(rows[0].opted_out_at, null);                       // a client cannot plant a STOP
+  await db.exec('RESET ROLE; SET ROLE service_role');
+  await db.query("UPDATE public.notification_prefs SET opted_out_at='2026-03-01T00:00:00Z' WHERE account_id=$1", [uid]);  // the webhook honours a STOP
+  await asUser(uid, 'optout@example.test');
+  await db.query("UPDATE public.notification_prefs SET opted_out_at=null, whatsapp_consent_at=now(), updated_at=now() WHERE account_id=$1", [uid]);  // the native app's re-consent
+  ({ rows } = await db.query('SELECT opted_out_at FROM public.notification_prefs WHERE account_id=$1', [uid]));
+  assert.notEqual(rows[0].opted_out_at, null);                    // the STOP stays on the row
+  await db.exec('RESET ROLE; SET ROLE service_role');
+  await db.query("UPDATE public.notification_prefs SET opted_out_at=null WHERE account_id=$1", [uid]);   // only the service role clears it
+  ({ rows } = await db.query('SELECT opted_out_at FROM public.notification_prefs WHERE account_id=$1', [uid]));
+  assert.equal(rows[0].opted_out_at, null);
+  await db.exec('RESET ROLE');
+});

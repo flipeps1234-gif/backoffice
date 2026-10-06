@@ -93,6 +93,7 @@ export function EditForm({
         </label>
         <input
           id="prod-name"
+          maxLength={400}
           className={fieldClass}
           placeholder={t("products.namePlaceholder")}
           autoFocus={autoFocusName}

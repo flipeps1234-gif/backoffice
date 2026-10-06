@@ -467,6 +467,92 @@ three MEDs in code from passes 1–3: the lens set, not the defect set, was
 what had converged. Not tested: real GoTrue refresh-token reuse (the
 harness fakes /token); the discarded-refresh path in a browser.
 
+PASS 8 — NOT CLEAN (count 0). Lenses: newcode over the pass-7 commit
+651afa6; PERSISTED-STATE MIGRATION (never run); PRODUCT-SEMANTICS (never
+run); SCHEMA-DRIFT (never run); dependency audit by tooling (source-map-js
+1.2.1→1.2.2 in range, a build-time postcss dependency with no runtime
+path; the next/og advisory stays the owner's 16.3.6+ decision). One
+Workflow: four finders, then a MECHANICAL and an IMPACT refuter per
+finding (one for LOWs) — 14 findings, 13 CONFIRMED, 1 REFUTED (flat-string
+cadence rows: none exist, no shipped client writes one).
+- NEWCODE (3): HIGH — the pass-7 gate read the URL with a hash-only regex
+  and a first-duplicate URLSearchParams.get, while auth-js reads every
+  fragment parameter, then the query over it, LAST duplicate winning. So a
+  token in the query string, a duplicate access_token key (decoy first)
+  or a percent-encoded key signed the device into the attacker's account
+  with no question in any tab — and the orphan-clear then removed the
+  flag. The gate now reads with `callbackParams` (return-to.ts, held
+  equal to auth-js's own parseParametersFromURL by a unit test on those
+  shapes); the client refuses tokens in the query outright
+  (`detectSessionInUrl` as a function — GoTrue only ever issues fragment
+  tokens); the arriving tab asks when the link CHANGED the stored
+  session (`storedSessionUserId` read before the SDK runs), never by the
+  URL's subject; the landing forwards every callback parameter, hash and
+  query. Verified in two tabs against the mock: the query token was never
+  consumed (no auth call), a duplicate-key link asked about the
+  attacker's address in both tabs (never the decoy), the encoded-key link
+  likewise. MED — a second link whose token failed overwrote the first's
+  flag and then cleared it: the open question for the first account fell
+  in every tab. The flag is a LIST of {sub, at} entries (1 h TTL); marks
+  add, clears drop one account's entry (a Continue also drops the
+  no-subject entries), the pass-5 settle watches this tab's own entry.
+  Verified: A asking about W, a failing Z link in B → A's question never
+  moved, W's entry stayed. LOW-MED — a consented sign-out with a parked
+  save still noted the loss for the next mount; the note skips a
+  consented loss (verified: no red line at the next mount).
+- PRODUCT-SEMANTICS (3): MED — an OPEN sale paid digitally with another
+  amount (a tip, a partial payment, a split) had no exit that counts
+  once: the exact-amount rule guards the engine, and the only button was
+  "Got cash" — a second money row, doubled in Kept, the chart, the tax CSV.
+  Owed's OPEN rows carry "Find the payment…"; the hand-link relaxes the
+  amount too (relaxAmount beside relaxName — auto-linking never does);
+  the picker shows each candidate's amount; "Got cash" asks first when
+  an unmatched payment from that client is already in the ledger
+  (home.gotCashPaymentExists → the picker). Verified: $120 sale, $125
+  Venmo → picker "$125.00 · Rosa · date" → sale paid onto it, two
+  transactions in all; Got cash beside an unmatched $85 → the question,
+  then the picker, no cash row. The help article says so (en/es/pt).
+  LOW-MED — "It was cash" on a stale EXPECTED sale dated the cash on the
+  tap day (≥14 days late, across months and tax years): it is dated on
+  the sale now (verified: 2026-09-16, not today). LOW — client cents
+  rounded the binary product (50 × 0.29 = 14.499999999999998 → 14) while
+  admin_overview rounds the exact decimal (14.5 → 15): `roundCents`
+  nudges a few ulps away from zero first (sale.ts, service.ts,
+  dashboard.ts, desktop.ts).
+- MIGRATION (2 of 3): LOW-MED — "every N days" accepted N > 365 (the
+  input's max had no form) and both clients read such a row back as
+  MONTHLY forever; the writer clamps to MAX_EVERY_N_DAYS (recurring.ts),
+  the reader cites it. LOW — opted_out_at had no server-side guard (the
+  native app still writes it): migration 0026 `opted_out_server_guard` —
+  a BEFORE trigger that keeps the stored value on any anon/authenticated
+  write (NULL on their inserts) — is WRITTEN AND TESTED (PGlite: a client
+  cannot plant or clear a STOP, the service role can) but NOT APPLIED:
+  nothing deployed depends on it, and applying needs the owner's
+  go-ahead (DEPLOY.md).
+- SCHEMA-DRIFT (1 of 5 in src/): LOW-MED — the byte CHECKs of 0020/0021
+  (names 400, payer 400, memo 4000, notes 8000, state 16, phone 32) had
+  no client twin: an over-long note was refused by Postgres under a
+  "reload and re-enter" line that fails the same way forever. The
+  inputs carry maxLength and the write wrappers clamp to the column's
+  bytes (lib/text.ts clampBytes). The mock (dev-only) mis-evaluated
+  composite on_conflict keys and lacked the `not.` operator — fixed.
+- Native-app items, recorded for the owner (another repo, not this
+  loop's): SupabaseData.swift still sends opted_out_at (0026 covers it
+  server-side once applied); CSVExport.swift's field() predates the web's
+  formula neutralization (no ';' boundary apostrophe, TAB kept, ';'
+  unquoted); Models.swift/NewSaleView.swift have no MAX_QUANTITY twin
+  (a 1e9+ quantity totals in full on the phone, 0 on the web and in
+  admin_overview); messages.json needs regenerating for the new copy.
+- Recorded, not fixed: analytics.tsx scrubs `[#&?]access_token` but not
+  a percent-encoded key (the attacker's own token); split payments link
+  ONE transaction to the sale (the other half stays plain income — totals
+  still count once); saveProfile stays whole-row last-writer-wins.
+Trend: P8 1H+2M+… — the HIGH was pass 7's own fix (the sixth pass in a
+row), and three lenses never run before found two MEDs and five LOWs in
+code from before this loop. Not tested: the real GoTrue reading a query
+token (refused client-side now, so moot); the rounding against the live
+admin_overview (unit-tested against 0025's rule).
+
 ## Phone demo at /demoo — 2026-10-04
 
 Owner: "turn it into an interactive demo and put it at /demoo" — look B

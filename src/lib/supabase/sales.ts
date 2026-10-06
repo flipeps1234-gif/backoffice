@@ -1,4 +1,5 @@
 import { getSupabase } from "./client";
+import { clampBytes, TEXT_BYTES } from "@/lib/text";
 import { loadAllPages } from "./paginate";
 import { validateLineItems, type Sale, type SaleState } from "@/lib/sale";
 
@@ -55,7 +56,7 @@ const toRow = (sale: Sale, accountId: string) => ({
   method: sale.method,
   matched_txn_id: sale.matchedTxnId,
   recurring_template_id: sale.recurringTemplateId,
-  notes: sale.notes,
+  notes: clampBytes(sale.notes, TEXT_BYTES.notes),
   photo: sale.photo,
 });
 

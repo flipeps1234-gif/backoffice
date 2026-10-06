@@ -89,7 +89,7 @@ const daysBetween = (a: string, b: string): number =>
   86_400_000;
 
 /** A transaction with no readable date can't disqualify on date. */
-const datesCompatible = (txnDate: string, saleDate: string): boolean =>
+export const datesCompatible = (txnDate: string, saleDate: string): boolean =>
   txnDate === "" || daysBetween(txnDate, saleDate) <= MATCH_WINDOW_DAYS;
 
 export type MatchOutcome = {
@@ -179,6 +179,14 @@ export const txnCandidatesForSale = (
      * relaxes and amount+date carry the filter. Auto-linking never relaxes.
      */
     relaxName?: boolean;
+    /**
+     * The same hand-link path, for the amount: a tip, a partial payment,
+     * a split never equals the sale total, and the exact rule — right for
+     * the engine's guesses — left such a sale with no exit but "Got cash",
+     * a second money row for one job (pass-8 review). Auto-linking never
+     * relaxes this either.
+     */
+    relaxAmount?: boolean;
   } = {},
 ): Transaction[] =>
   transactions.filter(
@@ -186,7 +194,25 @@ export const txnCandidatesForSale = (
       txn.direction === "in" &&
       !txn.matchedSaleId &&
       txn.business !== false &&
-      txn.amountCents === saleTotalCents(sale) &&
+      (options.relaxAmount || txn.amountCents === saleTotalCents(sale)) &&
       (options.relaxName || sameName(clientName, txn.payer)) &&
+      datesCompatible(txn.date, sale.date),
+  );
+
+/** Money already in the ledger that could be THIS sale's payment, whatever
+ *  its amount: an unmatched business (or not-yet-sorted) money-in row from
+ *  this client inside the date window. "Got cash" asks before minting a
+ *  second row beside one of these (pass-8 product-semantics review). */
+export const unmatchedPaymentsFor = (
+  transactions: Transaction[],
+  sale: Sale,
+  clientName: string,
+): Transaction[] =>
+  transactions.filter(
+    (txn) =>
+      txn.direction === "in" &&
+      !txn.matchedSaleId &&
+      txn.business !== false &&
+      sameName(clientName, txn.payer) &&
       datesCompatible(txn.date, sale.date),
   );

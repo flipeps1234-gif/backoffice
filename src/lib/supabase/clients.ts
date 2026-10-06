@@ -1,4 +1,5 @@
 import { getSupabase } from "./client";
+import { clampBytes, TEXT_BYTES } from "@/lib/text";
 import { loadAllPages } from "./paginate";
 import type { Client } from "@/lib/client";
 
@@ -44,8 +45,8 @@ export const insertClient = async (
   const { error } = await supabase.from("clients").insert({
     id: client.id,
     account_id: accountId,
-    name: client.name,
-    notes: client.notes,
+    name: clampBytes(client.name, TEXT_BYTES.name),
+    notes: clampBytes(client.notes, TEXT_BYTES.notes),
     distance_tenths: client.distanceTenths,
   });
   if (error) throw new Error(error.message);

@@ -182,6 +182,7 @@ export default function ClientsPage({
               </label>
               <input
                 id="client-name"
+                maxLength={400}
                 className={fieldClass}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -204,6 +205,7 @@ export default function ClientsPage({
               </label>
               <textarea
                 id="client-notes"
+                maxLength={8000}
                 className={fieldClass}
                 rows={3}
                 placeholder={t("clients.notesPlaceholder")}

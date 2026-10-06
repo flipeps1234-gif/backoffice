@@ -1,4 +1,5 @@
 import type { Service } from "./service";
+import { roundCents } from "./sale";
 import type { Transaction } from "./transaction";
 
 /**
@@ -122,7 +123,7 @@ export const marginByService = (
       } else if (tx.quantity != null) {
         // Rate service: cost is per unit, so we need the job's size.
         estimableRevenueCents += tx.amountCents;
-        estCostCents += Math.round(service.costCents * tx.quantity);
+        estCostCents += roundCents(service.costCents * tx.quantity);
       } else {
         unestimatedJobs += 1;
       }

@@ -1,7 +1,7 @@
 import { getSupabase } from "./client";
 import { loadAllPages } from "./paginate";
 import { validateLineItems } from "@/lib/sale";
-import type { Cadence, RecurringTemplate } from "@/lib/recurring";
+import { MAX_EVERY_N_DAYS, type Cadence, type RecurringTemplate } from "@/lib/recurring";
 
 type Row = {
   id: string;
@@ -31,7 +31,7 @@ const asCadence = (raw: unknown): Cadence => {
       typeof r.days === "number" &&
       Number.isInteger(r.days) &&
       r.days >= 1 &&
-      r.days <= 365
+      r.days <= MAX_EVERY_N_DAYS
     ) {
       return { type: "everyN", days: r.days };
     }

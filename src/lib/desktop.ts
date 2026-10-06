@@ -53,8 +53,13 @@ export function calloutTop(a: {
   return Math.min(Math.max(above, top), floor);
 }
 
+/** sale.ts roundCents, repeated: this module stays dependency-free for its
+ *  tests. A few ulps away from zero before rounding, so a product that is
+ *  .5 in decimal and .4999… in binary rounds as the database rounds it. */
+const roundCents = (product: number): number =>
+  Math.round(product + Math.sign(product) * Math.abs(product) * 4 * Number.EPSILON);
 const saleCents = (sale: SaleLike): number =>
-  sale.lineItems.reduce((sum, line) => sum + Math.round(line.quantity * line.unitCents), 0);
+  sale.lineItems.reduce((sum, line) => sum + roundCents(line.quantity * line.unitCents), 0);
 
 const monthOf = (date: string) => Number(date.slice(5, 7)) - 1;
 

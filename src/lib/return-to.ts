@@ -133,13 +133,37 @@ const notifyPending = () => {
   }
 };
 
-/** The subject (account id) of the access token in a URL fragment, read
- *  WITHOUT verification — it only says which account the link signs in,
- *  so that tabs ask about that account and no other; the server verifies
- *  the token itself. null when the fragment has no readable token. */
-export function tokenSubject(hash: string): string | null {
+/** What auth-js reads from a URL: every fragment parameter, then every
+ *  query parameter over it, the LAST duplicate winning — its
+ *  parseParametersFromURL, replicated (the helper is not exported). The
+ *  gate must see exactly what the SDK will consume: a hash-only regex and
+ *  a first-duplicate read let a token in the query, a duplicate key or a
+ *  percent-encoded key sign the device in unasked (pass-8 review; the
+ *  unit test holds the two parsers equal on those shapes). */
+export function callbackParams(href: string): Record<string, string> {
+  const params: Record<string, string> = {};
   try {
-    const token = new URLSearchParams(hash.replace(/^#/, "")).get("access_token");
+    const url = new URL(href);
+    if (url.hash && url.hash[0] === "#") {
+      new URLSearchParams(url.hash.slice(1)).forEach((value, key) => {
+        params[key] = value;
+      });
+    }
+    url.searchParams.forEach((value, key) => {
+      params[key] = value;
+    });
+  } catch {
+    // Not a URL: nothing arrives.
+  }
+  return params;
+}
+
+/** The subject (account id) of an access token, read WITHOUT
+ *  verification — it only says which account the link signs in, so that
+ *  tabs ask about that account and no other; the server verifies the
+ *  token itself. null when there is no readable token. */
+export function tokenSubject(token: string | null | undefined): string | null {
+  try {
     const payload = token?.split(".")[1];
     if (!payload) return null;
     const padded = payload.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(payload.length / 4) * 4, "=");
@@ -150,16 +174,70 @@ export function tokenSubject(hash: string): string | null {
   }
 }
 
-/** A session arrived (or is arriving) from a URL on this device and has
- *  not been confirmed. Written before the session exists, so it carries
- *  what the URL itself says — the token's subject — and a tab asks only
- *  once its session IS that account (an anonymous flag made every tab
- *  drop the account it held and ask about the holder's own address for a
- *  round-trip; pass-7 concurrency review). `sub` null = an unreadable
- *  token: every tab asks. */
-export function markLinkPending(sub: string | null): void {
+/** The account whose session this device holds in storage right now
+ *  (null: none, or storage blocked). Read before the SDK runs, so the tab
+ *  a link opened can tell a link that BECAME the session from one that
+ *  failed and left the old one in place. */
+export function storedSessionUserId(): string | null {
   try {
-    localStorage.setItem(PENDING_KEY, JSON.stringify({ sub }));
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !/^sb-.*-auth-token$/.test(key)) continue;
+      const parsed = JSON.parse(localStorage.getItem(key) ?? "null") as { user?: { id?: unknown } } | null;
+      const id = parsed?.user?.id;
+      return typeof id === "string" ? id : null;
+    }
+  } catch {
+    // No storage, or not JSON: unknown.
+  }
+  return null;
+}
+
+/** Sessions that arrived (or are arriving) from URLs on this device and
+ *  have not been confirmed — ONE ENTRY PER ACCOUNT, each stamped. Written
+ *  before the session exists, so an entry carries what the URL itself
+ *  says — the token's subject — and a tab asks only once its session IS
+ *  that account (an anonymous flag made every tab drop the account it
+ *  held and ask about the holder's own address for a round-trip; pass-7
+ *  review). A list, not one value: a second link overwrote the first's
+ *  entry and then, failing, cleared it — the open question for the first
+ *  account fell in every tab (pass-8 review). `sub` null = an unreadable
+ *  token: every tab asks. Entries older than an hour are dropped on read
+ *  (a tab closed mid-load leaves one behind). */
+const PENDING_TTL_MS = 60 * 60_000;
+type PendingEntry = { sub: string | null; at: number };
+export type LinkPending = { set: boolean; subs: (string | null)[] };
+
+const readEntries = (raw: string, now: number): PendingEntry[] => {
+  if (raw === "") return [];
+  try {
+    const parsed = JSON.parse(raw) as { subs?: unknown; sub?: unknown };
+    if (Array.isArray(parsed.subs)) {
+      return parsed.subs
+        .filter((e): e is { sub?: unknown; at?: unknown } => typeof e === "object" && e !== null)
+        .map((e) => ({
+          sub: typeof e.sub === "string" && e.sub !== "" ? e.sub : null,
+          at: typeof e.at === "number" ? e.at : now,
+        }))
+        .filter((e) => now - e.at < PENDING_TTL_MS);
+    }
+    // {sub} — the flag's second shape (pass 7).
+    return [{ sub: typeof parsed.sub === "string" && parsed.sub !== "" ? parsed.sub : null, at: now }];
+  } catch {
+    // "1" (the first shape) or anything else: set, no subject.
+    return [{ sub: null, at: now }];
+  }
+};
+const writeEntries = (entries: PendingEntry[]): void => {
+  if (entries.length === 0) localStorage.removeItem(PENDING_KEY);
+  else localStorage.setItem(PENDING_KEY, JSON.stringify({ subs: entries }));
+};
+
+export function markLinkPending(sub: string | null, now: number = Date.now()): void {
+  try {
+    const entries = readEntries(localStorage.getItem(PENDING_KEY) ?? "", now).filter((e) => e.sub !== sub);
+    entries.push({ sub, at: now });
+    writeEntries(entries);
   } catch {
     // No storage: the tab that opened the link still asks through its own
     // state (upload-screen.tsx tabPending); other tabs cannot be told.
@@ -167,9 +245,15 @@ export function markLinkPending(sub: string | null): void {
   notifyPending();
 }
 
-export function clearLinkPending(): void {
+/** Drop ONE account's entry — never another arrival's. `confirmed` (a
+ *  Continue / Not me, or a link this device asked for) also drops the
+ *  entries with no readable subject: that question had no other name. */
+export function clearLinkPending(sub: string | null, confirmed = false, now: number = Date.now()): void {
   try {
-    localStorage.removeItem(PENDING_KEY);
+    const entries = readEntries(localStorage.getItem(PENDING_KEY) ?? "", now).filter(
+      (e) => e.sub !== sub && !(confirmed && e.sub === null),
+    );
+    writeEntries(entries);
   } catch {
     // Nothing to clear.
   }
@@ -200,13 +284,7 @@ export function linkPendingSnapshot(): string {
   }
 }
 
-export function parseLinkPending(raw: string): { set: boolean; sub: string | null } {
-  if (raw === "") return { set: false, sub: null };
-  try {
-    const sub = (JSON.parse(raw) as { sub?: unknown }).sub;
-    return { set: true, sub: typeof sub === "string" && sub !== "" ? sub : null };
-  } catch {
-    // "1" (the flag's first shape) or anything else: set, no subject.
-    return { set: true, sub: null };
-  }
+export function parseLinkPending(raw: string, now: number = Date.now()): LinkPending {
+  const entries = readEntries(raw, now);
+  return { set: entries.length > 0, subs: entries.map((e) => e.sub) };
 }

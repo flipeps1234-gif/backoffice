@@ -1,4 +1,5 @@
 import { getSupabase } from "./client";
+import { clampBytes, TEXT_BYTES } from "@/lib/text";
 import { loadAllPages } from "./paginate";
 import type { Transaction, TransactionSource } from "@/lib/transaction";
 
@@ -44,11 +45,11 @@ const toTransaction = (row: Row): Transaction => ({
 const toRow = (tx: Transaction, accountId: string) => ({
   id: tx.id,
   account_id: accountId,
-  payer: tx.payer,
+  payer: clampBytes(tx.payer, TEXT_BYTES.payer),
   amount_cents: tx.amountCents,
   // An empty date string is "we couldn't read one", which is null, not epoch.
   occurred_on: tx.date === "" ? null : tx.date,
-  memo: tx.memo,
+  memo: clampBytes(tx.memo, TEXT_BYTES.memo),
   source: tx.source satisfies TransactionSource,
   direction: tx.direction,
   service_id: tx.serviceId,

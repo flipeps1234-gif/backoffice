@@ -5,7 +5,7 @@ Cuando registras una venta y el cliente todavía no paga, va a **Deudas** — ag
 ## Saldar una venta pendiente
 
 - **Te dieron efectivo**: toca **Llegó el efectivo** en la venta. Listo — el dinero entra a tus libros con la fecha de hoy.
-- **Pagaron por la app**: no hagas nada. La próxima vez que subas capturas, contado empareja el pago con la venta por monto, nombre y fecha, y la venta se salda sola.
+- **Pagaron por la app**: no hagas nada. La próxima vez que subas capturas, contado empareja el pago con la venta por monto, nombre y fecha, y la venta se salda sola. Si pagaron otro monto — una propina, una parte, dos transferencias — toca **Buscar el pago…** debajo de la venta en Por cobrar y elígelo; el pago sigue siendo el dinero y la venta se salda.
 
 Un pago nunca cuenta dos veces: un pago emparejado y su venta son una sola línea de ingreso en tus totales, no dos.
 

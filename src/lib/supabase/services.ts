@@ -1,4 +1,5 @@
 import { getSupabase } from "./client";
+import { clampBytes, TEXT_BYTES } from "@/lib/text";
 import { loadAllPages } from "./paginate";
 import type { Pricing, RateUnit, Service } from "@/lib/service";
 
@@ -28,7 +29,7 @@ const toService = (row: Row): Service => ({
 const toRow = (service: Service, accountId: string) => ({
   id: service.id,
   account_id: accountId,
-  name: service.name,
+  name: clampBytes(service.name, TEXT_BYTES.name),
   pricing_type: service.pricing.type,
   price_cents: service.pricing.cents,
   rate_unit: service.pricing.type === "rate" ? service.pricing.unit : null,
@@ -77,7 +78,7 @@ export const updateService = async (service: Service): Promise<void> => {
   const { error } = await supabase
     .from("services")
     .update({
-      name: service.name,
+      name: clampBytes(service.name, TEXT_BYTES.name),
       pricing_type: service.pricing.type,
       price_cents: service.pricing.cents,
       rate_unit: service.pricing.type === "rate" ? service.pricing.unit : null,

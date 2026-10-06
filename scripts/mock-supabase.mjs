@@ -84,6 +84,7 @@ const matches = (row, filters) => filters.every(([col, expr]) => {
   if (op === "lte") return String(cell) <= raw;
   if (op === "gt") return String(cell) > raw;
   if (op === "lt") return String(cell) < raw;
+  if (op === "not") return !matches(row, [[col, raw]]); // not.is.null, not.eq.x
   return true; // unknown operator: do not filter
 });
 const RESERVED = new Set(["select", "order", "limit", "offset", "on_conflict", "columns"]);
@@ -160,15 +161,17 @@ http.createServer(async (req, res) => {
   }
   if (req.method === "POST") {
     const incoming = Array.isArray(json) ? json : [json];
-    const key = url.searchParams.get("on_conflict") ?? pk;
+    // on_conflict may name a composite key ("account_id,recurring_template_id,occurred_on").
+    const keys = (url.searchParams.get("on_conflict") ?? pk).split(",");
+    const sameKey = (x, r) => keys.every((k) => x[k] === r[k]);
     const out = [];
-    const dupe = incoming.find((r) => rows.some((x) => x[key] === r[key]));
+    const dupe = incoming.find((r) => rows.some((x) => sameKey(x, r)));
     if (dupe && !prefer.includes("resolution=")) {
       log.push(`INSERT ${table} 23505`);
       return send(res, 409, { code: "23505", message: `duplicate key value violates unique constraint "${table}_pkey"`, details: null, hint: null });
     }
     for (const r of incoming) {
-      const existing = rows.find((x) => x[key] === r[key]);
+      const existing = rows.find((x) => sameKey(x, r));
       if (existing) {
         if (prefer.includes("merge-duplicates")) {
           Object.assign(existing, r);

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import ts from 'typescript';
+import { createRequire } from 'node:module';
 
 // The real modules, transpiled in place (same loader shape as setup.test.mjs).
 const load = (relative, globals = {}) => {
@@ -153,47 +154,115 @@ test('signInStarted: the marker holds a DIGEST of the address, lives an hour, su
   assert.equal(await signInStartedHereFor('ana@x.test'), false);
 });
 
-test('linkPending: persisted, readable by every tab, cleared on confirm', () => {
-  const localStorage = fakeStorage();
+/** A localStorage with length/key, for the helpers that scan keys. */
+const storageWithKeys = () => {
+  const store = new Map();
+  return {
+    get length() { return store.size; },
+    key: (i) => [...store.keys()][i] ?? null,
+    getItem: (k) => (store.has(k) ? store.get(k) : null),
+    setItem: (k, v) => { store.set(k, String(v)); },
+    removeItem: (k) => { store.delete(k); },
+  };
+};
+const fakeWindow = () => {
   const listeners = {};
-  const window = {
+  return {
     addEventListener: (k, f) => { (listeners[k] ??= []).push(f); },
     removeEventListener: (k, f) => { listeners[k] = (listeners[k] ?? []).filter((x) => x !== f); },
     dispatchEvent: (e) => { for (const f of listeners[e.type] ?? []) f(e); return true; },
   };
-  const Event = class { constructor(type) { this.type = type; } };
-  const { markLinkPending, clearLinkPending, subscribeLinkPending, linkPendingSnapshot, parseLinkPending } = load('../../src/lib/return-to.ts', { localStorage, window, Event });
+};
+const FakeEvent = class { constructor(type) { this.type = type; } };
+
+test('linkPending: one entry per account, shared by every tab, each cleared on its own; the unreadable-token entry falls with a confirmation; an hour-old entry is gone', () => {
+  const localStorage = storageWithKeys(); const window = fakeWindow();
+  const { markLinkPending, clearLinkPending, subscribeLinkPending, linkPendingSnapshot, parseLinkPending } = load('../../src/lib/return-to.ts', { localStorage, window, Event: FakeEvent });
+  const T = 1_700_000_000_000;
+  const read = () => parseLinkPending(linkPendingSnapshot(), T);
   let changes = 0;
   const stop = subscribeLinkPending(() => { changes += 1; });
-  sameValue(parseLinkPending(linkPendingSnapshot()), { set: false, sub: null });
-  markLinkPending('user-y');
-  sameValue(parseLinkPending(linkPendingSnapshot()), { set: true, sub: 'user-y' }); assert.equal(changes, 1);
-  window.dispatchEvent({ type: 'storage', key: 'contado.linkPending' });    // another tab wrote it
-  assert.equal(changes, 2);
-  window.dispatchEvent({ type: 'storage', key: 'contado.theme' });          // unrelated key: ignored
-  assert.equal(changes, 2);
-  clearLinkPending();
-  assert.equal(linkPendingSnapshot(), ''); assert.equal(changes, 3);
+  sameValue(read(), { set: false, subs: [] });
+  markLinkPending('user-w', T);
+  sameValue(read(), { set: true, subs: ['user-w'] }); assert.equal(changes, 1);
+  markLinkPending('user-z', T);                                          // a second link: BOTH entries stay (pass 8)
+  sameValue(read(), { set: true, subs: ['user-w', 'user-z'] });
+  markLinkPending('user-w', T + 5);                                      // the same account again: one entry, re-stamped
+  sameValue(read().subs.slice().sort(), ['user-w', 'user-z']);
+  clearLinkPending('user-z', false, T);                                  // the failing second link drops ITS entry only
+  sameValue(read(), { set: true, subs: ['user-w'] });
+  window.dispatchEvent({ type: 'storage', key: 'contado.linkPending' });  // another tab wrote it
+  const seen = changes;
+  window.dispatchEvent({ type: 'storage', key: 'contado.theme' });        // unrelated key: ignored
+  assert.equal(changes, seen);
+  markLinkPending(null, T);                                              // an unreadable token: everyone asks
+  assert.equal(read().subs.includes(null), true);
+  clearLinkPending('user-w', false, T);                                  // an orphan clear leaves the unknown entry
+  sameValue(read(), { set: true, subs: [null] });
+  clearLinkPending('user-q', true, T);                                   // a Continue for any account answers it
+  assert.equal(linkPendingSnapshot(), '');
+  markLinkPending('old', T - 61 * 60_000);
+  sameValue(parseLinkPending(linkPendingSnapshot(), T), { set: false, subs: [] });
   stop();
-  markLinkPending(null);
-  assert.equal(changes, 3);
-  sameValue(parseLinkPending(linkPendingSnapshot()), { set: true, sub: null });    // unreadable token: everyone asks
-  sameValue(parseLinkPending('1'), { set: true, sub: null });                      // the flag's first shape
-  sameValue(parseLinkPending('{"sub":""}'), { set: true, sub: null });
-  sameValue(parseLinkPending('{not json'), { set: true, sub: null });
+  const quiet = changes; markLinkPending('x', T); assert.equal(changes, quiet);
+  // the flag's earlier shapes
+  sameValue(parseLinkPending('1', T), { set: true, subs: [null] });
+  sameValue(parseLinkPending('{"sub":"user-y"}', T), { set: true, subs: ['user-y'] });
+  sameValue(parseLinkPending('{"sub":""}', T), { set: true, subs: [null] });
+  sameValue(parseLinkPending('{not json', T), { set: true, subs: [null] });
 });
 
-test('tokenSubject: the account a link signs in, from the URL fragment alone; nothing readable → null', () => {
-  const { tokenSubject } = load('../../src/lib/return-to.ts', { atob, URLSearchParams });   // web globals the vm realm lacks
+test('callbackParams reads a URL exactly as auth-js does (query over hash, last duplicate wins, percent-encoded keys); tokenSubject reads the token it hands over', () => {
+  const { callbackParams, tokenSubject } = load('../../src/lib/return-to.ts', { atob, URLSearchParams, URL });
+  const { parseParametersFromURL } = createRequire(import.meta.url)('@supabase/auth-js/dist/main/lib/helpers.js');
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
-  const jwt = `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: '9b2f6d1e-3c4a-4f7b-8a1d-000000000002', email: 'y@example.invalid', exp: 2e9 })}.sig`;
-  assert.equal(tokenSubject(`#access_token=${jwt}&refresh_token=r&expires_in=3600&token_type=bearer&type=magiclink`), '9b2f6d1e-3c4a-4f7b-8a1d-000000000002');
-  assert.equal(tokenSubject(`#type=magiclink&access_token=${jwt}`), '9b2f6d1e-3c4a-4f7b-8a1d-000000000002');  // position does not matter
-  assert.equal(tokenSubject(''), null);
-  assert.equal(tokenSubject('#error=access_denied&error_code=otp_expired'), null);
-  assert.equal(tokenSubject('#access_token=not.a-jwt'), null);
-  assert.equal(tokenSubject(`#access_token=${b64({})}.${b64({ sub: 7 })}.x`), null);                       // a non-string subject
-  assert.equal(tokenSubject(`#access_token=${b64({})}.${Buffer.from('{"sub":"a"', 'utf8').toString('base64url')}.x`), null); // broken payload
+  const jwt = (sub) => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub, email: `${sub}@example.invalid`, exp: 2e9 })}.sig`;
+  const W = jwt('attacker-w'), D = jwt('decoy');
+  const urls = [
+    `https://getcontado.com/app#access_token=${W}&refresh_token=r&expires_in=3600&token_type=bearer&type=magiclink`,   // the real shape
+    `https://getcontado.com/app?access_token=${W}&refresh_token=r&expires_in=3600&token_type=bearer`,                  // tokens in the query
+    `https://getcontado.com/#access_token=${D}&access_token=${W}&refresh_token=r&expires_in=3600&token_type=bearer`,  // duplicate key: the last wins
+    `https://getcontado.com/app#access%5Ftoken=${W}&refresh_token=r&expires_in=3600&token_type=bearer`,              // percent-encoded key
+    `https://getcontado.com/app?access_token=${W}#access_token=${D}&refresh_token=r`,                                  // query over hash
+    'https://getcontado.com/app',
+    'https://getcontado.com/app#error=access_denied&error_code=otp_expired',
+  ];
+  for (const href of urls) sameValue(callbackParams(href), parseParametersFromURL(href));
+  assert.equal(tokenSubject(callbackParams(urls[0]).access_token), 'attacker-w');
+  assert.equal(tokenSubject(callbackParams(urls[2]).access_token), 'attacker-w');
+  assert.equal(tokenSubject(callbackParams(urls[3]).access_token), 'attacker-w');
+  assert.equal(tokenSubject(callbackParams(urls[4]).access_token), 'attacker-w');
+  assert.equal(callbackParams(urls[5]).access_token, undefined);
+  assert.equal(callbackParams('not a url').access_token, undefined);
+  assert.equal(tokenSubject(undefined), null);
+  assert.equal(tokenSubject('not.a-jwt'), null);
+  assert.equal(tokenSubject(`${b64({})}.${b64({ sub: 7 })}.x`), null);                                       // a non-string subject
+  assert.equal(tokenSubject(`${b64({})}.${Buffer.from('{"sub":"a"', 'utf8').toString('base64url')}.x`), null); // broken payload
+});
+
+test('storedSessionUserId: the account in the stored auth-js session, whatever the project ref; none / garbage / blocked → null', () => {
+  const localStorage = storageWithKeys();
+  const { storedSessionUserId } = load('../../src/lib/return-to.ts', { localStorage });
+  assert.equal(storedSessionUserId(), null);
+  localStorage.setItem('contado.locale', 'en');
+  localStorage.setItem('sb-xdvnnqiwanpkdwvjtsfk-auth-token', JSON.stringify({ access_token: 't', user: { id: 'user-x' } }));
+  assert.equal(storedSessionUserId(), 'user-x');
+  localStorage.setItem('sb-xdvnnqiwanpkdwvjtsfk-auth-token', '{broken');
+  assert.equal(storedSessionUserId(), null);
+  const blocked = load('../../src/lib/return-to.ts', { localStorage: { get length() { throw new Error('blocked'); }, key() { throw new Error('blocked'); }, getItem() { throw new Error('blocked'); } } });
+  assert.equal(blocked.storedSessionUserId(), null);
+});
+
+test('cents round as the database rounds them (0025 admin_overview): a product that is .5 in decimal and .4999… in binary goes UP', () => {
+  assert.equal(50 * 0.29, 14.499999999999998);                                                 // the float; 14.5 in decimal
+  assert.equal(Math.round(50 * 0.29), 14);                                                     // the bare float: the bug, as a control
+  assert.equal(expectedCentsIn([sale('2026-02-01', 'expected', [[0.29, 50]])], 2026), 15);
+  assert.equal(expectedCentsIn([sale('2026-02-01', 'expected', [[0.47, 2150]])], 2026), 1011);     // 1010.4999999999999 → 1011
+  assert.equal(expectedCentsIn([sale('2026-02-01', 'expected', [[1.5, 267]])], 2026), 401);       // 400.5 exactly
+  assert.equal(expectedCentsIn([sale('2026-02-01', 'expected', [[0.5, 3]])], 2026), 2);
+  assert.equal(expectedCentsIn([sale('2026-02-01', 'expected', [[0.2, 2002]])], 2026), 400);      // 400.4: unchanged
+  assert.equal(expectedCentsIn([sale('2026-02-01', 'expected', [[0.29, 51]])], 2026), 15);        // 14.79: unchanged
+  assert.equal(expectedCentsIn([sale('2026-02-01', 'expected', [[2, 1999]])], 2026), 3998);       // integers: untouched
 });
 
 test('signInStarted / linkPending: blocked storage never throws; the marker reads "not started" (confirm first) and the SHARED flag reads false — the tab-local gate in upload-screen.tsx covers that case', async () => {
@@ -210,8 +279,9 @@ test('signInStarted / linkPending: blocked storage never throws; the marker read
   assert.doesNotThrow(() => api.clearSignInStarted());
   assert.doesNotThrow(() => api.markLinkPending('user-y'));
   assert.equal(api.linkPendingSnapshot(), '');
-  sameValue(api.parseLinkPending(api.linkPendingSnapshot()), { set: false, sub: null });
-  assert.doesNotThrow(() => api.clearLinkPending());
+  sameValue(api.parseLinkPending(api.linkPendingSnapshot()), { set: false, subs: [] });
+  assert.doesNotThrow(() => api.clearLinkPending('user-y', true));
+  assert.equal(api.storedSessionUserId(), null);
 });
 
 // ---- the chart callout ----

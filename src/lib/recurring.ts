@@ -11,6 +11,12 @@ import type { LineItem, Sale } from "./sale";
  * generates ahead of today.
  */
 
+/** The longest "every N days" cadence both clients read back as typed;
+ *  longer rows are read as MONTHLY (lib/supabase/recurring.ts asCadence —
+ *  and the native app alike), so a writer must not create them (pass-8
+ *  review: an input `max` with no form never applied). */
+export const MAX_EVERY_N_DAYS = 365;
+
 export type Cadence =
   | { type: "weekly" }
   | { type: "biweekly" }

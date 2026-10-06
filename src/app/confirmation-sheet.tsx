@@ -147,6 +147,7 @@ export default function ConfirmationSheet({
                 </label>
                 <input
                   id={`${tx.id}-payer`}
+                  maxLength={400}
                   className={inputClass(isUncertain(tx, "payer"))}
                   value={tx.payer}
                   placeholder={t("sheet.namePlaceholder")}
@@ -198,6 +199,7 @@ export default function ConfirmationSheet({
                 </label>
                 <input
                   id={`${tx.id}-memo`}
+                  maxLength={4000}
                   className={inputClass(false)}
                   value={tx.memo}
                   placeholder={t("sheet.optionalPlaceholder")}

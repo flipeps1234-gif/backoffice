@@ -18,6 +18,15 @@ export const isConfigured = Boolean(url && anonKey);
 
 export const getSupabase = (): SupabaseClient | null => {
   if (!isConfigured) return null;
-  cached ??= createClient(url!, anonKey!);
+  cached ??= createClient(url!, anonKey!, {
+    auth: {
+      // GoTrue's implicit flow delivers tokens in the FRAGMENT; a token in
+      // the query string is nobody's sign-in link. auth-js would consume it
+      // all the same (query parameters win over the hash in its URL parse),
+      // so refuse it before it is read (pass-8 review). A fragment token
+      // keeps the default: consumed, then confirmed by the gate.
+      detectSessionInUrl: (url) => !url.searchParams.has("access_token"),
+    },
+  });
   return cached;
 };

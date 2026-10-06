@@ -301,6 +301,7 @@ function BusinessForm({
         </label>
         <input
           id="biz-name"
+          maxLength={400}
           className={fieldClass}
           value={businessName}
           onChange={(e) => setBusinessName(e.target.value)}
@@ -312,6 +313,7 @@ function BusinessForm({
         </label>
         <input
           id="biz-owner"
+          maxLength={400}
           className={fieldClass}
           value={ownerName}
           onChange={(e) => setOwnerName(e.target.value)}

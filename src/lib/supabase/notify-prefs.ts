@@ -1,4 +1,5 @@
 import { getSupabase } from "./client";
+import { clampBytes, TEXT_BYTES } from "@/lib/text";
 import {
   EMPTY_NOTIFICATION_PREFS,
   type NotificationPrefs,
@@ -47,7 +48,7 @@ export const saveNotificationPrefs = async (
   const { error } = await supabase.from("notification_prefs").upsert({
     account_id: accountId,
     channel: prefs.channel,
-    phone: prefs.phone,
+    phone: clampBytes(prefs.phone, TEXT_BYTES.phone),
     whatsapp_consent_at: prefs.whatsappConsentAt,
     sms_consent_at: prefs.smsConsentAt,
     // opted_out_at is the webhooks' column (a STOP text): never written

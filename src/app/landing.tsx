@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { takeReturnTo } from "@/lib/return-to";
+import { callbackParams, takeReturnTo } from "@/lib/return-to";
 import { readSession } from "@/lib/supabase/session";
 
 /** The sign-in forward target, decided once per page load (see below). */
@@ -69,15 +69,14 @@ export default function Landing() {
     // link verified server-side and then died on the marketing page,
     // signed out. Forward the fragment intact to the page that reads it;
     // a full-document navigation, per the analytics rule.
-    if (/[#&](access_token|error|error_code|error_description)=/.test(window.location.hash)) {
-      window.location.replace(`${forwardTo()}${window.location.hash}`);
-      return;
-    }
-    // Google sign-in returns here as well. With this client's implicit
-    // flow the tokens ride the hash above; if the flow ever becomes PKCE
-    // they arrive as ?code= (errors as ?error=) — forward those the same
-    // way, query and hash intact, so /app can finish the exchange.
-    if (/[?&](code|error|error_code|error_description)=/.test(window.location.search)) {
+    // Forward EVERYTHING the SDK would read — fragment and query, read the
+    // way it reads them (lib/return-to.ts callbackParams) — to the page
+    // that gates it: a hash-only regex let a token in the query, or under
+    // a percent-encoded key, be consumed by the client this page builds
+    // below, with no gate (pass-8 review). Google sign-in returns here as
+    // well; if the flow ever becomes PKCE the tokens arrive as ?code=.
+    const params = callbackParams(window.location.href);
+    if (params.access_token || params.code || params.error || params.error_code || params.error_description) {
       window.location.replace(`${forwardTo()}${window.location.search}${window.location.hash}`);
       return;
     }

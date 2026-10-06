@@ -138,6 +138,18 @@ export default function OwedTab({
                         </span>
                       )}
                     </p>
+                    {/* A payment that arrived with another amount (a tip, a
+                        partial payment) never auto-matches — the exact-
+                        amount rule guards the engine's guesses — and "Got
+                        cash" minted a second money row for the same job.
+                        The owner links it by hand (pass-8 review). */}
+                    <button
+                      type="button"
+                      className="-mx-2 min-h-11 px-2 text-xs text-neutral-500 hover:underline"
+                      onClick={() => onFindPayment(sale.id)}
+                    >
+                      {t("owed.findPayment")}
+                    </button>
                   </div>
                   <span className="text-sm font-semibold tabular-nums">
                     {formatCents(saleTotalCents(sale))}

@@ -61,7 +61,7 @@ import { knownPayers, rememberedFor } from "@/lib/customer-memory";
 import type { Client } from "@/lib/client";
 import { translate, LOCALES } from "@/lib/i18n";
 import { currentLocale } from "@/lib/locale";
-import { matchBatch, txnCandidatesForSale } from "@/lib/matching";
+import { matchBatch, sameName, txnCandidatesForSale, unmatchedPaymentsFor } from "@/lib/matching";
 import { generateDue, type RecurringTemplate } from "@/lib/recurring";
 import {
   owedCents,
@@ -128,8 +128,10 @@ import {
   clearSignInStarted,
   linkPendingSnapshot,
   markLinkPending,
+  callbackParams,
   parseLinkPending,
   signInStartedHereFor,
+  storedSessionUserId,
   subscribeLinkPending,
   tokenSubject,
 } from "@/lib/return-to";
@@ -276,19 +278,29 @@ export default function UploadScreen({
   const accepted = useAcceptedTerms();
   // Did this page open with tokens in its URL? Read on the first render,
   // before useSession's effect (below) builds the client that consumes
-  // (and clears) the hash. Null on the server; this screen renders
-  // client-side.
-  const [arrivedByLink] = useState(
-    () => typeof window !== "undefined" && /[#&]access_token=/.test(window.location.hash),
+  // (and clears) them — and read the way THAT client reads them
+  // (lib/return-to.ts callbackParams: every fragment parameter, then the
+  // query over it, the last duplicate winning). A hash-only regex and a
+  // first-duplicate read let a token in the query, a duplicate key or a
+  // percent-encoded key sign the device in unasked (pass-8 review). Null
+  // on the server; this screen renders client-side.
+  const [linkToken] = useState(() =>
+    typeof window !== "undefined" ? (callbackParams(window.location.href).access_token ?? null) : null,
   );
+  const arrivedByLink = linkToken !== null;
   // Which account the link signs in: the token's subject, read unverified
-  // from the URL (the server verifies the token itself). The shared flag
-  // carries it so other tabs ask only once THEIR session has become that
-  // account — an anonymous flag made every tab tear down the account it
-  // held and ask about the holder's own address for one round-trip
-  // (pass-7 concurrency review).
-  const [linkSub] = useState(() =>
-    typeof window !== "undefined" ? tokenSubject(window.location.hash) : null,
+  // (the server verifies the token itself). The shared flag carries it so
+  // other tabs ask only once THEIR session has become that account — an
+  // anonymous flag made every tab tear down the account it held and ask
+  // about the holder's own address for one round-trip (pass-7 review).
+  const [linkSub] = useState(() => tokenSubject(linkToken));
+  // The account whose session this device held BEFORE the link ran: this
+  // tab asks only if the link actually CHANGED it. A used or expired
+  // token keeps the old session and auth-js raises nothing; the URL's own
+  // subject must not decide (a decoy subject silenced the question for
+  // the account that really arrived — pass-8 review).
+  const [storedBefore] = useState(() =>
+    typeof window !== "undefined" ? storedSessionUserId() : null,
   );
   // Declared BEFORE useSession so it runs first: the pending flag must be
   // in storage before auth-js saves the session and broadcasts it to the
@@ -300,9 +312,11 @@ export default function UploadScreen({
   const { locale, t } = useLocale();
   /** "Not me" could not sign out (expired token, offline): shown on the question. */
   const [notMeError, setNotMeError] = useState("");
-  // A session from a URL that nobody on this device has confirmed —
-  // persisted and shared by every tab, so closing the tab that carried
-  // the hash, or having /app open in another, cannot skip the question.
+  // Sessions from URLs that nobody on this device has confirmed — one
+  // entry per account, persisted and shared by every tab, so closing the
+  // tab that carried the link, or having /app open in another, cannot
+  // skip the question — and a second link cannot erase the first's entry
+  // (pass-8 review: it overwrote and then cleared it).
   const pending = parseLinkPending(
     useSyncExternalStore(subscribeLinkPending, linkPendingSnapshot, () => ""),
   );
@@ -319,9 +333,13 @@ export default function UploadScreen({
   // keeps the session in memory — the gate must still exist here
   // (pass-4 review: the persisted flag had replaced it, not joined it).
   const [tabPending, setTabPending] = useState(arrivedByLink);
+  /** Did the link become this tab's session? */
+  const linkProduced = user !== null && user.id !== storedBefore;
   const settleLink = () => {
     clearSignInStarted();
-    clearLinkPending();
+    // Continue / Not me answer for the account on screen — and for any
+    // entry with no readable subject, a question with no other name.
+    clearLinkPending(user?.id ?? null, true);
     setTabPending(false);
   };
   useEffect(() => {
@@ -332,39 +350,40 @@ export default function UploadScreen({
     void signInStartedHereFor(user.email).then((started) => {
       if (stale || !started) return;
       clearSignInStarted();
-      clearLinkPending();
+      clearLinkPending(user.id, true);
       setTabPending(false);
     });
     return () => {
       stale = true;
     };
   }, [user, arrivedByLink]);
-  // Another tab's Continue settles this one too: a true→false move of the
-  // shared flag (never a flag that was false all along — that is what
-  // blocked storage looks like) ends the tab's own question.
-  const prevLinkPending = useRef(pending.set);
+  // Another tab's Continue settles this one too: THIS tab's own entry
+  // leaving the flag (never a flag that never held it — that is what
+  // blocked storage looks like) ends the tab's own question. Keyed on the
+  // entry, not on the whole flag: another arrival's clear must not fell it.
+  const ownEntryPresent = pending.subs.includes(linkSub);
+  const prevOwnEntry = useRef(ownEntryPresent);
   useEffect(() => {
-    if (prevLinkPending.current && !pending.set) setTabPending(false);
-    prevLinkPending.current = pending.set;
-  }, [pending.set]);
+    if (prevOwnEntry.current && !ownEntryPresent) setTabPending(false);
+    prevOwnEntry.current = ownEntryPresent;
+  }, [ownEntryPresent]);
   // The link did not become this tab's session (a used or expired token:
-  // auth-js keeps whatever session there was and raises nothing): the
-  // shared flag has no subject to wait for — drop it, or every tab would
-  // carry it until someone found a Continue to tap. This tab's own
-  // question is already silent (ownAsk below needs the link's account).
+  // auth-js keeps whatever session there was and raises nothing): drop
+  // THIS tab's entry — only it — or every tab would carry it until someone
+  // found a Continue to tap. The tab's own question is silent already.
   useEffect(() => {
-    if (!arrivedByLink || loading || !tabPending || linkSub === null) return;
-    if (user?.id !== linkSub) clearLinkPending();
-  }, [arrivedByLink, loading, tabPending, linkSub, user]);
-  // Other tabs: the shared flag names an account, and this tab's session
-  // has become it (and was not it already). This tab: its own question,
-  // once the link's account is the one signed in. An unreadable token
-  // (no subject) asks everywhere, as the flag always did.
+    if (!arrivedByLink || loading || !tabPending || linkProduced) return;
+    clearLinkPending(linkSub);
+  }, [arrivedByLink, loading, tabPending, linkProduced, linkSub]);
+  // Other tabs: an entry names an account, and this tab's session has
+  // become it (and was not it already). This tab: its own question, once
+  // the link has changed the session. An entry with no readable subject
+  // asks everywhere, as the flag always did.
   const sharedAsk =
     pending.set &&
-    (pending.sub === null ||
-      (pending.sub === user?.id && pending.sub !== userBeforeLink));
-  const ownAsk = tabPending && (linkSub === null || linkSub === user?.id);
+    (pending.subs.includes(null) ||
+      (user !== null && pending.subs.includes(user.id) && user.id !== userBeforeLink));
+  const ownAsk = tabPending && linkProduced;
   const askFirst = sharedAsk || ownAsk;
 
   // The one owner of the .dark class after first paint (the layout's
@@ -1024,7 +1043,7 @@ function Ledger({
               // A network failure after the queue was stopped (this Ledger is
               // unmounting under a write still in flight): nothing retries
               // it, so say so on the next signed-in mount instead of nothing.
-              if (!reverted && queue.stopped && isNetworkSaveError(cause)) {
+              if (!reverted && queue.stopped && !queue.consentedLoss && isNetworkSaveError(cause)) {
                 noteLostWrites(accountId);
               }
               console.error("Save failed:", cause);
@@ -1867,6 +1886,28 @@ function Ledger({
       }
       return;
     }
+    // The payment may already be in the ledger: a Venmo for $125 against a
+    // $120 sale (a tip), two $50 transfers for $100, a spouse paying — the
+    // exact-amount rule never auto-matches those, and a cash row on top
+    // doubles the job in every total and in the tax CSV (pass-8 product-
+    // semantics review). Offer the hand-link first; cash stays one tap away.
+    const inLedger = unmatchedPaymentsFor(transactions, sale, clientNameOf(sale.clientId)).filter(
+      (tx) => !isUnchecked(tx),
+    );
+    if (inLedger.length > 0) {
+      const tx = inLedger[0];
+      const link = window.confirm(
+        t("home.gotCashPaymentExists", {
+          amount: formatCents(tx.amountCents),
+          payer: tx.payer || t("home.someone"),
+          date: tx.date || t("home.noDate"),
+        }),
+      );
+      if (link) {
+        findPaymentFor(sale.id);
+        return;
+      }
+    }
     const txn: Transaction = {
       id: crypto.randomUUID(),
       payer: clientNameOf(sale.clientId),
@@ -1874,7 +1915,11 @@ function Ledger({
       // The day the CASH ARRIVED, not the job date — this row is the money
       // movement, and "Got cash" on an aged sale can cross a month or a tax
       // year. The sale keeps its own date; the two record different events.
-      date: localToday(),
+      // EXCEPT "It was cash" on an EXPECTED sale: the owner's correction
+      // says the cash changed hands at checkout, the day of the sale —
+      // dating it on the tap put income ≥14 days late, across a month or
+      // a tax year (pass-8 review).
+      date: sale.state === "expected" ? sale.date : localToday(),
       memo: sale.lineItems.map((i) => i.name).join(", "),
       source: "manual",
       direction: "in",
@@ -2599,9 +2644,15 @@ function Ledger({
   function findPaymentFor(saleId: string) {
     const sale = sales.find((sl) => sl.id === saleId);
     if (!sale) return;
-    const all = txnCandidatesForSale(transactions, sale, clientNameOf(sale.clientId), {
+    // The owner is LOOKING at the list, so both guesses-guards relax: the
+    // name (a spouse paying) and the amount (a tip, a partial payment, a
+    // split) — the engine's own matching keeps both (pass-8 review). The
+    // client's own rows come first.
+    const name = clientNameOf(sale.clientId);
+    const all = txnCandidatesForSale(transactions, sale, name, {
       relaxName: true,
-    });
+      relaxAmount: true,
+    }).sort((a, b) => Number(sameName(name, b.payer)) - Number(sameName(name, a.payer)));
     const candidates = all.filter((tx) => !isUnchecked(tx));
     const waiting = all.length - candidates.length;
     // Desktop: the answer (a notice or the pick-one cards) renders at the
@@ -3315,7 +3366,7 @@ function Ledger({
                   >
                     {isPayment
                       ? `${clientNameOf(sale.clientId) || t("home.fallbackSale")} · ${sale.date}`
-                      : `${txn.payer || t("home.fallbackPayment")} · ${txn.date || t("home.noDate")}`}
+                      : `${formatCents(txn.amountCents)} · ${txn.payer || t("home.fallbackPayment")} · ${txn.date || t("home.noDate")}`}
                   </button>
                 );
               })}

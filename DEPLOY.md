@@ -271,6 +271,13 @@ confirm the demo word still signs in. The combined
 file `~/Desktop/contado-combined-0001-0017.sql` predates both; append
 0018 and 0019 to it before the next fresh-project setup.
 
+**Written, NOT applied — 0026 `opted_out_server_guard`** (2026-10-06): a
+trigger that keeps `notification_prefs.opted_out_at` out of client writes
+(the native app still sends the column; the web stopped on 2026-10-05).
+Nothing deployed depends on it; it protects a STOP from the second client.
+Apply it with the owner's go-ahead (apply_migration, file contents as-is);
+until then the high-water mark stays 0025.
+
 **0020 (`0020_abuse_caps_and_founding_rpc.sql`) was APPLIED to production
 via the Supabase MCP on 2026-09-03 and verified (9 cap triggers,
 founding_signup granted to anon/authenticated, old insert policy and

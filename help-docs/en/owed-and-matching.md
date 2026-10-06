@@ -5,7 +5,7 @@ When you log a sale and the client hasn't paid yet, it goes to **Owed** — grou
 ## Clearing an owed sale
 
 - **They handed you cash**: tap **Got cash** on the sale. Done — the money lands in your books dated today.
-- **They paid through the app**: do nothing. The next time you upload screenshots, contado matches the payment to the sale by amount, name and date, and the sale clears itself.
+- **They paid through the app**: do nothing. The next time you upload screenshots, contado matches the payment to the sale by amount, name and date, and the sale clears itself. If they paid a different amount — a tip, part of it, two transfers — tap **Find the payment…** under the sale on Owed and pick it; the payment stays the money, the sale clears.
 
 One payment never counts twice: a matched payment and its sale are one line of income in your totals, not two.
 

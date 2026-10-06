@@ -269,6 +269,11 @@ export const messages = {
     es: "{count} posibles pagos todavía esperan revisión. Termina de revisar los pagos que subiste e inténtalo de nuevo.",
     pt: "{count} possíveis pagamentos ainda esperam conferência. Termine de conferir os pagamentos enviados e tente de novo.",
   },
+  "home.gotCashPaymentExists": {
+    en: "A {amount} payment from {payer} on {date} is already in your ledger and isn't linked to any sale. Link it to this sale instead of adding cash?",
+    es: "Un pago de {amount} de {payer} del {date} ya está en tu libro y no está vinculado a ninguna venta. ¿Vincularlo a esta venta en vez de anotar efectivo?",
+    pt: "Um pagamento de {amount} de {payer} em {date} já está no seu livro e não está ligado a nenhuma venda. Ligar à esta venda em vez de anotar dinheiro?",
+  },
   "home.noMatchFound": {
     en: "No payment on your ledger matches that amount and window.",
     es: "Ningún pago en tu libro coincide con ese monto y esas fechas.",

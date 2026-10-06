@@ -55,9 +55,18 @@ export type Sale = {
   photo: string | null;
 };
 
+/** Math.round on a product the DATABASE rounds as exact decimals
+ *  (admin_overview: round(unit::numeric * quantity::numeric), migration
+ *  0025): nudge away from zero by a few ulps first, so 50 × 0.29 —
+ *  14.499999999999998 in binary, 14.5 in decimal — rounds to 15 here as
+ *  there (pass-8 review). desktop.ts carries the same line (it stays
+ *  dependency-free for its tests). */
+export const roundCents = (product: number): number =>
+  Math.round(product + Math.sign(product) * Math.abs(product) * 4 * Number.EPSILON);
+
 /** Rounded per line, not per batch — same rule as priceFor in service.ts. */
 export const lineTotalCents = (item: LineItem): number =>
-  Math.round(item.unitCents * item.quantity);
+  roundCents(item.unitCents * item.quantity);
 
 export const saleTotalCents = (sale: Pick<Sale, "lineItems">): number =>
   sale.lineItems.reduce((sum, item) => sum + lineTotalCents(item), 0);
@@ -71,7 +80,7 @@ export const saleMarginCents = (
   for (const item of sale.lineItems) {
     if (item.unitCostCents === null) return null;
     margin +=
-      lineTotalCents(item) - Math.round(item.unitCostCents * item.quantity);
+      lineTotalCents(item) - roundCents(item.unitCostCents * item.quantity);
   }
   return margin;
 };

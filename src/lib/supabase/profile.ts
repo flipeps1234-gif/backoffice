@@ -1,4 +1,5 @@
 import { getSupabase } from "./client";
+import { clampBytes, TEXT_BYTES } from "@/lib/text";
 import type { BusinessProfile } from "@/lib/profile";
 
 type Row = {
@@ -44,9 +45,9 @@ export const saveProfile = async (
 
   const { error } = await supabase.from("business_profiles").upsert({
     account_id: accountId,
-    business_name: profile.businessName,
-    owner_name: profile.ownerName,
-    us_state: profile.usState,
+    business_name: clampBytes(profile.businessName, TEXT_BYTES.name),
+    owner_name: clampBytes(profile.ownerName, TEXT_BYTES.name),
+    us_state: clampBytes(profile.usState, TEXT_BYTES.state),
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(error.message);
@@ -73,9 +74,9 @@ export const insertProfileIfAbsent = async (
   const { error } = await supabase.from("business_profiles").upsert(
     {
       account_id: accountId,
-      business_name: profile.businessName,
-      owner_name: profile.ownerName,
-      us_state: profile.usState,
+      business_name: clampBytes(profile.businessName, TEXT_BYTES.name),
+      owner_name: clampBytes(profile.ownerName, TEXT_BYTES.name),
+      us_state: clampBytes(profile.usState, TEXT_BYTES.state),
       updated_at: new Date().toISOString(),
     },
     { onConflict: "account_id", ignoreDuplicates: true },

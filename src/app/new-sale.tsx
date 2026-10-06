@@ -12,6 +12,7 @@ import {
 } from "@/lib/recommend";
 import type { SaleFlowOrder } from "@/lib/settings";
 import {
+  MAX_EVERY_N_DAYS,
   advance,
   type Cadence,
   type RecurringTemplate,
@@ -342,7 +343,7 @@ export default function NewSale({
               cadence.type === "everyN"
                 ? {
                     type: "everyN" as const,
-                    days: Math.max(1, Math.round(Number(everyN) || 30)),
+                    days: Math.min(MAX_EVERY_N_DAYS, Math.max(1, Math.round(Number(everyN) || 30))),
                   }
                 : cadence,
             // Anchored on THIS sale's date, due one cadence step LATER:
@@ -351,7 +352,7 @@ export default function NewSale({
             nextDue: advance(
               when,
               cadence.type === "everyN"
-                ? { type: "everyN", days: Math.max(1, Math.round(Number(everyN) || 30)) }
+                ? { type: "everyN", days: Math.min(MAX_EVERY_N_DAYS, Math.max(1, Math.round(Number(everyN) || 30))) }
                 : cadence,
             ),
             active: true,
@@ -572,6 +573,7 @@ export default function NewSale({
                 </label>
                 <textarea
                   id="sale-notes"
+                  maxLength={8000}
                   className={fieldClass}
                   rows={2}
                   placeholder={t("sale.notePlaceholder")}
@@ -677,7 +679,7 @@ export default function NewSale({
                     type="number"
                     inputMode="numeric"
                     min="1"
-                    max="365"
+                    max={MAX_EVERY_N_DAYS}
                     className={`${fieldClass} w-20 text-center`}
                     value={everyN}
                     onChange={(e) => setEveryN(e.target.value)}
