@@ -25,6 +25,13 @@ export const messages = {
     es: "Datos de ejemplo",
     pt: "Dados de exemplo",
   },
+  // What the home page's drop zone says when someone actually drops
+  // screenshots on it: reading them is the app's job, not the demo's.
+  "landing.demoDropNote": {
+    en: "Screenshots are read inside the app. Open it to try with yours — it takes one email to sign in.",
+    es: "Las capturas se leen dentro de la app. Ábrela para probar con las tuyas — entrar es solo tu correo.",
+    pt: "Os prints são lidos dentro do app. Abra-o para testar com os seus — entrar é só o seu e-mail.",
+  },
   "landing.tryIt": {
     en: "Try it — nothing is saved",
     es: "Pruébalo — no se guarda nada",

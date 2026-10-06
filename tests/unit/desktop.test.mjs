@@ -124,23 +124,30 @@ test('returnTo: blocked storage never throws', () => {
   assert.equal(takeReturnTo(), '/app');
 });
 
-test('signInStarted: the marker is bound to the address it was started for, lives an hour, survives a re-read, and clears', () => {
+test('signInStarted: the marker holds a DIGEST of the address, lives an hour, survives a re-read, deletes itself when stale, and clears', async () => {
   const localStorage = fakeStorage();
-  const { markSignInStarted, signInStartedHereFor, clearSignInStarted } = load('../../src/lib/return-to.ts', { localStorage });
-  assert.equal(signInStartedHereFor('ana@x.test'), false);                 // a link on a device that never asked: confirm first
-  markSignInStarted(' Ana@X.test ', 1000);
-  assert.equal(signInStartedHereFor('ana@x.test', 2000), true);
-  assert.equal(signInStartedHereFor('ana@x.test', 2000), true);            // React may run an initializer twice
-  assert.equal(signInStartedHereFor('attacker@evil.test', 2000), false);   // the other link in the same inbox
-  assert.equal(signInStartedHereFor(null, 2000), false);
-  assert.equal(signInStartedHereFor('ana@x.test', 1000 + 60 * 60 * 1000), false); // a magic link's own lifetime
-  assert.equal(signInStartedHereFor('ana@x.test', 500), false);            // a clock set back
+  const { markSignInStarted, signInStartedHereFor, clearSignInStarted } = load('../../src/lib/return-to.ts', { localStorage, crypto, TextEncoder });
+  assert.equal(await signInStartedHereFor('ana@x.test'), false);                 // a link on a device that never asked: confirm first
+  await markSignInStarted(' Ana@X.test ', 1000);
+  const stored = JSON.parse(localStorage.getItem('contado.signinStarted'));
+  assert.ok(!/ana|x\.test|@/.test(stored.who), 'the address itself is not on the device');
+  assert.match(stored.who, /^[0-9a-f]{64}$/);
+  assert.equal(await signInStartedHereFor('ana@x.test', 2000), true);
+  assert.equal(await signInStartedHereFor('ana@x.test', 2000), true);            // React may run an effect twice
+  assert.equal(await signInStartedHereFor('attacker@evil.test', 2000), false);   // the other link in the same inbox
+  assert.equal(await signInStartedHereFor(null, 2000), false);
+  assert.equal(await signInStartedHereFor('ana@x.test', 500), false);            // a clock set back: stale, and gone
+  assert.equal(localStorage.getItem('contado.signinStarted'), null);
+  await markSignInStarted('ana@x.test', 1000);
+  assert.equal(await signInStartedHereFor('ana@x.test', 1000 + 60 * 60 * 1000), false); // a magic link's own lifetime
+  assert.equal(localStorage.getItem('contado.signinStarted'), null);             // deleted on the stale read
+  await markSignInStarted('ana@x.test', 1000);
   clearSignInStarted();
-  assert.equal(signInStartedHereFor('ana@x.test', 2000), false);
-  markSignInStarted('google', 1000);
-  assert.equal(signInStartedHereFor('anyone@x.test', 2000), true);         // Google: no address known at start
+  assert.equal(await signInStartedHereFor('ana@x.test', 2000), false);
+  await markSignInStarted('google', 1000);
+  assert.equal(await signInStartedHereFor('anyone@x.test', 2000), true);         // Google: no address known at start
   localStorage.setItem('contado.signinStarted', '{not json');
-  assert.equal(signInStartedHereFor('ana@x.test'), false);
+  assert.equal(await signInStartedHereFor('ana@x.test'), false);
 });
 
 test('linkPending: persisted, readable by every tab, cleared on confirm', () => {
@@ -169,7 +176,7 @@ test('linkPending: persisted, readable by every tab, cleared on confirm', () => 
   assert.equal(changes, 3);
 });
 
-test('signInStarted / linkPending: blocked storage answers "confirm first" and never throws', () => {
+test('signInStarted / linkPending: blocked storage never throws; the marker reads "not started" (confirm first) and the SHARED flag reads false — the tab-local gate in upload-screen.tsx covers that case', async () => {
   const localStorage = {
     getItem() { throw new Error('blocked'); },
     setItem() { throw new Error('blocked'); },
@@ -177,9 +184,9 @@ test('signInStarted / linkPending: blocked storage answers "confirm first" and n
   };
   const window = { addEventListener() {}, removeEventListener() {}, dispatchEvent() { return true; } };
   const Event = class { constructor(type) { this.type = type; } };
-  const api = load('../../src/lib/return-to.ts', { localStorage, window, Event });
-  assert.doesNotThrow(() => api.markSignInStarted('ana@x.test'));
-  assert.equal(api.signInStartedHereFor('ana@x.test'), false);
+  const api = load('../../src/lib/return-to.ts', { localStorage, window, Event, crypto, TextEncoder });
+  await assert.doesNotReject(() => api.markSignInStarted('ana@x.test'));
+  assert.equal(await api.signInStartedHereFor('ana@x.test'), false);
   assert.doesNotThrow(() => api.clearSignInStarted());
   assert.doesNotThrow(() => api.markLinkPending());
   assert.equal(api.linkPendingSnapshot(), false);

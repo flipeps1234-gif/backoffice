@@ -94,7 +94,7 @@ export const messages = {
   "desktop.amountExpected": {
     en: "{amount} paid, waiting to match",
     es: "{amount} pagado, esperando coincidir",
-    pt: "{amount} pago, aguardando conferir",
+    pt: "{amount} pago, esperando vincular",
   },
   "desktop.revenueYear": {
     en: "Revenue by service, {year}",
@@ -146,7 +146,7 @@ export const messages = {
   "desktop.emptyExpected": {
     en: "Sales paid by app show up here once their payment is matched — upload the screenshot of it.",
     es: "Las ventas pagadas por app aparecen aquí cuando su pago coincide — sube la captura del pago.",
-    pt: "As vendas pagas por app aparecem aqui quando o pagamento é conferido — envie a captura dele.",
+    pt: "As vendas pagas por app aparecem aqui quando o pagamento é vinculado — envie a captura dele.",
   },
   "desktop.emptyOwed": {
     en: "Sales show up here once they’re paid. What’s owed is in Owed.",

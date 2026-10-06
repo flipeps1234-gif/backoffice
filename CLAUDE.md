@@ -239,6 +239,59 @@ browser: the two-tab case (the `storage` event path is unit-tested),
 any Safari or Android device — the compat findings rest on documented
 platform behaviour and the live bundle's syntax.
 
+PASS 4 — NOT CLEAN (count 0). Lenses: newcode over the pass-3 commit
+5982114; COPY-VS-BEHAVIOUR over every string since 2026-09-27 (last ran
+2026-08-16); PRIVACY / DATA LIFECYCLE (last ran 2026-09-01).
+- NEWCODE (3): MED — the parked-save sign-out read getSession's
+  `session: null` as "signed out", but for an EXPIRED token offline
+  auth-js answers null WITH an error and KEEPS the session (the shape
+  persist already handles): Sign out did nothing, silently, and left
+  `consentedLoss` true. An error now means "still here" too. LOW-MED —
+  the persisted pending flag had REPLACED the tab-local gate: with
+  storage blocked (Safari "Block all cookies") no confirmation existed at
+  all, and the unit test's title asserted the opposite of its body. A
+  `tabPending` state joins the shared flag; the test says what it tests.
+  LOW — the lookbehind probe is Safari-only; Chromium 62–93 and Firefox
+  78–92 passed it and still died: `Object.hasOwn` (Chrome 93 / Firefox
+  92 / Safari 15.4) is probed too. Caveat recorded, not fixed: WKWebView
+  advertises the `download` attribute, so iOS in-app browsers never reach
+  downloadCsv's share branch (Android WebViews do).
+- COPY (5): MED — the old-browser note told iPhone 6s/7/SE-1 owners to
+  "update iOS or open in Chrome", neither of which can work for them; it
+  now names iOS 16.4+ / iPhone 8+ or a current Chrome/Firefox/Edge on a
+  computer or Android. MED — the red "reload the page" banner and the
+  amber "keep this page open" banner shared one slot; obeying the red one
+  lost the parked save. The red line hides while a save is parked and
+  returns when the queue drains (verified against the mock: refused →
+  red; parked → amber only; drained → red, no green). LOW-MED — "works on
+  any phone" (about, FAQ) → "any recent phone", with the iOS 16.4 / Chrome
+  floor in the FAQ answer. LOW-MED — the home page's first "example" was
+  the real DropZone with a no-op handler (files silently swallowed) and
+  getting-started described the pre-sidebar phone flow with no tour; the
+  drop now answers "Screenshots are read inside the app…" (verified), the
+  steps cover sign-in, the tour, both layouts and both sorting controls.
+  LOW — PT glossary: "esperando vincular" (matching) vs "conferir"
+  (checking) on the desktop strings; "fez login" in the link notice.
+  Truthful (traced): all save-retry, sign-in, desktop, demo, help and
+  landing strings not named above.
+- PRIVACY (2 LOW-MED): the sign-in marker held the typed ADDRESS in
+  localStorage, written before the send and never deleted unless the
+  link landed on the same device — the one identifier the app wrote to a
+  shared computer that outlived the session. It now holds a SHA-256
+  digest, is written only after a send succeeds, deletes itself when
+  read stale, and clears on every sign-out. And /privacy never said the
+  operator can see per-account email, sign-in dates and totals; one
+  sentence (EN/ES/PT) in site.privacyProcessorsBody now does, with what
+  it never includes. Consistent (traced): the save queue's data path,
+  analytics exclusions (/demoo counted — sample data), the admin
+  payload's handling, deletion cascades incl. 0021–0025 tables, the live
+  /privacy text.
+Checked against the mock: link confirmation across tabs/reloads, marker
+digest matching, sign out with a parked save on a dead network, the
+banner precedence, the landing drop note. NOT checked: a real expired
+token (the mock has no refresh endpoint) — the sign-out fix rests on the
+reviewer's auth-js harness; any Safari/Android device.
+
 ## Phone demo at /demoo — 2026-10-04
 
 Owner: "turn it into an interactive demo and put it at /demoo" — look B

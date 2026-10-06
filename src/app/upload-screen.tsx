@@ -267,15 +267,32 @@ export default function UploadScreen({
   // persisted and shared by every tab, so closing the tab that carried
   // the hash, or having /app open in another, cannot skip the question.
   const linkPending = useSyncExternalStore(subscribeLinkPending, linkPendingSnapshot, () => false);
+  // This tab's own copy of the question: with storage blocked (Safari's
+  // "Block all cookies") the shared flag cannot be written, and auth-js
+  // keeps the session in memory — the gate must still exist here
+  // (pass-4 review: the persisted flag had replaced it, not joined it).
+  const [tabPending, setTabPending] = useState(arrivedByLink);
+  const settleLink = () => {
+    clearSignInStarted();
+    clearLinkPending();
+    setTabPending(false);
+  };
   useEffect(() => {
     if (!user || !arrivedByLink) return;
     // The link this device asked for, for this address (or via Google):
     // no question to ask. Any other arrival stays pending.
-    if (signInStartedHereFor(user.email)) {
+    let stale = false;
+    void signInStartedHereFor(user.email).then((started) => {
+      if (stale || !started) return;
       clearSignInStarted();
       clearLinkPending();
-    }
+      setTabPending(false);
+    });
+    return () => {
+      stale = true;
+    };
   }, [user, arrivedByLink]);
+  const askFirst = linkPending || tabPending;
 
   // The one owner of the .dark class after first paint (the layout's
   // inline script owns the paint before hydration).
@@ -319,7 +336,7 @@ export default function UploadScreen({
     }
     // Not while a session from a link is waiting to be confirmed: this
     // writes to the account, and it may not be this person's.
-    if (linkPending) return;
+    if (askFirst) return;
     const stored =
       typeof user.user_metadata?.lang === "string"
         ? user.user_metadata.lang
@@ -357,7 +374,7 @@ export default function UploadScreen({
       .catch(() => {
         if (pushedLang.current === stamp) pushedLang.current = null;
       });
-  }, [user, locale, reconcileTick, linkPending]);
+  }, [user, locale, reconcileTick, askFirst]);
 
   // Don't flash the sign-in form at someone who is already signed in, and
   // don't flash the terms at someone who has already accepted them: `accepted`
@@ -383,16 +400,13 @@ export default function UploadScreen({
   }
 
   // Signed in by a link this device never asked for: say who, ask first.
-  if (user && linkPending) {
+  if (user && askFirst) {
     return gate(
       <LinkSignedIn
         email={user.email ?? ""}
-        onContinue={() => {
-          clearSignInStarted();
-          clearLinkPending();
-        }}
+        onContinue={settleLink}
         onSignOut={() => {
-          clearLinkPending();
+          settleLink();
           void getSupabase()?.auth.signOut({ scope: "local" });
         }}
       />,
@@ -2738,6 +2752,10 @@ function Ledger({
     // silent loss at the exact moment no UI remains to report it.
     const queue = saveQueue.current;
     const supabase = getSupabase();
+    // Whatever happens next, a sign-in marker has no business outliving
+    // the session it was for (privacy lens: it is the one identifier the
+    // app writes to the device).
+    clearSignInStarted();
     if (queue.waiting) {
       // A save still waiting for the network cannot be drained: signing
       // out loses it. That is the owner's call, asked once — and the loss
@@ -2759,9 +2777,13 @@ function Ledger({
       // the local session when the token was valid (SIGNED_OUT follows); it
       // keeps the session only when the token had expired and could not be
       // refreshed. So the session, not the error, says whether we are
-      // signed out (pass-3 review).
+      // signed out (pass-3 review) — and getSession reports a KEPT session
+      // it could not refresh as `session: null` WITH an error (the same
+      // shape persist reads above), so an error means "still here" too
+      // (pass-4 review).
       try {
-        stillHere = Boolean((await supabase?.auth.getSession())?.data.session);
+        const res = await supabase?.auth.getSession();
+        stillHere = Boolean(res?.data.session) || Boolean(res?.error);
       } catch {
         stillHere = true;
       }
@@ -2788,7 +2810,11 @@ function Ledger({
     }
   }
 
-  /** The write queue's own line, beside the red error banner: amber while
+  /** The write queue's own line, in the red error banner's slot — which it
+   *  TAKES while a save is parked: the red line's advice is "reload", the
+   *  amber line's is "keep this page open", and only one can be right at a
+   *  time (copy lens, 2026-10-05). `error`/`status` are left as they are,
+   *  so the refused-save notice returns when the queue drains. Amber while
    *  a save waits for the network (with a way to try at once), then a
    *  short confirmation when it lands. Nothing when all is well. */
   const saveQueueEl = (where: "phone" | "sidebar" | "sidebar-sticky" = "phone") =>
@@ -3545,7 +3571,7 @@ function Ledger({
             while the tour is up. Without this an offline Save shows a
             card under copy that says it is saved, and the red line
             appears only after Finish, about nothing on screen. */}
-        {status === "error" && (
+        {status === "error" && !saveWaiting && (
           <p role="alert" className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
             {error}
           </p>
@@ -3626,7 +3652,7 @@ function Ledger({
         {/* Sticky: every section is one scrolling page here, and a "Got
             cash" far down a long Owed list must still SHOW its failed save
             (on /app the banner sits in the sticky flow column). */}
-        {status === "error" && (
+        {status === "error" && !saveWaiting && (
           <p
             role="alert"
             // Not on Upload: the sort stage's RunningTotals is itself
@@ -3838,7 +3864,7 @@ function Ledger({
             spoken, and the "Got cash" button that was focused has just
             unmounted. role="alert" makes the insertion itself announce
             (the sign-in errors carry the same role). */}
-        {status === "error" && (
+        {status === "error" && !saveWaiting && (
           <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
             {error}
           </p>

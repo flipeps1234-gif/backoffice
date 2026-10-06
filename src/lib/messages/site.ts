@@ -385,9 +385,9 @@ export const messages = {
   },
   "site.aboutHow": { en: "How it's built", es: "Cómo está hecho", pt: "Como é feito" },
   "site.aboutHowBody": {
-    en: "One web app that works on any phone, in English, Spanish and Portuguese. Money is stored to the cent, never as a float. Your rows are fenced to your account at the database, by row-level security. Every row is exportable any time, and your whole account is deletable, always.",
-    es: "Una app web que funciona en cualquier teléfono, en inglés, español y portugués. El dinero se guarda al centavo, nunca como decimal flotante. Tus filas están cercadas a tu cuenta en la base de datos, con seguridad a nivel de fila. Cada fila se puede exportar cuando quieras, y tu cuenta entera se puede borrar, siempre.",
-    pt: "Um app web que funciona em qualquer celular, em inglês, espanhol e português. O dinheiro é guardado em centavos, nunca como número flutuante. Suas linhas ficam cercadas à sua conta no banco de dados, por segurança em nível de linha. Cada linha pode ser exportada quando quiser, e sua conta inteira pode ser apagada, sempre.",
+    en: "One web app that works on any recent phone, in English, Spanish and Portuguese. Money is stored to the cent, never as a float. Your rows are fenced to your account at the database, by row-level security. Every row is exportable any time, and your whole account is deletable, always.",
+    es: "Una app web que funciona en cualquier teléfono reciente, en inglés, español y portugués. El dinero se guarda al centavo, nunca como decimal flotante. Tus filas están cercadas a tu cuenta en la base de datos, con seguridad a nivel de fila. Cada fila se puede exportar cuando quieras, y tu cuenta entera se puede borrar, siempre.",
+    pt: "Um app web que funciona em qualquer celular recente, em inglês, espanhol e português. O dinheiro é guardado em centavos, nunca como número flutuante. Suas linhas ficam cercadas à sua conta no banco de dados, por segurança em nível de linha. Cada linha pode ser exportada quando quiser, e sua conta inteira pode ser apagada, sempre.",
   },
   "site.aboutTalk": { en: "Questions? Talk to us.", es: "¿Preguntas? Háblanos.", pt: "Dúvidas? Fale com a gente." },
 
@@ -451,9 +451,9 @@ export const messages = {
   },
   "site.faq7Q": { en: "Does it work on my phone?", es: "¿Funciona en mi teléfono?", pt: "Funciona no meu celular?" },
   "site.faq7A": {
-    en: "Yes. It's a website that works on any phone, with no install. Every flow is built to survive ten seconds, one hand, in a driveway.",
-    es: "Sí. Es un sitio web que funciona en cualquier teléfono, sin instalar nada. Cada flujo está hecho para sobrevivir diez segundos, con una mano, en la entrada de una casa.",
-    pt: "Sim. É um site que funciona em qualquer celular, sem instalar nada. Cada fluxo foi feito para sobreviver dez segundos, com uma mão, na calçada.",
+    en: "Yes, on any recent phone — an iPhone on iOS 16.4 or newer, or Android with a current Chrome — as a website, with no install. Every flow is built to survive ten seconds, one hand, in a driveway.",
+    es: "Sí, en cualquier teléfono reciente — un iPhone con iOS 16.4 o más nuevo, o Android con un Chrome actual — como sitio web, sin instalar nada. Cada flujo está hecho para sobrevivir diez segundos, con una mano, en la entrada de una casa.",
+    pt: "Sim, em qualquer celular recente — um iPhone com iOS 16.4 ou mais novo, ou Android com um Chrome atual — como site, sem instalar nada. Cada fluxo foi feito para sobreviver dez segundos, com uma mão, na calçada.",
   },
   "site.faq8Q": { en: "Can I export or delete my data?", es: "¿Puedo exportar o borrar mis datos?", pt: "Posso exportar ou apagar meus dados?" },
   "site.faq8A": {
@@ -512,9 +512,9 @@ export const messages = {
     pt: "Quem processa isso",
   },
   "site.privacyProcessorsBody": {
-    en: "Supabase runs our database and sends the sign-in emails, on servers in the United States. Vercel hosts the app and keeps short-lived request logs. If you sign in with Google, Google confirms who you are and gives us your name, email address and profile picture — nothing else — and Google knows you signed in.",
-    es: "Supabase administra nuestra base de datos y envía los correos de inicio de sesión, en servidores en Estados Unidos. Vercel aloja la app y guarda registros de solicitudes de corta duración. Si entras con Google, Google confirma quién eres y nos da tu nombre, tu correo y tu foto de perfil — nada más — y Google sabe que iniciaste sesión.",
-    pt: "A Supabase administra nosso banco de dados e envia os e-mails de login, em servidores nos Estados Unidos. A Vercel hospeda o app e mantém registros de requisições de curta duração. Se você entrar com o Google, o Google confirma quem você é e nos passa seu nome, seu e-mail e sua foto de perfil — nada mais — e o Google sabe que você fez login.",
+    en: "Supabase runs our database and sends the sign-in emails, on servers in the United States. Vercel hosts the app and keeps short-lived request logs. If you sign in with Google, Google confirms who you are and gives us your name, email address and profile picture — nothing else — and Google knows you signed in. contado's operator can see each account's email address, sign-in dates and the totals it has logged, to run the service — never the payer names, notes, client details or photos inside it.",
+    es: "Supabase administra nuestra base de datos y envía los correos de inicio de sesión, en servidores en Estados Unidos. Vercel aloja la app y guarda registros de solicitudes de corta duración. Si entras con Google, Google confirma quién eres y nos da tu nombre, tu correo y tu foto de perfil — nada más — y Google sabe que iniciaste sesión. El operador de contado puede ver el correo de cada cuenta, sus fechas de acceso y los totales registrados, para operar el servicio — nunca los nombres de quien paga, las notas, los datos de clientes ni las fotos.",
+    pt: "A Supabase administra nosso banco de dados e envia os e-mails de login, em servidores nos Estados Unidos. A Vercel hospeda o app e mantém registros de requisições de curta duração. Se você entrar com o Google, o Google confirma quem você é e nos passa seu nome, seu e-mail e sua foto de perfil — nada mais — e o Google sabe que você fez login. O operador do contado pode ver o e-mail de cada conta, as datas de acesso e os totais registrados, para operar o serviço — nunca os nomes de quem paga, as notas, os dados de clientes nem as fotos.",
   },
   "site.privacyProcessorsBody2": {
     en: "OpenAI reads your screenshots to extract the payment rows. OpenAI may keep the images it receives for up to 30 days to monitor for abuse and does not train its models on them; contado itself does not store the images it sends.",

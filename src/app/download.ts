@@ -7,9 +7,11 @@
  * minute: a `download` navigation fetches the blob AFTER the current task,
  * and WebKit has failed such downloads when the URL was already revoked
  * (compat lens, 2026-10-05). In-app browsers (Instagram, Facebook, a mail
- * app's WKWebView) have no download manager at all — there the share
- * sheet carries the file when the browser offers one; otherwise the plain
- * download is still attempted, which is the most any page can do.
+ * app's WKWebView) have no download manager at all. Where the browser
+ * also lacks the `download` attribute (Android WebViews) the share sheet
+ * carries the file instead when it can; WKWebView advertises `download`
+ * even though it cannot save, so iOS in-app browsers still get the plain
+ * attempt — the most any page can do there.
  */
 export function downloadCsv(csv: string, filename: string) {
   const type = "text/csv;charset=utf-8";

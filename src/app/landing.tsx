@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { takeReturnTo } from "@/lib/return-to";
 
 /** The sign-in forward target, decided once per page load (see below). */
@@ -14,7 +14,6 @@ import {
   DemoFrame,
   SHEET_DEMO,
   TOTALS_DEMO,
-  noop,
   useMounted,
 } from "./public-demos";
 import { OwedPlayground, SheetPlayground, SwipePlayground } from "./landing-playground";
@@ -39,6 +38,7 @@ import { EMPTY_PROFILE } from "@/lib/profile";
  * the rest of the site shares them.
  */
 export default function Landing() {
+  const [droppedOnDemo, setDroppedOnDemo] = useState(false);
   const { t } = useLocale();
   const mounted = useMounted();
 
@@ -167,7 +167,17 @@ export default function Landing() {
             {/* The hub's real drop zone — the whole box is the tap target;
                 there is no separate "choose" button in the app either. */}
             <DemoFrame label={t("landing.demoData")}>
-              <DropZone busy={false} onFiles={noop} />
+              {/* A real drop zone that READS nothing: say so when someone
+                  tries it, instead of swallowing their files in silence. */}
+              <DropZone busy={false} onFiles={() => setDroppedOnDemo(true)} />
+              {droppedOnDemo && (
+                <p role="status" className="mt-3 text-sm text-neutral-500">
+                  {t("landing.demoDropNote")}{" "}
+                  <a href="/app" className="font-medium underline">
+                    {t("landing.openApp")}
+                  </a>
+                </p>
+              )}
             </DemoFrame>
           </li>
           <li className="space-y-3 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:space-y-0">

@@ -232,7 +232,6 @@ export default function SignIn({
     setBusy(true);
     setError("");
     rememberReturnTo(returnTo);
-    markSignInStarted(email);
 
     const { error: sendError } = await supabase.auth.signInWithOtp({
       email: email.trim(),
@@ -261,6 +260,9 @@ export default function SignIn({
       if (isRateLimited(sendError.code)) startCooldown();
       return;
     }
+    // A send that failed started no sign-in; a link can only follow a
+    // send that worked.
+    void markSignInStarted(email);
     setSent(true);
     startCooldown();
   }
@@ -272,7 +274,7 @@ export default function SignIn({
     setBusy(true);
     setError("");
     rememberReturnTo(returnTo);
-    markSignInStarted("google");
+    await markSignInStarted("google");
     // Lands on the bare origin like the magic link (the only allowed
     // redirect); the landing forwards the tokens to /app. select_account
     // so a person with two Google accounts gets to choose every time.

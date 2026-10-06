@@ -55,11 +55,13 @@ export function takeReturnTo(now = Date.now()): string {
  * the ATTACKER's account, and everything they entered would be read
  * there). Two markers make up the proof the app can have:
  *
- * - `contado.signinStarted`: set when a sign-in is started here, WITH the
- *   address it was started for (pass-3 review: a timestamp alone would
- *   let any session arriving within the hour through — the attacker's
- *   link in the same inbox as the real one). Google has no address at
- *   start time, so that marker accepts any session.
+ * - `contado.signinStarted`: set when a sign-in is started here, WITH a
+ *   digest of the address it was started for (pass-3 review: a timestamp
+ *   alone would let any session arriving within the hour through — the
+ *   attacker's link in the same inbox as the real one). Google has no
+ *   address at start time, so that marker accepts any session. Cleared
+ *   when the link lands here, on Continue, on every sign-out, and when
+ *   found stale — the device never keeps it longer than the hour.
  * - `contado.linkPending`: set the moment a page opens with tokens in
  *   its URL, cleared when the person confirms or signs out. PERSISTED,
  *   because the session auth-js stores is persisted and broadcast to
@@ -73,26 +75,41 @@ export function takeReturnTo(now = Date.now()): string {
  * promise — still work, with one confirmation. Same hour, same storage
  * as the return path.
  */
-export function markSignInStarted(who: string | "google", now = Date.now()): void {
+/** SHA-256 hex of the normalised address. The marker must only ever
+ *  answer "is this the address the sign-in was started for?", and a digest
+ *  answers that as well as the address would — without leaving the address
+ *  itself in a shared computer's storage (privacy lens, 2026-10-05). */
+const digest = async (text: string): Promise<string> => {
+  const bytes = new TextEncoder().encode(text.trim().toLowerCase());
+  const hash = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(hash), (b) => b.toString(16).padStart(2, "0")).join("");
+};
+
+export async function markSignInStarted(who: string | "google", now = Date.now()): Promise<void> {
   try {
-    localStorage.setItem(STARTED_KEY, JSON.stringify({ at: now, who: who === "google" ? "google" : who.trim().toLowerCase() }));
+    const tag = who === "google" ? "google" : await digest(who);
+    localStorage.setItem(STARTED_KEY, JSON.stringify({ at: now, who: tag }));
   } catch {
-    // No storage: the confirmation screen is shown, which is the safe side.
+    // No storage or no WebCrypto: the confirmation screen is shown, which
+    // is the safe side.
   }
 }
 
 /** Was a sign-in for THIS address (or any, via Google) started on this
- *  device within the last hour? Does not consume the marker (React can run
- *  an initializer twice); clear it with clearSignInStarted once the
- *  session has been taken in. */
-export function signInStartedHereFor(email: string | null | undefined, now = Date.now()): boolean {
+ *  device within the last hour? Does not consume a live marker (React can
+ *  run an effect twice); a stale one is deleted on sight. Clear a live one
+ *  with clearSignInStarted once the session has been taken in. */
+export async function signInStartedHereFor(email: string | null | undefined, now = Date.now()): Promise<boolean> {
   try {
     const raw = localStorage.getItem(STARTED_KEY);
     if (!raw) return false;
     const parsed = JSON.parse(raw) as { at?: unknown; who?: unknown };
-    if (typeof parsed.at !== "number" || !(now - parsed.at >= 0 && now - parsed.at < TTL_MS)) return false;
+    if (typeof parsed.at !== "number" || !(now - parsed.at >= 0 && now - parsed.at < TTL_MS)) {
+      localStorage.removeItem(STARTED_KEY);
+      return false;
+    }
     if (parsed.who === "google") return true;
-    return typeof parsed.who === "string" && typeof email === "string" && parsed.who === email.trim().toLowerCase();
+    return typeof parsed.who === "string" && typeof email === "string" && parsed.who === (await digest(email));
   } catch {
     return false;
   }
@@ -123,7 +140,8 @@ export function markLinkPending(): void {
   try {
     localStorage.setItem(PENDING_KEY, "1");
   } catch {
-    // No storage: this tab still confirms through its own state.
+    // No storage: the tab that opened the link still asks through its own
+    // state (upload-screen.tsx tabPending); other tabs cannot be told.
   }
   notifyPending();
 }

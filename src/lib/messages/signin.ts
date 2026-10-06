@@ -125,7 +125,7 @@ export const messages = {
   "signin.linkedBody": {
     en: "This link signed this device in as {email}. If that's you, continue. If it isn't, sign out — anything you add here would go into that account.",
     es: "Este enlace inició sesión en este dispositivo como {email}. Si eres tú, continúa. Si no, cierra sesión — todo lo que agregues aquí iría a esa cuenta.",
-    pt: "Este link entrou neste aparelho como {email}. Se for você, continue. Se não for, saia — tudo o que você adicionar aqui iria para essa conta.",
+    pt: "Este link fez login neste aparelho como {email}. Se for você, continue. Se não for, saia — tudo o que você adicionar aqui iria para essa conta.",
   },
   "signin.linkedContinue": { en: "Continue", es: "Continuar", pt: "Continuar" },
   "signin.linkedNotMe": {

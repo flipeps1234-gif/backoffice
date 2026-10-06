@@ -62,24 +62,27 @@ export default function RootLayout({
           }}
         />
         <script
-          // Next 16 and Tailwind 4 are built for Safari 16.4+ (class static
-          // blocks in the runtime chunk): on Safari 15–16.3 — every iPhone
-          // 6s/7/SE-1, iPads on iOS 15 — the server HTML paints, the script
-          // throws at parse, and /app sat on "Loading…" forever with no word
-          // why (compat lens, 2026-10-05). RegExp lookbehind arrived in the
-          // same Safari release, is a plain constructor call (no eval, CSP
-          // allows it), and throws on exactly those browsers; the notice is
-          // in the server HTML, so it shows precisely when nothing else runs.
+          // Next 16 and Tailwind 4 are built for Safari 16.4 / Chrome 111 /
+          // Firefox 111 (class static blocks in the runtime chunk: Safari
+          // 16.4, Chrome 94, Firefox 93). Below that the server HTML paints,
+          // the script throws at parse, and /app sat on "Loading…" forever
+          // with no word why (compat lens, 2026-10-05). Two probes, no eval
+          // (CSP allows plain constructors): RegExp lookbehind arrived in
+          // Safari's 16.4 — the audience's real cliff (iPhone 6s/7/SE-1,
+          // iPads on iOS 15) — and Object.hasOwn in Chrome 93 / Firefox 92
+          // / Safari 15.4, which catches old Android WebViews and Firefox
+          // ESR 78 too. The notice is in the server HTML, so it shows
+          // precisely when nothing else can run.
           dangerouslySetInnerHTML={{
-            __html: `try{new RegExp("(?<=a)b")}catch(e){document.documentElement.classList.add("old-browser")}`,
+            __html: `try{new RegExp("(?<=a)b");if(typeof Object.hasOwn!=="function")throw 0}catch(e){document.documentElement.classList.add("old-browser")}`,
           }}
         />
         <p className="old-browser-note hidden border-b border-amber-300 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900">
-          This browser is too old for contado — update iOS, or open this page in Chrome.
+          This browser is too old for contado. It needs iOS 16.4 or newer (iPhone 8 and later — update in Settings), or a current Chrome, Firefox or Edge on a computer or Android phone.
           <br />
-          Este navegador es demasiado antiguo para contado — actualiza iOS o abre esta página en Chrome.
+          Este navegador es demasiado antiguo para contado. Hace falta iOS 16.4 o más reciente (iPhone 8 en adelante — actualiza en Ajustes), o un Chrome, Firefox o Edge actual en una computadora o un teléfono Android.
           <br />
-          Este navegador é antigo demais para o contado — atualize o iOS ou abra esta página no Chrome.
+          Este navegador é antigo demais para o contado. É preciso iOS 16.4 ou mais novo (iPhone 8 em diante — atualize em Ajustes), ou um Chrome, Firefox ou Edge atual num computador ou celular Android.
         </p>
         {children}
         {/* Public-site analytics only: gated on an env var, never on /app,
