@@ -145,7 +145,7 @@ export default function OwedTab({
                         The owner links it by hand (pass-8 review). */}
                     <button
                       type="button"
-                      className="-mx-2 min-h-11 px-2 text-xs text-neutral-500 hover:underline"
+                      className="-mx-2 min-h-11 px-2 text-xs text-neutral-500 hover:underline dark:text-neutral-400"
                       onClick={() => onFindPayment(sale.id)}
                     >
                       {t("owed.findPayment")}

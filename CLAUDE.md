@@ -642,6 +642,87 @@ client-side refusal of query tokens); pass 10 must review it as a whole.
 Not tested: a real device clock skew (the mock emulates the server's
 verdict); two tabs uploading the same screenshot against a real provider.
 
+PASS 10 — NOT CLEAN (count 0). Lenses: newcode + a whole-gate review over
+the pass-9 commit 643a3c1; COPY-VS-BEHAVIOUR over every string added or
+changed since pass 4 (`git diff 5982114..643a3c1` of messages and
+help-docs); ACCESSIBILITY of everything added since pass 5; DEPLOY
+HEADERS / CSP by tooling (coordinator). The run was rough: the usage limit
+killed three of four finders and most verifiers mid-Workflow; ultracode
+was then switched off, so the three missing lenses ran as plain agents
+(newcode, copy) or by tooling (headers), with the skill's budget (MED and
+below verified by the coordinator). The newcode agent was stopped part-way
+by a safety classifier — its last checks did not run, so the gate review
+is INCOMPLETE and pass 11 must repeat it. 11 findings, 11 confirmed (the
+HIGH by a control run in the browser).
+- NEWCODE (1, run cut short): HIGH — `storedPending` (pass 9) read the
+  flag WITHOUT the pass-9 TTL exemption, so the re-link rule and the
+  exemption did not compose: a question left unanswered for over an hour,
+  then the same link re-opened, read as a harmless same-account link — the
+  attacker's Ledger mounted with no tap and the entry was cleared. The read
+  passes the stored account as `keep`. Control run in the browser: with
+  the old line, the 2-hour-old entry + the same link → "Signed in as
+  attacker-w", flag gone; with the fix → the question, entry re-stamped.
+- COPY (4): MED — every path that links a payment to a sale (the engine,
+  the hand-link picker, Got cash's question) used the engine's ±10-day
+  window, so a client who paid more than 10 days after an OPEN sale — the
+  commonest Owed story, and Owed flags age at 14 days — could never be
+  linked: the help said "the sale clears itself", "Find the payment…"
+  answered "No payment… matches that amount" (amount had not been a
+  criterion since pass 8), and Got cash minted a second money row. The
+  engine keeps ±10 days (FLOW.md); the OWNER's paths (relaxDate on the
+  picker, Got cash's guard) take a payment from 10 days before the sale to
+  LATE_PAYMENT_DAYS (120) after; the question and the picker lead with the
+  closest amount; noMatchFound and the help article (en/es/pt) say what is
+  true. Verified: a $125 Venmo 22 days after a $120 sale is in the picker;
+  Got cash on a 40-day-old $80 sale asks about the exact $80 payment 30
+  days later, opens the picker, mints nothing. MED — the finish screen
+  said "Reload the page" beside "Keep this page open" while a save was
+  parked (a reload loses it with no trace): a waiting-safe variant
+  (home.saveFailedNoteWaiting). LOW-MED — a failed pre-screen re-pull
+  (pass 9) dropped the read batch under "Couldn't load your saved
+  payments": it retries once, then home.errScreenCheckFailed says nothing
+  was added and to upload again. LOW — the ES/PT Owed article named a tab
+  and a button that do not exist ("Deudas", "Llegó el efectivo",
+  "Devendo"); the PT Got-cash question had a crase error. Recorded, not
+  changed: the marketing lines "a payment in your next screenshots clears
+  it on its own" (site.how5Detail, cleanersDoes2, faq11A, landing.owedBody)
+  describe the common case; the help article now states the window.
+- ACCESSIBILITY (5 + contrast): MED — on the sidebar layout "Find the
+  payment…" (and Got cash's OK) only scrolled to its answer: nothing was
+  announced or focused, and the waiting branch unmounted the focused
+  button. The desktop notices sit in the same focusable wrapper as the
+  phone's and take focus after the render (verified with a firing frame:
+  focus on the wrapper holding the picker). LOW-MED — a stale "Couldn't
+  sign out" came back, re-announced, at the NEXT park: it is cleared when
+  the waiting save lands (`signOutRefused` + `errorRef`). LOW-MED — the
+  green "landed" line timed out under its own advice (43 words in 15 s)
+  and under focus: the partial and late variants stay until dismissed (×,
+  common.dismiss) or the next park; the plain one moves focus before it
+  goes. LOW-MED — the sidebar's sticky block could cover a keyboard-focused
+  control (WCAG 2.2 2.4.11): `html:has([data-sticky-notices]:not([hidden]))`
+  sets scroll-padding-top 8rem (verified: auto → 128px while parked →
+  auto). LOW-MED — Settings' two Save buttons disabled themselves under
+  focus, and "Saved." was a live region mounted with its text, in
+  emerald-600 at 3.66:1: aria-disabled + early return, the region mounted
+  for good, emerald-700 (verified: focus stays, aria-disabled true).
+  Contrast: the two new text controls ("Find the payment…", "Not me")
+  were neutral-500 on dark surfaces (3.79 / 4.18:1) → dark:text-neutral-400.
+- HEADERS / CSP (tooling, clean): live headers match next.config.ts; /app
+  is a static shell with no account data, so its shared cacheability is
+  harmless; www → apex 301 keeps the fragment; no route opens CORS;
+  'unsafe-inline' on script-src is the recorded decision. Not tested:
+  `Permissions-Policy: camera=()` beside the `capture="environment"` file
+  input — that input goes through the OS camera, not a web camera API, so
+  it should be unaffected; it needs a phone to prove.
+Harness note: the browser pane was hidden, and a hidden tab fires no
+requestAnimationFrame — the first focus check "failed" for that reason
+alone; the proof used an rAF stub firing on a zero-delay timer.
+Trend: P10 1H+2M+… — the HIGH was again in the previous pass's gate fix
+(eight passes running), this time in how two pass-9 rules composed. The
+gate needs a different approach than one more patch: pass 11 should
+review it as a whole state machine (the review this pass could not finish)
+and consider replacing the four mechanisms with one rule.
+
 ## Phone demo at /demoo — 2026-10-04
 
 Owner: "turn it into an interactive demo and put it at /demoo" — look B

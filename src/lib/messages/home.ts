@@ -94,6 +94,11 @@ export const messages = {
     es: "Este dispositivo cerró sesión — el navegador borró los datos de la app, o cerraste sesión en otra pestaña. Nada de lo anotado desde entonces llegó a tu cuenta: vuelve a iniciar sesión y anótalo otra vez.",
     pt: "Este aparelho está desconectado — o navegador apagou os dados do app, ou você saiu em outra aba. Nada do que foi lançado desde então chegou à sua conta: entre de novo e lance outra vez.",
   },
+  "home.errScreenCheckFailed": {
+    en: "Your screenshots were read, but we couldn't check them against your saved payments, so nothing was added. Check your connection and upload them again.",
+    es: "Leímos tus capturas, pero no pudimos compararlas con tus pagos guardados, así que no se agregó nada. Revisa tu conexión y vuelve a subirlas.",
+    pt: "Lemos seus prints, mas não conseguimos conferi-los com seus pagamentos salvos, então nada foi adicionado. Verifique sua conexão e envie de novo.",
+  },
   "home.errLoadFailed": {
     en: "Couldn't load your saved payments.",
     es: "No pudimos cargar tus pagos guardados.",
@@ -277,12 +282,12 @@ export const messages = {
   "home.gotCashPaymentExists": {
     en: "A {amount} payment from {payer} on {date} is already in your ledger and isn't linked to any sale. Link it to this sale instead of adding cash?",
     es: "Un pago de {amount} de {payer} del {date} ya está en tu libro y no está vinculado a ninguna venta. ¿Vincularlo a esta venta en vez de anotar efectivo?",
-    pt: "Um pagamento de {amount} de {payer} em {date} já está no seu livro e não está ligado a nenhuma venda. Ligar à esta venda em vez de anotar dinheiro?",
+    pt: "Um pagamento de {amount} de {payer} em {date} já está no seu livro e não está vinculado a nenhuma venda. Vincular a esta venda em vez de anotar dinheiro?",
   },
   "home.noMatchFound": {
-    en: "No payment on your ledger matches that amount and window.",
-    es: "Ningún pago en tu libro coincide con ese monto y esas fechas.",
-    pt: "Nenhum pagamento no seu livro bate com esse valor e esse período.",
+    en: "No unlinked business payment on your ledger is dated near this sale.",
+    es: "Ningún pago del negocio sin vincular en tu libro tiene una fecha cercana a esta venta.",
+    pt: "Nenhum pagamento do negócio sem vínculo no seu livro tem data perto desta venda.",
   },
   "home.matchedShort": {
     en: "Matched.",
@@ -400,6 +405,11 @@ export const messages = {
     en: "Saved to your account. It'll be here next time you open this on any device.",
     es: "Guardado en tu cuenta. Estará aquí la próxima vez que abras esto en cualquier dispositivo.",
     pt: "Salvo na sua conta. Vai estar aqui na próxima vez que você abrir isto em qualquer aparelho.",
+  },
+  "home.saveFailedNoteWaiting": {
+    en: "An earlier save didn't reach your account and won't be tried again. Once the waiting changes are saved, reload the page to see what was saved, then enter anything that's missing again.",
+    es: "Un guardado anterior no llegó a tu cuenta y no se volverá a intentar. Cuando se guarden los cambios en espera, recarga la página para ver qué quedó guardado y vuelve a escribir lo que falte.",
+    pt: "Um salvamento anterior não chegou à sua conta e não será tentado de novo. Quando as mudanças em espera forem salvas, recarregue a página para ver o que ficou salvo e digite de novo o que faltar.",
   },
   "home.saveFailedNote": {
     en: "Some of this is on screen only — a save didn't reach your account and won't be tried again. Reload the page to see what was saved, then enter anything that's missing again.",

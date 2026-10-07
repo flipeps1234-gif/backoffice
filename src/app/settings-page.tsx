@@ -211,9 +211,13 @@ function ChannelAlerts({
 
         <button
           type="button"
-          disabled={!dirty || !phoneOk || !prefsReady}
-          className="rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-40"
+          // aria-disabled, not disabled: the save clears `dirty`, and a
+          // button that disables itself under focus drops the keyboard user
+          // to the document (pass-10 a11y review; pass 5 fixed "Try now").
+          aria-disabled={!dirty || !phoneOk || !prefsReady}
+          className="rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:opacity-90 aria-disabled:opacity-40"
           onClick={() => {
+            if (!dirty || !phoneOk || !prefsReady) return;
             const now = new Date().toISOString();
             // An old tick timestamp is only still valid PROOF if no STOP
             // came after it. Re-opting in after an opt-out must stamp the
@@ -256,16 +260,16 @@ function ChannelAlerts({
               optedOutAt: prefs.optedOutAt,
             });
             setSavedFlash(true);
-            setTimeout(() => setSavedFlash(false), 2000);
+            setTimeout(() => setSavedFlash(false), 4000);
           }}
         >
           {t("common.save")}
         </button>
-        {savedFlash && (
-          <span className="ml-3 text-sm text-emerald-600" aria-live="polite">
-            {t("settings.businessSaved")}
-          </span>
-        )}
+        {/* Mounted for good, text swapped: a live region created with its
+            text is not reliably announced. emerald-700: 600 was 3.66:1. */}
+        <span className="ml-3 text-sm text-emerald-700 dark:text-emerald-400" aria-live="polite">
+          {savedFlash ? t("settings.businessSaved") : ""}
+        </span>
       </div>
     </div>
   );
@@ -340,9 +344,11 @@ function BusinessForm({
       )}
       <button
         type="button"
-        disabled={!dirty || (signedIn && !profileReady)}
-        className="rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:opacity-90 disabled:opacity-40"
+        // aria-disabled, not disabled: see the alerts Save above.
+        aria-disabled={!dirty || (signedIn && !profileReady)}
+        className="rounded-lg bg-foreground px-4 py-2.5 text-sm font-medium text-background hover:opacity-90 aria-disabled:opacity-40"
         onClick={() => {
+          if (!dirty || (signedIn && !profileReady)) return;
           onSaveProfile({
             businessName: businessName.trim(),
             ownerName: ownerName.trim(),
@@ -350,16 +356,15 @@ function BusinessForm({
           });
           setUsState(usState.trim().toUpperCase());
           setSavedFlash(true);
-          setTimeout(() => setSavedFlash(false), 2000);
+          setTimeout(() => setSavedFlash(false), 4000);
         }}
       >
         {t("common.save")}
       </button>
-      {savedFlash && (
-        <span className="ml-3 text-sm text-emerald-600" aria-live="polite">
-          {t("settings.businessSaved")}
-        </span>
-      )}
+      {/* Mounted for good, text swapped (see the alerts Save above). */}
+      <span className="ml-3 text-sm text-emerald-700 dark:text-emerald-400" aria-live="polite">
+        {savedFlash ? t("settings.businessSaved") : ""}
+      </span>
     </div>
   );
 }

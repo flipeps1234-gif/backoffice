@@ -138,3 +138,11 @@ body {
     width: 100%;
   }
 }
+
+/* The sidebar's sticky notice block (upload-screen.tsx) pins itself over
+   <main>; while it shows, focus scrolling keeps a control clear of it, so a
+   keyboard user can see what Enter will press (WCAG 2.2 2.4.11; pass-10 a11y
+   review). :has() is inside the old-browser cut (Safari 16.4+). */
+html:has([data-sticky-notices]:not([hidden])) {
+  scroll-padding-top: 8rem;
+}

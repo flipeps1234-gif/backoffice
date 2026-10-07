@@ -306,8 +306,14 @@ export default function UploadScreen({
   // confirmed: then the same link opened again (a second tap on the email,
   // an attacker's page re-navigating) is not a harmless same-account link —
   // it is the question, still unanswered (pass-9 review).
+  // Read with the stored account as `keep`, like every other read of the
+  // flag: without it an entry over an hour old aged out of THIS read only,
+  // and the re-link rule and the TTL exemption stopped composing — the
+  // same link re-opened after an hour read as harmless (pass-10 review).
   const [storedPending] = useState(
-    () => typeof window !== "undefined" && parseLinkPending(linkPendingSnapshot()).subs.includes(storedBefore),
+    () =>
+      typeof window !== "undefined" &&
+      parseLinkPending(linkPendingSnapshot(), storedBefore).subs.includes(storedBefore),
   );
   // Declared BEFORE useSession so it runs first: the pending flag must be
   // in storage before auth-js saves the session and broadcasts it to the
@@ -583,7 +589,7 @@ function LinkSignedIn({
       </button>
       <button
         type="button"
-        className="min-h-11 w-full text-sm text-neutral-500 hover:underline"
+        className="min-h-11 w-full text-sm text-neutral-500 hover:underline dark:text-neutral-400"
         onClick={onSignOut}
       >
         {t("signin.linkedNotMe")}
@@ -715,14 +721,23 @@ function Ledger({
     };
   }, [accountId]);
   useEffect(() => {
-    if (!saveRecovered) return;
-    // Longer when it asks the owner to check for a double entry.
-    const timer = window.setTimeout(
-      () => setSaveRecovered(""),
-      saveRecovered === "late" ? 15000 : 6000,
-    );
+    errorRef.current = error;
+  }, [error]);
+  useEffect(() => {
+    // The partial and late variants carry advice ("reload to see what was
+    // saved", "check for a double entry") — 40-odd words no timer can be
+    // trusted to leave up long enough: they stay until dismissed or the next
+    // park (pass-10 a11y review). The plain one goes after 6 s.
+    if (!saveRecovered || saveRecovered === "late" || saveFailed) return;
+    const timer = window.setTimeout(() => {
+      // Never pull a focused element out from under the keyboard.
+      if (document.activeElement === recoveredRef.current) {
+        noticesRef.current?.focus({ preventScroll: true });
+      }
+      setSaveRecovered("");
+    }, 6000);
     return () => window.clearTimeout(timer);
-  }, [saveRecovered]);
+  }, [saveRecovered, saveFailed]);
   // While a save is parked, closing or reloading the tab loses it (nothing
   // is kept on the device): make the browser ask first.
   useEffect(() => {
@@ -807,6 +822,14 @@ function Ledger({
   const [taxNoteClosed, setTaxNoteClosed] = useState(false);
   const [showOwed, setShowOwed] = useState(false);
   const noticesRef = useRef<HTMLDivElement>(null);
+  /** The red line's current text, for the save queue's callbacks (they
+   *  close over the mount-time render). */
+  const errorRef = useRef("");
+  /** "Couldn't sign out — your changes are still waiting" is showing: it is
+   *  cleared, not hidden, when the waiting save lands — a hidden role=alert
+   *  came back (and was announced again) at the NEXT park, with no sign-out
+   *  attempted (pass-10 a11y review). */
+  const signOutRefused = useRef(false);
   const [showClients, setShowClients] = useState(false);
   /** Search landed on a client — ClientsPage opens on their detail. */
   const [clientsFocus, setClientsFocus] = useState<string | null>(null);
@@ -1091,6 +1114,13 @@ function Ledger({
           if (parked) {
             queue.waiting = false;
             clearParked(TAB_ID);
+            if (signOutRefused.current) {
+              signOutRefused.current = false;
+              if (LOCALES.some((l) => translate(l, "home.signOutOffline") === errorRef.current)) {
+                setError("");
+                setStatus((s) => (s === "error" ? "idle" : s));
+              }
+            }
             setSaveWaiting(false);
             setSaveTrying(false);
           }
@@ -1694,13 +1724,17 @@ function Ledger({
       let ledgerNow = transactions;
       if (accountId) {
         try {
-          const rows = await loadTransactions();
+          // Once more on a failure: the extraction is already paid for.
+          const rows = await loadTransactions().catch(() => loadTransactions());
           const seen = new Set(rows.map((r) => r.id));
           ledgerNow = [...transactions.filter((tx) => !seen.has(tx.id)), ...rows];
           setTransactions((current) => [...current.filter((tx) => !seen.has(tx.id)), ...rows]);
         } catch (cause) {
           console.error("Load before screening failed:", cause);
-          setError(t("home.errLoadFailed"));
+          // Its own copy: the ledger on screen is fine — it is THIS upload
+          // that was not added ("Couldn't load your saved payments" pointed
+          // at the wrong thing and asked for nothing; pass-10 copy review).
+          setError(t("home.errScreenCheckFailed"));
           setStatus("error");
           return;
         }
@@ -1948,9 +1982,12 @@ function Ledger({
     // exact-amount rule never auto-matches those, and a cash row on top
     // doubles the job in every total and in the tax CSV (pass-8 product-
     // semantics review). Offer the hand-link first; cash stays one tap away.
-    const inLedger = unmatchedPaymentsFor(transactions, sale, clientNameOf(sale.clientId)).filter(
-      (tx) => !isUnchecked(tx),
-    );
+    // Closest amount first: the question names one payment, and with the
+    // owner's wider date window (pass 10) the newest is often not the one.
+    const total = saleTotalCents(sale);
+    const inLedger = unmatchedPaymentsFor(transactions, sale, clientNameOf(sale.clientId))
+      .filter((tx) => !isUnchecked(tx))
+      .sort((a, b) => Math.abs(a.amountCents - total) - Math.abs(b.amountCents - total));
     if (inLedger.length > 0) {
       const tx = inLedger[0];
       const link = window.confirm(
@@ -2701,22 +2738,37 @@ function Ledger({
   function findPaymentFor(saleId: string) {
     const sale = sales.find((sl) => sl.id === saleId);
     if (!sale) return;
-    // The owner is LOOKING at the list, so both guesses-guards relax: the
-    // name (a spouse paying) and the amount (a tip, a partial payment, a
-    // split) — the engine's own matching keeps both (pass-8 review). The
-    // client's own rows come first.
+    // The owner is LOOKING at the list, so the guesses-guards relax: the
+    // name (a spouse paying), the amount (a tip, a partial payment, a
+    // split; pass 8) and the date (a client paying weeks late; pass 10) —
+    // the engine's own matching keeps all three. The client's own rows
+    // come first.
     const name = clientNameOf(sale.clientId);
     const all = txnCandidatesForSale(transactions, sale, name, {
       relaxName: true,
       relaxAmount: true,
-    }).sort((a, b) => Number(sameName(name, b.payer)) - Number(sameName(name, a.payer)));
+      relaxDate: true,
+    }).sort(
+      (a, b) =>
+        // The client's own rows first, then the closest amount.
+        Number(sameName(name, b.payer)) - Number(sameName(name, a.payer)) ||
+        Math.abs(a.amountCents - saleTotalCents(sale)) - Math.abs(b.amountCents - saleTotalCents(sale)),
+    );
     const candidates = all.filter((tx) => !isUnchecked(tx));
     const waiting = all.length - candidates.length;
     // Desktop: the answer (a notice or the pick-one cards) renders at the
     // top of one long page; from far down the Owed list the button would
     // seem to do nothing.
-    if (desktop) window.scrollTo({ top: 0 });
-    else if (showOwed) {
+    if (desktop) {
+      // The answer renders at the top of one long page, and the waiting
+      // branch below unmounts the Owed section holding the button: move
+      // focus to the answer (after this render puts it there), then bring
+      // it into view — a scroll alone was sighted-only (pass-10 a11y).
+      requestAnimationFrame(() => {
+        noticesRef.current?.focus({ preventScroll: true });
+        window.scrollTo({ top: 0 });
+      });
+    } else if (showOwed) {
       // Phone: the Owed takeover REPLACES the main loop, and the answer
       // renders in the main loop — so from the takeover the button seemed
       // to do nothing until Close. Go back to the hub and bring the answer
@@ -3093,6 +3145,7 @@ function Ledger({
       if (stillHere) {
         // Still here, still parked: say what sign-out needs.
         queue.consentedLoss = false;
+        signOutRefused.current = true;
         setError(translate(currentLocale(), "home.signOutOffline"));
         setStatus("error");
       }
@@ -3191,6 +3244,19 @@ function Ledger({
             `error`, and the batch it reported is still unsaved (pass-7). */}
         {t(saveFailed ? "home.saveRecoveredPartial" : "home.saveRecovered")}
         {saveRecovered === "late" && ` ${t("home.saveRecoveredLate")}`}
+        {(saveRecovered === "late" || saveFailed) && (
+          <button
+            type="button"
+            aria-label={t("common.dismiss")}
+            className="-my-2 ml-1 min-h-11 px-2 align-middle font-medium"
+            onClick={() => {
+              noticesRef.current?.focus({ preventScroll: true });
+              setSaveRecovered("");
+            }}
+          >
+            ×
+          </button>
+        )}
       </p>
     ) : null;
 
@@ -3523,9 +3589,11 @@ function Ledger({
                   </p>
                   {/* Both, when both are true: the waiting note alone promised
                       that everything here would save itself (pass-6 review). */}
+                  {/* Waiting-safe: the plain note says "reload the page", and a
+                      reload while a save is parked loses it (pass-10 copy). */}
                   {saveFailed && (
                     <p className="text-xs text-red-700 dark:text-red-400">
-                      {t("home.saveFailedNote")}
+                      {t("home.saveFailedNoteWaiting")}
                     </p>
                   )}
                 </>
@@ -4012,6 +4080,7 @@ function Ledger({
             Upload: the sort stage's RunningTotals is itself sticky at the
             top, and the block would cover the totals. */}
         <div
+          data-sticky-notices={show("upload") ? undefined : ""}
           className={`${show("upload") ? "" : "sticky top-2 z-20 "}flex flex-col gap-2`}
           // `:empty` cannot do this: the red line stays mounted (hidden) so
           // its role=alert does not remount, and a 0-height flex item still
@@ -4021,7 +4090,12 @@ function Ledger({
           {errorLineEl()}
           {saveQueueEl("sidebar")}
         </div>
-        {noticesEl}
+        {/* Focusable, like the phone's (pass 5): Find the payment… answers
+            here, far above the Owed row that asked, and a scroll alone told
+            a screen reader nothing (pass-10 a11y review). */}
+        <div ref={noticesRef} tabIndex={-1} className="flex flex-col gap-5 outline-none empty:hidden">
+          {noticesEl}
+        </div>
 
         {tourOpen && (
           <section className={`${card} mx-auto w-full max-w-2xl space-y-6 p-4 lg:p-6`}>

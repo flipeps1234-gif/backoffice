@@ -92,6 +92,23 @@ const daysBetween = (a: string, b: string): number =>
 export const datesCompatible = (txnDate: string, saleDate: string): boolean =>
   txnDate === "" || daysBetween(txnDate, saleDate) <= MATCH_WINDOW_DAYS;
 
+/** How long after a sale the OWNER may still link a payment to it. */
+export const LATE_PAYMENT_DAYS = 120;
+
+/**
+ * The window for a link a PERSON chooses (the hand-link picker, Got cash's
+ * question): a client who pays two weeks late is the commonest Owed story,
+ * and ±10 days — right for the engine's guesses (FLOW.md) — left such a
+ * sale with no path to its payment but "Got cash", a second money row for
+ * one job (pass-10 copy review). From the engine's 10 days BEFORE the sale
+ * to LATE_PAYMENT_DAYS after it.
+ */
+export const datesCompatibleForOwner = (txnDate: string, saleDate: string): boolean => {
+  if (txnDate === "") return true;
+  const days = (Date.parse(`${txnDate}T00:00:00Z`) - Date.parse(`${saleDate}T00:00:00Z`)) / 86_400_000;
+  return days >= -MATCH_WINDOW_DAYS && days <= LATE_PAYMENT_DAYS;
+};
+
 export type MatchOutcome = {
   /** Exactly-one hits: link these, mark the sale PAID. Undoable upstream. */
   links: { saleId: string; txnId: string }[];
@@ -187,6 +204,9 @@ export const txnCandidatesForSale = (
      * relaxes this either.
      */
     relaxAmount?: boolean;
+    /** The same hand-link path, for the date: a late payer (see
+     *  datesCompatibleForOwner). Auto-linking never relaxes this either. */
+    relaxDate?: boolean;
   } = {},
 ): Transaction[] =>
   transactions.filter(
@@ -196,13 +216,17 @@ export const txnCandidatesForSale = (
       txn.business !== false &&
       (options.relaxAmount || txn.amountCents === saleTotalCents(sale)) &&
       (options.relaxName || sameName(clientName, txn.payer)) &&
-      datesCompatible(txn.date, sale.date),
+      (options.relaxDate
+        ? datesCompatibleForOwner(txn.date, sale.date)
+        : datesCompatible(txn.date, sale.date)),
   );
 
 /** Money already in the ledger that could be THIS sale's payment, whatever
  *  its amount: an unmatched business (or not-yet-sorted) money-in row from
- *  this client inside the date window. "Got cash" asks before minting a
- *  second row beside one of these (pass-8 product-semantics review). */
+ *  this client inside the OWNER's date window (a late payer counts — the
+ *  engine's ±10 days made this question blind to them; pass-10 review).
+ *  "Got cash" asks before minting a second row beside one of these (pass-8
+ *  product-semantics review). */
 export const unmatchedPaymentsFor = (
   transactions: Transaction[],
   sale: Sale,
@@ -214,5 +238,5 @@ export const unmatchedPaymentsFor = (
       !txn.matchedSaleId &&
       txn.business !== false &&
       sameName(clientName, txn.payer) &&
-      datesCompatible(txn.date, sale.date),
+      datesCompatibleForOwner(txn.date, sale.date),
   );
