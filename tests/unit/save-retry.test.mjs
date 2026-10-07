@@ -36,6 +36,11 @@ const blockedStorage = {
   removeItem() { throw new Error('blocked'); },
 };
 
+test('"JWT expired" (PostgREST PGRST301) is a wait: it escapes the client\'s refresh-and-replay only when the refresh itself failed', () => {
+  assert.equal(isNetworkSaveError(new Error('JWT expired')), true);
+  assert.equal(isNetworkSaveError({ message: 'permission denied for table sales' }), false);
+});
+
 test('a refresh another tab\'s refresh discarded (auth-js 2.111 AuthRefreshDiscardedError) is retried, not dropped', () => {
   assert.equal(isNetworkSaveError({ name: 'AuthRefreshDiscardedError', message: 'Refresh result discarded: session state changed mid-flight (e.g., concurrent signOut)' }), true);
   assert.equal(isNetworkSaveError({ name: 'AuthApiError', message: 'Refresh result discarded' }), false);   // the name, not the words
@@ -100,7 +105,7 @@ test('a save the server answered and refused is NOT retried', () => {
     new Error('duplicate key value violates unique constraint "clients_account_name_key"'),
     new Error('new row violates row-level security policy for table "sales"'),
     new Error('insert or update on table "transactions" violates foreign key constraint'),
-    new Error('JWT expired'),
+    // ('JWT expired' moved to the retried side on 2026-10-06: it escapes the refresh-and-replay only when the refresh failed.)
     { code: '23505', message: 'duplicate key value violates unique constraint "transactions_pkey"' },
     Object.assign(new Error('Invalid Refresh Token'), { name: 'AuthApiError', status: 400 }),
     new Error(''), null, undefined, 'Failed to fetch', 42,

@@ -202,13 +202,23 @@ export function storedSessionUserId(): string | null {
  *  review). A list, not one value: a second link overwrote the first's
  *  entry and then, failing, cleared it — the open question for the first
  *  account fell in every tab (pass-8 review). `sub` null = an unreadable
- *  token: every tab asks. Entries older than an hour are dropped on read
- *  (a tab closed mid-load leaves one behind). */
+ *  token: every tab asks. Entries older than an hour are dropped on read —
+ *  a tab closed mid-load leaves one behind — EXCEPT the entry for the
+ *  session the device holds, which is a live question however old it is
+ *  (pass-9 review: the TTL dismissed an unanswered question by itself).
+ *  Writers keep everything younger than a week, so a rewrite never drops
+ *  an entry a reader would still show. */
 const PENDING_TTL_MS = 60 * 60_000;
+const PENDING_KEEP_MS = 7 * 24 * 60 * 60_000;
 type PendingEntry = { sub: string | null; at: number };
 export type LinkPending = { set: boolean; subs: (string | null)[] };
 
-const readEntries = (raw: string, now: number): PendingEntry[] => {
+const readEntries = (
+  raw: string,
+  now: number,
+  ttlMs: number = PENDING_TTL_MS,
+  keep: string | null = null,
+): PendingEntry[] => {
   if (raw === "") return [];
   try {
     const parsed = JSON.parse(raw) as { subs?: unknown; sub?: unknown };
@@ -219,7 +229,7 @@ const readEntries = (raw: string, now: number): PendingEntry[] => {
           sub: typeof e.sub === "string" && e.sub !== "" ? e.sub : null,
           at: typeof e.at === "number" ? e.at : now,
         }))
-        .filter((e) => now - e.at < PENDING_TTL_MS);
+        .filter((e) => (keep !== null && e.sub === keep) || now - e.at < ttlMs);
     }
     // {sub} — the flag's second shape (pass 7).
     return [{ sub: typeof parsed.sub === "string" && parsed.sub !== "" ? parsed.sub : null, at: now }];
@@ -235,7 +245,9 @@ const writeEntries = (entries: PendingEntry[]): void => {
 
 export function markLinkPending(sub: string | null, now: number = Date.now()): void {
   try {
-    const entries = readEntries(localStorage.getItem(PENDING_KEY) ?? "", now).filter((e) => e.sub !== sub);
+    const entries = readEntries(localStorage.getItem(PENDING_KEY) ?? "", now, PENDING_KEEP_MS).filter(
+      (e) => e.sub !== sub,
+    );
     entries.push({ sub, at: now });
     writeEntries(entries);
   } catch {
@@ -250,7 +262,7 @@ export function markLinkPending(sub: string | null, now: number = Date.now()): v
  *  entries with no readable subject: that question had no other name. */
 export function clearLinkPending(sub: string | null, confirmed = false, now: number = Date.now()): void {
   try {
-    const entries = readEntries(localStorage.getItem(PENDING_KEY) ?? "", now).filter(
+    const entries = readEntries(localStorage.getItem(PENDING_KEY) ?? "", now, PENDING_KEEP_MS).filter(
       (e) => e.sub !== sub && !(confirmed && e.sub === null),
     );
     writeEntries(entries);
@@ -284,7 +296,9 @@ export function linkPendingSnapshot(): string {
   }
 }
 
-export function parseLinkPending(raw: string, now: number = Date.now()): LinkPending {
-  const entries = readEntries(raw, now);
+/** `keep`: the account whose session this device holds — its entry is a
+ *  live question and never ages out. */
+export function parseLinkPending(raw: string, keep: string | null = null, now: number = Date.now()): LinkPending {
+  const entries = readEntries(raw, now, PENDING_TTL_MS, keep);
   return { set: entries.length > 0, subs: entries.map((e) => e.sub) };
 }

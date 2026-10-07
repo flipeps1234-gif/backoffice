@@ -1,4 +1,5 @@
 import { securityClient, signupIpHash } from "@/lib/supabase/security";
+import { clientIp } from "@/lib/request-ip";
 
 /**
  * The founding-hundred signup (landing page CTA). Public by design —
@@ -23,13 +24,9 @@ const rateLimited = (ip: string): boolean => {
 };
 
 export async function POST(request: Request) {
-  // Cloudflare fronts production and sets cf-connecting-ip to the real
-  // client IP; x-forwarded-for is the fallback for anything else (local
-  // dev, previews, or a host not behind Cloudflare).
-  const ip =
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown";
+  // Cloudflare's header only when the request really came through
+  // Cloudflare — lib/request-ip.ts has the rule and the reason.
+  const ip = clientIp(request.headers);
   if (rateLimited(ip)) {
     return Response.json({ error: "Give it a minute." }, { status: 429 });
   }

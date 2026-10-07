@@ -89,6 +89,11 @@ export const messages = {
     es: "\"Recibí efectivo\" no se guardó. El trabajo volverá a Por cobrar la próxima vez que abras la app — tócalo de nuevo entonces.",
     pt: "\"Recebi em dinheiro\" não foi salvo. O serviço volta para A receber na próxima vez que você abrir o app — toque de novo então.",
   },
+  "home.errSignedOutHere": {
+    en: "This device is signed out — the browser cleared the app's data, or you signed out in another tab. Nothing entered since then has reached your account: sign in again, then enter it once more.",
+    es: "Este dispositivo cerró sesión — el navegador borró los datos de la app, o cerraste sesión en otra pestaña. Nada de lo anotado desde entonces llegó a tu cuenta: vuelve a iniciar sesión y anótalo otra vez.",
+    pt: "Este aparelho está desconectado — o navegador apagou os dados do app, ou você saiu em outra aba. Nada do que foi lançado desde então chegou à sua conta: entre de novo e lance outra vez.",
+  },
   "home.errLoadFailed": {
     en: "Couldn't load your saved payments.",
     es: "No pudimos cargar tus pagos guardados.",

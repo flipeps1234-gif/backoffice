@@ -137,6 +137,15 @@ http.createServer(async (req, res) => {
     }
     return send(res, 400, { error: "unsupported in the mock" });
   }
+  // PostgREST refuses a token whose exp has passed (401 PGRST301) — the
+  // SERVER's clock. A session seeded with a past `exp` but a future
+  // `expires_at` plays a phone whose clock is behind the server.
+  const bearer = (req.headers.authorization ?? "").replace(/^Bearer /, "");
+  const bearerExp = (() => { try { return JSON.parse(Buffer.from(bearer.split(".")[1], "base64url").toString()).exp; } catch { return undefined; } })();
+  if (typeof bearerExp === "number" && bearerExp * 1000 < Date.now()) {
+    log.push(`REST 401 PGRST301 ${req.method} ${url.pathname}`);
+    return send(res, 401, { code: "PGRST301", message: "JWT expired", details: null, hint: null });
+  }
   if (url.pathname.startsWith("/rest/v1/rpc/")) { log.push(`RPC ${url.pathname.slice(13)}`); return send(res, 200, null); }
   if (!url.pathname.startsWith("/rest/v1/")) return send(res, 404, { message: "not found" });
 

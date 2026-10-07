@@ -1,4 +1,5 @@
 import { activeProviderName, extract } from "@/lib/extract";
+import { clientIp } from "@/lib/request-ip";
 import type { ExtractionContext, ExtractionInput } from "@/lib/extract";
 import { IMAGE_TYPES } from "@/lib/extract/image-types";
 import { resolveToday } from "@/lib/extract/today";
@@ -56,15 +57,11 @@ const rateLimited = (ip: string): boolean => {
   return entry.count > MAX_PER_WINDOW;
 };
 
-// Cloudflare sits in front of production; Vercel's x-forwarded-for is
-// overwritten with the edge IP there, so prefer Cloudflare's own header.
-const clientIp = (request: Request): string =>
-  request.headers.get("cf-connecting-ip") ??
-  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-  "unknown";
 
 export async function POST(request: Request) {
-  const ip = clientIp(request);
+  // Cloudflare's header only when the request really came through
+  // Cloudflare — lib/request-ip.ts has the rule and the reason.
+  const ip = clientIp(request.headers);
   if (rateLimited(ip)) {
     return Response.json(
       { error: "Too many uploads at once. Give it a minute." },

@@ -20,7 +20,11 @@
  *  (Firefox) — and auth-js as an AuthRetryableFetchError. The lib wrappers
  *  rethrow `new Error(error.message)`, so the message is what survives. */
 const NETWORK_MESSAGE =
-  /failed to fetch|load failed|networkerror|network request failed|network connection was lost|internet connection appears to be offline|the request timed out|aborterror|timeouterror/i;
+  /failed to fetch|load failed|networkerror|network request failed|network connection was lost|internet connection appears to be offline|the request timed out|aborterror|timeouterror|jwt expired/i;
+// "JWT expired" (PostgREST PGRST301) reaches a save only when the client's
+// refresh-and-replay (lib/supabase/fresh-fetch.ts) could not refresh —
+// offline, or inside auth-js's failure cooldown — so it is a wait, not a
+// refusal (pass-9 resilience review).
 
 export const isNetworkSaveError = (cause: unknown): boolean => {
   if (typeof cause !== "object" || cause === null) return false;

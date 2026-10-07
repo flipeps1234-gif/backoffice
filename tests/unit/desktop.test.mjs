@@ -179,7 +179,7 @@ test('linkPending: one entry per account, shared by every tab, each cleared on i
   const localStorage = storageWithKeys(); const window = fakeWindow();
   const { markLinkPending, clearLinkPending, subscribeLinkPending, linkPendingSnapshot, parseLinkPending } = load('../../src/lib/return-to.ts', { localStorage, window, Event: FakeEvent });
   const T = 1_700_000_000_000;
-  const read = () => parseLinkPending(linkPendingSnapshot(), T);
+  const read = () => parseLinkPending(linkPendingSnapshot(), null, T);
   let changes = 0;
   const stop = subscribeLinkPending(() => { changes += 1; });
   sameValue(read(), { set: false, subs: [] });
@@ -202,14 +202,18 @@ test('linkPending: one entry per account, shared by every tab, each cleared on i
   clearLinkPending('user-q', true, T);                                   // a Continue for any account answers it
   assert.equal(linkPendingSnapshot(), '');
   markLinkPending('old', T - 61 * 60_000);
-  sameValue(parseLinkPending(linkPendingSnapshot(), T), { set: false, subs: [] });
+  sameValue(parseLinkPending(linkPendingSnapshot(), null, T), { set: false, subs: [] });
+  sameValue(parseLinkPending(linkPendingSnapshot(), 'old', T), { set: true, subs: ['old'] });   // the device still holds that session: a live question, however old
+  markLinkPending('fresh', T);                                                                    // a writer keeps the week-old entry a reader would show for its holder
+  sameValue(parseLinkPending(linkPendingSnapshot(), 'old', T).subs.slice().sort(), ['fresh', 'old']);
+  clearLinkPending('fresh', false, T);
   stop();
   const quiet = changes; markLinkPending('x', T); assert.equal(changes, quiet);
   // the flag's earlier shapes
-  sameValue(parseLinkPending('1', T), { set: true, subs: [null] });
-  sameValue(parseLinkPending('{"sub":"user-y"}', T), { set: true, subs: ['user-y'] });
-  sameValue(parseLinkPending('{"sub":""}', T), { set: true, subs: [null] });
-  sameValue(parseLinkPending('{not json', T), { set: true, subs: [null] });
+  sameValue(parseLinkPending('1', null, T), { set: true, subs: [null] });
+  sameValue(parseLinkPending('{"sub":"user-y"}', null, T), { set: true, subs: ['user-y'] });
+  sameValue(parseLinkPending('{"sub":""}', null, T), { set: true, subs: [null] });
+  sameValue(parseLinkPending('{not json', null, T), { set: true, subs: [null] });
 });
 
 test('callbackParams reads a URL exactly as auth-js does (query over hash, last duplicate wins, percent-encoded keys); tokenSubject reads the token it hands over', () => {

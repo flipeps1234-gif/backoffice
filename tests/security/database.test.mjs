@@ -54,7 +54,10 @@ test('all demo-cap tables accept ordinary inserts; sales reject photos on insert
   await db.query("INSERT INTO public.recurring_templates(account_id,client_id,cadence,next_due) VALUES ($1,$2,'{\"type\":\"weekly\"}',current_date)", [demo, client]);
   await db.query("INSERT INTO public.business_profiles(account_id,business_name) VALUES ($1,'Review')", [demo]);
   await db.query("INSERT INTO public.notification_prefs(account_id) VALUES ($1)", [demo]);
+  // The queue is server-written (0027): the sender enqueues as the service role.
+  await db.exec('RESET ROLE; SET ROLE service_role');
   await db.query("INSERT INTO public.notification_queue(account_id,event,to_number,template) VALUES ($1,'monthly_recap','+15550000000','review')", [demo]);
+  await asUser(demo, 'tester@demo.dem');
   await db.query("INSERT INTO public.sales(account_id,occurred_on,state) VALUES ($1,current_date,'open')", [demo]);
   await assert.rejects(db.query("INSERT INTO public.sales(account_id,occurred_on,state,photo) VALUES ($1,current_date,'open','data:image/png;base64,AA==')", [demo]), /cannot store photos/);
   await assert.rejects(db.query("UPDATE public.sales SET photo='data:image/png;base64,AA==' WHERE account_id=$1", [demo]), /cannot store photos/);
@@ -66,13 +69,18 @@ test('existing demo records reject oversized updates, including multibyte text',
     "UPDATE public.business_profiles SET business_name=repeat('x',2000000)",
     "UPDATE public.business_profiles SET owner_name=repeat('é',201)",
     "UPDATE public.business_profiles SET us_state=repeat('x',17)",
-    "UPDATE public.notification_queue SET variables=jsonb_build_array(repeat('x',1000000))",
-    "UPDATE public.notification_queue SET error=repeat('x',2001)",
     "UPDATE public.notification_prefs SET phone=repeat('x',33)",
     "UPDATE public.recurring_templates SET cadence=jsonb_build_object('type',repeat('x',1001))",
     "UPDATE public.recurring_templates SET line_items=jsonb_build_array(repeat('x',20001))",
     "UPDATE public.services SET name=repeat('x',401)",
   ]) await assert.rejects(db.exec(sql), e => e.code === '23514');
+  // The queue is written by the sender and the webhooks (service role, 0027); the byte caps bind there too.
+  await db.exec('RESET ROLE; SET ROLE service_role');
+  for (const sql of [
+    "UPDATE public.notification_queue SET variables=jsonb_build_array(repeat('x',1000000))",
+    "UPDATE public.notification_queue SET error=repeat('x',2001)",
+  ]) await assert.rejects(db.exec(sql), e => e.code === '23514');
+  await db.exec('RESET ROLE');
 });
 
 test('demo cap rolls back an entire over-limit batch; other accounts stay isolated', async () => {
@@ -290,5 +298,20 @@ test("0026: opted_out_at is the webhooks' column — a client insert gets NULL, 
   await db.query("UPDATE public.notification_prefs SET opted_out_at=null WHERE account_id=$1", [uid]);   // only the service role clears it
   ({ rows } = await db.query('SELECT opted_out_at FROM public.notification_prefs WHERE account_id=$1', [uid]));
   assert.equal(rows[0].opted_out_at, null);
+  await db.exec('RESET ROLE');
+});
+
+test("0027: notification_queue is server-written — a signed-in account can read its rows but neither insert nor update them; the service role can", async () => {
+  const uid = '00000000-0000-4000-8000-00000000a027';
+  await db.exec(`RESET ROLE; INSERT INTO auth.users(id,email) VALUES ('${uid}','queue@example.test') ON CONFLICT DO NOTHING; DELETE FROM public.notification_queue WHERE account_id='${uid}';`);
+  await db.exec('RESET ROLE; SET ROLE service_role');
+  const { rows: [{ id }] } = await db.query("INSERT INTO public.notification_queue(account_id,event,to_number,template,variables) VALUES ($1,'monthly_recap','+15555550127','recap','[]'::jsonb) RETURNING id", [uid]);
+  await asUser(uid, 'queue@example.test');
+  const { rows } = await db.query('SELECT status FROM public.notification_queue WHERE account_id=$1', [uid]);
+  assert.equal(rows.length, 1);                                                       // own history readable
+  await assert.rejects(db.query("INSERT INTO public.notification_queue(account_id,event,to_number,template,variables) VALUES ($1,'owed_aging','+15555550199','owed','[]'::jsonb)", [uid]), /permission denied|42501/);
+  await assert.rejects(db.query("UPDATE public.notification_queue SET status='delivered' WHERE id=$1", [id]), /permission denied|42501/);
+  await db.exec('RESET ROLE; SET ROLE service_role');
+  await db.query("UPDATE public.notification_queue SET status='sent' WHERE id=$1", [id]);  // the sender still may
   await db.exec('RESET ROLE');
 });

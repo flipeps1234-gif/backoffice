@@ -184,10 +184,10 @@ export const updateTransaction = async (
   if (!supabase) return;
 
   const row: Record<string, unknown> = {};
-  if (patch.payer !== undefined) row.payer = patch.payer;
+  if (patch.payer !== undefined) row.payer = clampBytes(patch.payer, TEXT_BYTES.payer);
   if (patch.amountCents !== undefined) row.amount_cents = patch.amountCents;
   if (patch.date !== undefined) row.occurred_on = patch.date === "" ? null : patch.date;
-  if (patch.memo !== undefined) row.memo = patch.memo;
+  if (patch.memo !== undefined) row.memo = clampBytes(patch.memo, TEXT_BYTES.memo);
   if (patch.direction !== undefined) row.direction = patch.direction;
   if (patch.serviceId !== undefined) row.service_id = patch.serviceId;
   if (patch.quantity !== undefined) row.quantity = patch.quantity;

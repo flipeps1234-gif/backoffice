@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { withFreshToken } from "./fresh-fetch";
 
 /**
  * Browser Supabase client. Both values are public by design — the anon key is
@@ -25,7 +26,27 @@ export const getSupabase = (): SupabaseClient | null => {
       // all the same (query parameters win over the hash in its URL parse),
       // so refuse it before it is read (pass-8 review). A fragment token
       // keeps the default: consumed, then confirmed by the gate.
-      detectSessionInUrl: (url) => !url.searchParams.has("access_token"),
+      //
+      // A function here REPLACES auth-js's own "is this a callback URL"
+      // test (GoTrueClient._isImplicitGrantCallback), it does not add to
+      // it: a bare `true` made every plain /app load take the URL-session
+      // branch — fail, and skip session recovery — and left no path to the
+      // PKCE test (pass-9 review). So: auth-js's test, minus the query.
+      detectSessionInUrl: (url, params) =>
+        Boolean(params.access_token || params.error || params.error_description || params.error_code) &&
+        !url.searchParams.has("access_token"),
+    },
+    global: {
+      // A token the SERVER says has expired is refreshed and the request
+      // replayed once (lib/supabase/fresh-fetch.ts): auth-js refreshes by
+      // the device clock, and a slow clock otherwise refused every save.
+      fetch: withFreshToken(
+        (input, init) => fetch(input, init),
+        async () => {
+          const result = await cached?.auth.refreshSession();
+          return result && !result.error && result.data.session ? result.data.session.access_token : null;
+        },
+      ),
     },
   });
   return cached;

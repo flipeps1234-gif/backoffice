@@ -20,11 +20,14 @@ function load(file, imports, env = {}, globals = {}) {
   });
   return exports;
 }
+// The real IP rule (pure, dependency-free): the tests send cf-connecting-ip with no x-forwarded-for, which it keeps.
+const requestIp = load('src/lib/request-ip.ts', {});
 const id='22222222-2222-4222-8222-222222222222';
 const lease='44444444-4444-4444-8444-444444444444';
 function extraction(options = {}) {
   const calls={provider:[],reserve:[],finish:[]};
   const imports={
+    '@/lib/request-ip': requestIp,
     '@/lib/extract': {
       activeProviderName:()=>options.provider??'openai',
       extract:async (...args)=>{calls.provider.push(args);if(options.providerError)throw Error('provider failed');return {transactions:[],warnings:[]};},
@@ -98,6 +101,7 @@ test('signed-in users never receive the mock; an unconfigured production deploy 
 function founding(result={data:true,error:null},configured=true){
   const calls=[];
   const route=load('src/app/api/founding/route.ts',{
+    '@/lib/request-ip': requestIp,
     '@/lib/supabase/security':{
       securityClient:()=>configured?{rpc:async(name,params)=>{calls.push({name,params});if(result instanceof Error)throw result;return result;}}:null,
       signupIpHash:()=> 'a'.repeat(64),

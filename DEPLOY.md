@@ -271,6 +271,12 @@ confirm the demo word still signs in. The combined
 file `~/Desktop/contado-combined-0001-0017.sql` predates both; append
 0018 and 0019 to it before the next fresh-project setup.
 
+**Written, NOT applied — 0027 `notification_queue_server_only`** (2026-10-06):
+drops the 0014 client INSERT/UPDATE policies on `notification_queue` and
+revokes those grants from anon/authenticated (reading stays). No client
+writes the queue; the server and the webhooks do. Apply with 0026, with the
+owner's go-ahead.
+
 **Written, NOT applied — 0026 `opted_out_server_guard`** (2026-10-06): a
 trigger that keeps `notification_prefs.opted_out_at` out of client writes
 (the native app still sends the column; the web stopped on 2026-10-05).
@@ -542,6 +548,31 @@ Note that a rollback does **not** undo a migration, and it cannot delete rows
 that were written while the bad version was live. The app has no delete.
 
 ## Free-tier ceilings to keep an eye on
+
+**Walls, with the arithmetic (pass-9 capacity review, 2026-10-06):**
+- **Extraction caps (`security_limits`, 0022): the first wall.** Defaults
+  200 images/project/day and 1,000/project/month. At 5 screenshots per
+  owner per day the daily cap binds at 40 active owners and the monthly cap
+  at ~7 owner-months — i.e. 100 owners exhaust the month on day 2, and
+  every upload after that answers "try later" (the route's 429 path).
+  Lever, one row: `update public.security_limits set
+  project_images_daily = …, project_images_monthly = …;` (SQL editor; the
+  per-account cap `account_images_daily` = 40 stays the abuse guard).
+- **Egress: every app open re-downloads the whole ledger** (transactions,
+  sales without photos, clients, services, templates): ~1 MB per open at a
+  2,000-transaction + 1,000-sale ledger → at 100 owners × 3 opens/day
+  that is ~9 GB/month uncompressed against the 5 GB free tier (Supabase
+  meters compressed bytes, so the real figure is lower; still the second
+  wall). The design (one load per boot, no delta sync) is deliberate for
+  now; a delta or an updated_at cursor is the fix when it binds.
+- **`admin_overview()` is O(accounts × rows)** and runs behind the security
+  client's 5 s abort: /app/admin stops answering at roughly 100 accounts ×
+  2,000 rows. Operator-only; a materialised rollup is the fix when it binds.
+- **Cloudflare IP ranges** are compiled into `src/lib/request-ip.ts`
+  (read 2026-10-06 from https://www.cloudflare.com/ips/): refresh them when
+  Cloudflare announces a change, or the per-IP limits on /api/founding and
+  /api/extract fall back to keying on Cloudflare's edge IP (safe, coarser).
+
 
 | Limit | Where it bites first |
 |---|---|

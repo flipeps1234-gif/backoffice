@@ -212,7 +212,7 @@ export const updateSale = async (
   if (patch.matchedTxnId !== undefined) row.matched_txn_id = patch.matchedTxnId;
   if (patch.recurringTemplateId !== undefined)
     row.recurring_template_id = patch.recurringTemplateId;
-  if (patch.notes !== undefined) row.notes = patch.notes;
+  if (patch.notes !== undefined) row.notes = clampBytes(patch.notes, TEXT_BYTES.notes);
   if (patch.photo !== undefined) row.photo = patch.photo;
   if (Object.keys(row).length === 0) return;
 
@@ -235,12 +235,20 @@ export const loadInstanceIds = async (
   const supabase = getSupabase();
   if (!supabase || templateIds.length === 0) return [];
 
-  const { data, error } = await supabase
-    .from("sales")
-    .select("id, recurring_template_id, occurred_on")
-    .in("recurring_template_id", templateIds);
-  if (error) throw new Error(error.message);
-  return (data ?? []).map((row) => ({
+  // Paged like every other list: PostgREST's silent 1,000-row cap would
+  // hide instances of a long-running template, and the generator would
+  // then insert them again (pass-9 review).
+  type InstanceRow = { id: unknown; recurring_template_id: unknown; occurred_on: unknown };
+  const data = await loadAllPages<InstanceRow>((from, to) =>
+    supabase
+      .from("sales")
+      .select("id, recurring_template_id, occurred_on")
+      .in("recurring_template_id", templateIds)
+      .order("occurred_on", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, to),
+  );
+  return data.map((row) => ({
     id: String(row.id),
     recurringTemplateId: String(row.recurring_template_id),
     date: String(row.occurred_on),

@@ -553,6 +553,95 @@ code from before this loop. Not tested: the real GoTrue reading a query
 token (refused client-side now, so moot); the rounding against the live
 admin_overview (unit-tested against 0025's rule).
 
+PASS 9 — NOT CLEAN (count 0). Lenses: newcode over the pass-8 commit
+6189e7b; AUTHZ / EXPOSURE MODEL (never run as such: every platform-exposed
+entry point and its own gate — 7 routes × methods, 14 tables × operations
+× roles proven in PGlite, the SECURITY DEFINER functions, the admin page);
+CAPACITY / QUOTAS (never run: explicit arithmetic against the free tiers);
+RESILIENCE (never run: a hostile environment, not hostile input). One
+Workflow, four finders, a MECHANICAL and an IMPACT refuter per finding
+(one for LOWs); the usage limit killed 13 verifiers mid-run, the run was
+resumed from cache and every finding ended with its votes — 12 findings,
+12 CONFIRMED. Every fix was run against the mock in the browser.
+- NEWCODE (4): HIGH — the pass-8 gate took "the stored session is the
+  link's account" for a harmless same-account link, but the stored
+  session can be the UNCONFIRMED one the gate exists for: opening the
+  same attacker link twice (a second tap, an attacker page re-navigating)
+  mounted the attacker's Ledger with no question and cleared the entry in
+  every tab. A re-link of an account whose entry is still pending counts
+  as the link changing the session (`storedPending`). Verified: the same
+  link opened in a second tab asked about W again, W's entry stayed, the
+  first tab's question stood. MED-HIGH — the 1 h TTL on flag entries
+  expired an UNANSWERED question (a tab left on it, or /app opened an hour
+  later) and the device then mounted the unconfirmed account's Ledger;
+  the entry for the session the device holds never ages out (readers pass
+  the current account; writers keep a week). LOW-MED — the byte clamps
+  missed the three UPDATE wrappers (confirmation sheet, client edit, sale
+  notes); clamped. LOW — `detectSessionInUrl` as a function REPLACES
+  auth-js's "is this a callback URL" test: a bare `true` made every plain
+  load take the URL branch and skip session recovery, and left no path to
+  the PKCE test; the function carries auth-js's own test minus the query.
+- RESILIENCE (3): MED — a device clock behind the server by more than
+  auth-js's 90 s margin kept handing out a token the server refused
+  (PGRST301): every save refused and dropped, every load failed, for
+  (skew − 90 s) of every hour, forever on that phone. The client's fetch
+  (lib/supabase/fresh-fetch.ts) refreshes once on PGRST301 — an explicit
+  refresh ignores the clock — and replays with the new bearer; the
+  /api/extract upload does the same on a 401; "JWT expired" is a wait
+  (it escapes only when the refresh itself failed). Verified against the
+  mock's new server-clock emulation: six boot loads refused, ONE refresh
+  (auth-js single-flights it), the replays loaded the hub, the next save
+  landed. MED (reported LOW-MED; both verifiers raised it) — the duplicate
+  screen ran against a ledger as old as the tab's boot: a tab left open
+  for days, or a second tab, re-admitted screenshots the other had saved
+  and doubled every payment. readFiles re-pulls the ledger right before
+  the screen (after extraction), merges by the boot rule, and refuses to
+  screen if the pull fails. Not browser-provable here (the dev mock
+  extraction is blocked for signed-in accounts by design); it rests on
+  the gate and review. LOW-MED — the browser clearing the app's data
+  under a live Ledger read as "the other tab signed out": every save
+  returned quietly behind a green "Saved". The error-less null read now
+  shows home.errSignedOutHere and sets saveFailed while the Ledger still
+  lives (the genuine other-tab case is unmounting — `stopped` — and stays
+  quiet). Verified: red line, no "saved" copy, nothing inserted, the
+  lost-write note left for the next mount.
+- AUTHZ (2): LOW-MED — the per-IP limits on /api/founding and
+  /api/extract trusted `cf-connecting-ip` first, a header the caller
+  writes when the request reaches the Vercel host directly (bypassing
+  Cloudflare). lib/request-ip.ts trusts it only when the peer Vercel saw
+  is a Cloudflare edge (the published ranges, compiled in; DEPLOY.md says
+  when to refresh), else the peer is the client. LOW — notification_queue
+  granted every signed-in account INSERT/UPDATE of delivery-log rows to
+  any number, though no client writes it: migration 0027
+  `notification_queue_server_only` (drops the two policies, revokes the
+  grants; reading stays) is WRITTEN AND TESTED, NOT APPLIED — with 0026,
+  on the owner's go-ahead. PROVEN clean by the finder's PGlite matrix: all
+  14 tables RLS-enabled, no permissive `true` policy, no views, no
+  cross-account read or write through any table.
+- CAPACITY (4, all confirmed; three are ceilings, recorded in DEPLOY.md
+  with the arithmetic and the lever): MED — the extraction caps
+  (security_limits: 200 images/day, 1,000/month) bind at ~40 active
+  owners; one UPDATE lifts them. LOW — the whole-ledger pull on every open
+  (~1 MB at 2,000 txns + 1,000 sales) reaches the 5 GB egress tier near
+  100 owners (metered compressed, so later). LOW-MED — admin_overview()
+  is O(accounts × rows) behind a 5 s abort: a cliff near 100 × 2,000. LOW
+  — loadInstanceIds was the one unpaged list (PostgREST's silent 1,000-row
+  cap would re-insert a long template's instances): paged and ordered.
+- Tooling: npm audit leaves only the known next/og advisory;
+  source-map-js 1.2.1→1.2.2 in range (an `--omit=dev` slip pruned the
+  devDependencies mid-way — never pass that flag here; recorded in memory).
+- Not fixed, recorded: the verifiers' remaining notes — a split payment
+  links ONE transaction (totals still count once); paginate.ts's rethrow
+  drops `error.code` (the fetch wrapper handles PGRST301 below it, so it
+  no longer matters there).
+Trend: P9 1H+1MH+3M+… — the HIGH was again in the previous pass's own fix
+(seven passes running: each gate fix has needed the next pass), and three
+never-run lenses found three MEDs in pre-loop code. The gate is now four
+mechanisms deep (parse parity, list flag with TTL exemption, re-link rule,
+client-side refusal of query tokens); pass 10 must review it as a whole.
+Not tested: a real device clock skew (the mock emulates the server's
+verdict); two tabs uploading the same screenshot against a real provider.
+
 ## Phone demo at /demoo — 2026-10-04
 
 Owner: "turn it into an interactive demo and put it at /demoo" — look B

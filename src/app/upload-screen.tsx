@@ -302,6 +302,13 @@ export default function UploadScreen({
   const [storedBefore] = useState(() =>
     typeof window !== "undefined" ? storedSessionUserId() : null,
   );
+  // …unless that stored session is itself one a link brought in and nobody
+  // confirmed: then the same link opened again (a second tap on the email,
+  // an attacker's page re-navigating) is not a harmless same-account link —
+  // it is the question, still unanswered (pass-9 review).
+  const [storedPending] = useState(
+    () => typeof window !== "undefined" && parseLinkPending(linkPendingSnapshot()).subs.includes(storedBefore),
+  );
   // Declared BEFORE useSession so it runs first: the pending flag must be
   // in storage before auth-js saves the session and broadcasts it to the
   // other tabs (lib/return-to.ts explains the attack this stops).
@@ -317,8 +324,12 @@ export default function UploadScreen({
   // tab that carried the link, or having /app open in another, cannot
   // skip the question — and a second link cannot erase the first's entry
   // (pass-8 review: it overwrote and then cleared it).
+  // The entry for the session this device HOLDS never expires: the TTL is
+  // for an entry whose session never landed (a tab closed mid-load), not
+  // for a question left unanswered for an hour (pass-9 review).
   const pending = parseLinkPending(
     useSyncExternalStore(subscribeLinkPending, linkPendingSnapshot, () => ""),
+    user?.id ?? storedBefore,
   );
   // The account this tab held before the flag went up. A link for the SAME
   // account changes nothing here, so this tab neither asks nor unmounts
@@ -333,8 +344,9 @@ export default function UploadScreen({
   // keeps the session in memory — the gate must still exist here
   // (pass-4 review: the persisted flag had replaced it, not joined it).
   const [tabPending, setTabPending] = useState(arrivedByLink);
-  /** Did the link become this tab's session? */
-  const linkProduced = user !== null && user.id !== storedBefore;
+  /** Did the link become this tab's session (or re-open the one that is
+   *  still waiting to be confirmed)? */
+  const linkProduced = user !== null && (user.id !== storedBefore || storedPending);
   const settleLink = () => {
     clearSignInStarted();
     // Continue / Not me answer for the account on screen — and for any
@@ -998,7 +1010,20 @@ function Ledger({
                   }
                   throw res.error;
                 }
+                // No session and no error: the storage really is empty. Either
+                // the other tab signed out — SIGNED_OUT is unmounting this
+                // Ledger, `stopped` is set by then, the loss is noted for the
+                // next mount — or the BROWSER cleared the app's data under a
+                // live Ledger ("clear site data", Safari's purge): nothing
+                // unmounts, and every save would quietly vanish behind a
+                // green "Saved" (pass-9 resilience review). Say so, here, and
+                // keep the rows on screen.
                 noteLostWrites(accountId);
+                if (!queue.stopped) {
+                  setError(translate(currentLocale(), "home.errSignedOutHere"));
+                  setStatus("error");
+                  setSaveFailed(true);
+                }
                 return;
               }
               await work();
@@ -1566,11 +1591,21 @@ function Ledger({
       }
 
       try {
-        const response = await fetch("/api/extract", {
+        let response = await fetch("/api/extract", {
           method: "POST",
           headers,
           body,
         });
+        if (response.status === 401 && auth) {
+          // The SERVER's clock says the token expired while the device's
+          // says it has not (lib/supabase/fresh-fetch.ts): refresh once and
+          // send this chunk again before telling anyone to sign in.
+          const fresh = await auth.refreshSession();
+          if (!fresh.error && fresh.data.session) {
+            headers.authorization = `Bearer ${fresh.data.session.access_token}`;
+            response = await fetch("/api/extract", { method: "POST", headers, body });
+          }
+        }
         const data = await response.json();
         if (!response.ok) {
           failMessage = data.error ?? t("home.errReadGeneric");
@@ -1648,11 +1683,33 @@ function Ledger({
         id: crypto.randomUUID(),
       }));
 
+      // This tab's ledger is as old as its boot: a tab left open for days,
+      // or a second tab, screened against rows the other tab or device had
+      // saved meanwhile and re-admitted every one of them — doubled income
+      // in every total and the tax CSV (pass-9 resilience review). Re-pull
+      // first, right before the screen (the extraction above can take a
+      // while), and MERGE by the boot rule — never replace, in-memory rows
+      // may be unsaved; a failed pull refuses to screen, as a failed boot
+      // load does, rather than screen against a stale snapshot.
+      let ledgerNow = transactions;
+      if (accountId) {
+        try {
+          const rows = await loadTransactions();
+          const seen = new Set(rows.map((r) => r.id));
+          ledgerNow = [...transactions.filter((tx) => !seen.has(tx.id)), ...rows];
+          setTransactions((current) => [...current.filter((tx) => !seen.has(tx.id)), ...rows]);
+        } catch (cause) {
+          console.error("Load before screening failed:", cause);
+          setError(t("home.errLoadFailed"));
+          setStatus("error");
+          return;
+        }
+      }
       // Server dedupe only sees one request's files. Screen the batch against
       // screenshot rows already on the ledger, or overlapping screenshots
       // uploaded across two batches silently double every total. Cash rows
       // are exempt: a $60 cash entry and a $60 Venmo row may both be real.
-      const priorScreens = transactions.filter(
+      const priorScreens = ledgerNow.filter(
         (tx) => tx.source === "screenshot",
       );
       const fresh = batch.filter(

@@ -60,8 +60,8 @@ export const updateClient = async (
   if (!supabase) return;
 
   const row: Record<string, unknown> = {};
-  if (patch.name !== undefined) row.name = patch.name;
-  if (patch.notes !== undefined) row.notes = patch.notes;
+  if (patch.name !== undefined) row.name = clampBytes(patch.name, TEXT_BYTES.name);
+  if (patch.notes !== undefined) row.notes = clampBytes(patch.notes, TEXT_BYTES.notes);
   if (patch.distanceTenths !== undefined)
     row.distance_tenths = patch.distanceTenths;
   if (Object.keys(row).length === 0) return;
