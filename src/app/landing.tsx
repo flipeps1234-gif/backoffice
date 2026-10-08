@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { callbackParams, takeReturnTo } from "@/lib/return-to";
 import { readSession } from "@/lib/supabase/session";
 
@@ -38,7 +38,21 @@ import { EMPTY_PROFILE } from "@/lib/profile";
  * fixtures and the CTA live in public-demos.tsx / founding-cta.tsx so
  * the rest of the site shares them.
  */
-export default function Landing() {
+export default function Landing({
+  hero,
+  extra,
+  entry = true,
+}: {
+  /** A keyword page's own headline and subhead (/for, /track): the page
+   *  looks like the homepage, and its H1 still matches its search. */
+  hero?: { title: string; sub: string };
+  /** The keyword page's own section, before the last CTA. */
+  extra?: ReactNode;
+  /** The homepage only: forward a sign-in link to the app and bounce a
+   *  signed-in visitor to /app. A keyword page someone navigated to stays
+   *  readable. */
+  entry?: boolean;
+} = {}) {
   const [droppedOnDemo, setDroppedOnDemo] = useState(false);
   const { t } = useLocale();
   const mounted = useMounted();
@@ -55,6 +69,7 @@ export default function Landing() {
   // session — is answerable from localStorage alone; only a visitor who
   // has actually signed in loads the SDK, after hydration, to confirm.
   useEffect(() => {
+    if (!entry) return;
     // Where the sign-in started (/app or /demooo). Read-and-forget, so it
     // is taken ONCE per page load: React may run this effect twice (dev
     // StrictMode), and a second take would answer "/app" and its replace
@@ -99,7 +114,7 @@ export default function Landing() {
       const { data } = await readSession(supabase.auth);
       if (data.session) window.location.replace("/app");
     });
-  }, []);
+  }, [entry]);
 
 
   return (
@@ -112,9 +127,9 @@ export default function Landing() {
       <section className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:grid-rows-[auto_1fr] lg:gap-x-12">
         <div className="space-y-3">
           <h1 className="text-4xl font-semibold tracking-tight">
-            {t("landing.heroTitle")}
+            {hero?.title ?? t("landing.heroTitle")}
           </h1>
-          <p className="text-sm text-neutral-500">{t("landing.heroSub")}</p>
+          <p className="text-sm text-neutral-500">{hero?.sub ?? t("landing.heroSub")}</p>
           {/* Desktop only: the tall sheet demo beside two lines of text
               left the hero's left column mostly air. These are real
               links to the four channel pages — substance, not filler.
@@ -278,6 +293,8 @@ export default function Landing() {
           </Link>
         </section>
       </div>
+
+      {extra}
 
       {/* CTA, second and last time */}
       <div className="mt-14 lg:mx-auto lg:w-full lg:max-w-[40rem]">

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import { saleAgeDays, saleTotalCents } from "@/lib/sale";
+import { NavIcon } from "./desktop-shell";
 import { revenueByService } from "@/lib/dashboard";
 import { expectedCentsIn, seriesMonths, yearSeries, yearsWithData, calloutTop } from "@/lib/desktop";
 import type { Sale } from "@/lib/sale";
@@ -309,11 +311,21 @@ export default function DesktopOverview({
   pendingCount,
   loadFailed,
   onOwed,
+  clients = [],
+  onUpload,
+  onSale,
+  onExpense,
 }: {
   transactions: Transaction[];
   sales: Sale[];
   services: Service[];
   owedCents: number;
+  /** For the phone's owed card (look B): who owes, by name. */
+  clients?: { id: string; name: string }[];
+  /** The phone's three actions under the chart; absent → not drawn. */
+  onUpload?: () => void;
+  onSale?: () => void;
+  onExpense?: () => void;
   /** Rows read from screenshots and not sorted yet — they are not on
    *  the chart until sorted, and the empty state says so. */
   pendingCount: number;
@@ -376,6 +388,9 @@ export default function DesktopOverview({
   const hasData = totalIn > 0 || totalOut > 0;
 
   const card = "rounded-xl border border-neutral-300 bg-background dark:border-neutral-700";
+  const owedOldest = sales
+    .filter((s) => s.state === "open")
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   if (loadFailed) {
     // Hooks above always run; only the drawing is withheld. A $0.00 year
@@ -488,6 +503,88 @@ export default function DesktopOverview({
           </p>
         )}
       </section>
+
+      {/* Phone only (look B): the three things you come to do, then who
+          still owes you. A wide screen has them in the sidebar and the
+          owed line above. */}
+      {onUpload && onSale && onExpense && (
+        <div className="grid grid-cols-3 gap-2.5 lg:hidden">
+          <button
+            type="button"
+            onClick={onUpload}
+            className="flex min-h-[76px] flex-col justify-between gap-2 rounded-xl border border-emerald-700 bg-emerald-700 px-3 py-3 text-left text-sm font-semibold text-white hover:bg-emerald-800"
+          >
+            <span className="flex items-center justify-between">
+              <NavIcon id="upload" />
+              {pendingCount > 0 && (
+                <span aria-hidden="true" className="rounded-full bg-amber-400 px-1.5 text-xs font-bold text-black tabular-nums">
+                  {pendingCount}
+                </span>
+              )}
+            </span>
+            {t("desktop.action.upload")}
+            {pendingCount > 0 && (
+              <span className="sr-only">
+                {pendingCount === 1
+                  ? t("desktop.nav.toCheck.one", { count: pendingCount })
+                  : t("desktop.nav.toCheck.many", { count: pendingCount })}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={onSale}
+            className={`${card} flex min-h-[76px] flex-col justify-between gap-2 px-3 py-3 text-left text-sm font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-800`}
+          >
+            <NavIcon id="sale" />
+            {t("desktop.nav.logSale")}
+          </button>
+          <button
+            type="button"
+            onClick={onExpense}
+            className={`${card} flex min-h-[76px] flex-col justify-between gap-2 px-3 py-3 text-left text-sm font-semibold hover:bg-neutral-50 dark:hover:bg-neutral-800`}
+          >
+            <NavIcon id="expense" />
+            {t("desktop.nav.logExpense")}
+          </button>
+        </div>
+      )}
+      {onUpload && (
+        <section className={`${card} flex flex-col overflow-hidden lg:hidden`}>
+          {/* One heavier dark rule sets the total apart from the rows. */}
+          <div className="flex items-baseline justify-between border-b-2 border-neutral-900 px-4 pb-3 pt-3.5 dark:border-neutral-200">
+            <h2 className="text-[15px] font-semibold">{t("desktop.owedTotal")}</h2>
+            <span className="text-[15px] font-semibold tabular-nums text-amber-800 dark:text-amber-400">
+              {formatCents(owedCents)}
+            </span>
+          </div>
+          {owedOldest.length === 0 ? (
+            <p className="px-4 py-4 text-sm text-neutral-500">{t("owed.empty")}</p>
+          ) : (
+            <ul className="flex flex-col">
+              {owedOldest.slice(0, 3).map((sale) => (
+                <li key={sale.id} className="border-t border-neutral-200 first:border-t-0 dark:border-neutral-800">
+                  <button
+                    type="button"
+                    onClick={onOwed}
+                    className="flex min-h-14 w-full items-center gap-3 px-4 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                  >
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate text-[15px] font-semibold">
+                        {clients.find((c) => c.id === sale.clientId)?.name ?? t("owed.noClient")}
+                      </span>
+                      <span className="text-[13px] text-neutral-500">
+                        {t("owed.daysOld", { days: Math.max(0, saleAgeDays(sale, today)) })}
+                      </span>
+                    </span>
+                    <span className="text-[15px] font-semibold tabular-nums">{formatCents(saleTotalCents(sale))}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       {services_.length > 0 && (
         <section className={`${card} flex flex-col gap-4 p-5`}>

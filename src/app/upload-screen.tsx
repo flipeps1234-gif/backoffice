@@ -273,7 +273,7 @@ export default function UploadScreen({
   layout?: "classic" | "desktop";
   /** The page this screen is on, so a sign-in started here comes back
    *  here (lib/return-to.ts). The layout does not say: /app shows both. */
-  returnTo?: "/app" | "/demooo";
+  returnTo?: "/app" | "/app/classic" | "/demooo";
 } = {}) {
   const accepted = useAcceptedTerms();
   // Did this page open with tokens in its URL? Read on the first render,
@@ -4130,6 +4130,10 @@ function Ledger({
               pendingCount={pendingCount}
               loadFailed={loadFailed}
               onOwed={() => navigate("owed")}
+              clients={clients}
+              onUpload={() => navigate("upload")}
+              onSale={() => navigate("sale")}
+              onExpense={() => navigate("expense")}
             />
             <section className={`${card} p-4 lg:p-6`}>
               <Dashboard

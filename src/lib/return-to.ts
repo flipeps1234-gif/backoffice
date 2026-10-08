@@ -13,7 +13,7 @@ const KEY = "contado.returnTo";
 const STARTED_KEY = "contado.signinStarted";
 const TTL_MS = 60 * 60 * 1000;
 /** Only these paths may be returned to — never an arbitrary URL. */
-const ALLOWED = new Set(["/app", "/demooo"]);
+const ALLOWED = new Set(["/app", "/app/classic", "/demooo"]);
 
 export function rememberReturnTo(path: string, now = Date.now()): void {
   if (!ALLOWED.has(path)) return;

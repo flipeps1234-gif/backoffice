@@ -51,6 +51,20 @@ export const messages = {
     es: "Subir capturas",
     pt: "Enviar capturas",
   },
+  "desktop.nav.open": { en: "Open menu", es: "Abrir menú", pt: "Abrir menu" },
+  "desktop.nav.close": { en: "Close menu", es: "Cerrar menú", pt: "Fechar menu" },
+  "desktop.nav.toCheckShort": { en: "To check", es: "Por revisar", pt: "Para conferir" },
+  "desktop.nav.classic": {
+    en: "Classic phone layout",
+    es: "Diseño clásico para teléfono",
+    pt: "Layout clássico do celular",
+  },
+  "desktop.action.upload": { en: "Upload", es: "Subir", pt: "Enviar" },
+  "desktop.owedTotal": {
+    en: "Total owed to you",
+    es: "Total que te deben",
+    pt: "Total que te devem",
+  },
   "desktop.nav.toCheck.one": {
     en: "{count} to check",
     es: "{count} por revisar",

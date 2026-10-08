@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { MessageKey } from "@/lib/i18n";
 import LocalePicker from "./locale-picker";
 import Mark from "./mark";
@@ -10,8 +10,10 @@ import { useLocale } from "./use-locale";
  * The desktop app's frame: a black sidebar (the website's banner, turned
  * on its side) beside a grey workspace. Pure layout — which section is
  * showing, and what each one holds, is the Ledger's business
- * (upload-screen.tsx). Below lg the sidebar folds into a top bar whose
- * links scroll sideways, so the same page still works on a phone.
+ * (upload-screen.tsx). Below lg it is the phone app (2026-10-07, look B
+ * of the mobile redesign, previewed at /demoo): a slim black banner whose
+ * menu button slides the same sidebar in from the left. The old phone
+ * layout lives on at /app/classic.
  */
 
 export type DesktopSection =
@@ -136,116 +138,213 @@ export default function DesktopShell({
   children: ReactNode;
 }) {
   const { t } = useLocale();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+
+  // The phone menu is modal: the page behind it does not scroll, focus
+  // starts on Close and goes back to the menu button when it shuts — from
+  // the cleanup, because the banner is inert until that render.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const before = document.body.style.overflow;
+    const opener = menuButton.current;
+    document.body.style.overflow = "hidden";
+    closeButton.current?.focus();
+    return () => {
+      document.body.style.overflow = before;
+      opener?.focus();
+    };
+  }, [menuOpen]);
+  const go = (next: DesktopSection) => {
+    setMenuOpen(false);
+    onNavigate(next);
+  };
+
+  /** The sections, the account line and the language: the sidebar on a
+   *  wide screen, the slide-in menu on a phone. */
+  const navBody = (phone: boolean) => (
+    <>
+      <button
+        type="button"
+        inert={locked}
+        onClick={() => go("upload")}
+        aria-current={section === "upload" ? "page" : undefined}
+        className={`flex h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors ${
+          phone || section === "upload"
+            ? "bg-emerald-700 text-white hover:bg-emerald-800"
+            : "bg-[#ededed] text-black hover:bg-white"
+        }`}
+      >
+        <NavIcon id="upload" />
+        {t("desktop.nav.upload")}
+        <ToCheckBadge count={toCheck} />
+      </button>
+
+      <ul inert={locked} className="flex flex-col gap-0.5">
+        {NAV.map((item) => {
+          const on = section === item.id;
+          return (
+            <li key={item.id}>
+              <button
+                type="button"
+                onClick={() => go(item.id)}
+                aria-current={on ? "page" : undefined}
+                className={itemClass(on)}
+              >
+                <NavIcon id={item.id} />
+                <span className="flex-1">{t(item.key)}</span>
+                {item.id === "owed" && owedCents > 0 && (
+                  <span className="h-2 w-2 rounded-full bg-amber-400" role="img" aria-label={t("desktop.nav.owedDot")} />
+                )}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="mt-auto flex flex-col gap-2">
+        <button
+          type="button"
+          inert={locked}
+          onClick={() => go("settings")}
+          aria-current={section === "settings" ? "page" : undefined}
+          className={itemClass(section === "settings")}
+        >
+          <NavIcon id="settings" />
+          {t("settings.title")}
+        </button>
+        <div className="px-3">
+          <LocalePicker compact onDark />
+        </div>
+        <div className="flex flex-col gap-1 border-t border-neutral-800 px-3 pt-3 text-xs text-neutral-400">
+          {signedIn ? (
+            <>
+              <span className="truncate" title={email ?? undefined}>
+                {t("desktop.signedInAs", { email: email ?? "" })}
+              </span>
+              <button type="button" onClick={onSignOut} className="min-h-11 self-start hover:text-[#ededed] hover:underline">
+                {t("home.signOut")}
+              </button>
+            </>
+          ) : (
+            <span>{t("desktop.notSignedIn")}</span>
+          )}
+          {phone && (
+            // The old phone layout, kept: a full page load, so the two
+            // layouts never share a mounted Ledger.
+            <a href="/app/classic" className="flex min-h-11 items-center hover:text-[#ededed] hover:underline">
+              {t("desktop.nav.classic")}
+            </a>
+          )}
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-neutral-200 text-foreground lg:flex-row dark:bg-neutral-900">
+      {/* Phone: the slim black banner. */}
+      <header
+        inert={menuOpen}
+        className="sticky top-0 z-30 flex h-14 flex-none items-center gap-1 bg-black pl-1.5 pr-3 text-[#ededed] [--background:#000] [--foreground:#ededed] lg:hidden"
+      >
+        <button
+          ref={menuButton}
+          type="button"
+          aria-label={t("desktop.nav.open")}
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen(true)}
+          className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-neutral-900"
+        >
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          inert={locked}
+          onClick={() => go("dashboard")}
+          className="flex min-h-11 items-center gap-2.5 rounded-lg pr-2"
+        >
+          <Mark className="h-[26px] w-[26px]" />
+          <span className="text-xl font-semibold tracking-tight">contado</span>
+        </button>
+        <span className="ml-auto flex items-center">
+          {toCheck > 0 ? (
+            <button
+              type="button"
+              inert={locked}
+              onClick={() => go("upload")}
+              className="flex min-h-11 items-center gap-2 px-1 text-[13px] text-neutral-400 hover:text-[#ededed]"
+            >
+              <span aria-hidden="true">{t("desktop.nav.toCheckShort")}</span>
+              <ToCheckBadge count={toCheck} />
+            </button>
+          ) : (
+            <LocalePicker compact onDark />
+          )}
+        </span>
+      </header>
+
+      {/* Wide screen: the sidebar. */}
       <nav
         aria-label={t("desktop.nav.label")}
-        className="flex flex-none flex-col gap-4 bg-black px-3 py-4 text-[#ededed] [--background:#000] [--foreground:#ededed] lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:gap-6 lg:overflow-y-auto lg:px-3.5 lg:py-6"
+        className="sticky top-0 hidden h-screen w-64 flex-none flex-col gap-6 overflow-y-auto bg-black px-3.5 py-6 text-[#ededed] [--background:#000] [--foreground:#ededed] lg:flex"
       >
         <div className="flex items-center gap-2.5 px-2.5">
           <Mark className="h-[26px] w-[26px]" />
           <span className="text-xl font-semibold tracking-tight">contado</span>
-          <span className="ml-auto lg:hidden">
-            <LocalePicker compact onDark />
-          </span>
         </div>
-
-        <button
-          type="button"
-          inert={locked}
-          onClick={() => onNavigate("upload")}
-          aria-current={section === "upload" ? "page" : undefined}
-          className={`hidden h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors lg:flex ${
-            section === "upload"
-              ? "bg-emerald-600 text-white hover:bg-emerald-700"
-              : "bg-[#ededed] text-black hover:bg-white"
-          }`}
-        >
-          <NavIcon id="upload" />
-          {t("desktop.nav.upload")}
-          <ToCheckBadge count={toCheck} />
-        </button>
-
-        <ul inert={locked} className="-mx-3 flex gap-1 overflow-x-auto px-3 lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-0">
-          <li className="flex-none lg:hidden">
-            <button
-              type="button"
-              onClick={() => onNavigate("upload")}
-              aria-current={section === "upload" ? "page" : undefined}
-              className={itemClass(section === "upload")}
-            >
-              <NavIcon id="upload" />
-              {t("desktop.nav.upload")}
-              <ToCheckBadge count={toCheck} />
-            </button>
-          </li>
-          {NAV.map((item) => {
-            const on = section === item.id;
-            return (
-              <li key={item.id} className="flex-none">
-                <button
-                  type="button"
-                  onClick={() => onNavigate(item.id)}
-                  aria-current={on ? "page" : undefined}
-                  className={itemClass(on)}
-                >
-                  <NavIcon id={item.id} />
-                  <span className="flex-1">{t(item.key)}</span>
-                  {item.id === "owed" && owedCents > 0 && (
-                    <span className="h-2 w-2 rounded-full bg-amber-400" role="img" aria-label={t("desktop.nav.owedDot")} />
-                  )}
-                </button>
-              </li>
-            );
-          })}
-          <li className="flex-none lg:hidden">
-            <button
-              type="button"
-              onClick={() => onNavigate("settings")}
-              aria-current={section === "settings" ? "page" : undefined}
-              className={itemClass(section === "settings")}
-            >
-              <NavIcon id="settings" />
-              {t("settings.title")}
-            </button>
-          </li>
-        </ul>
-
-        <div className="mt-auto hidden flex-col gap-2 lg:flex">
-          <button
-            type="button"
-            inert={locked}
-            onClick={() => onNavigate("settings")}
-            aria-current={section === "settings" ? "page" : undefined}
-            className={itemClass(section === "settings")}
-          >
-            <NavIcon id="settings" />
-            {t("settings.title")}
-          </button>
-          <div className="px-3">
-            <LocalePicker compact onDark />
-          </div>
-          <div className="flex flex-col gap-1 border-t border-neutral-800 px-3 pt-3 text-xs text-neutral-400">
-            {signedIn ? (
-              <>
-                <span className="truncate" title={email ?? undefined}>
-                  {t("desktop.signedInAs", { email: email ?? "" })}
-                </span>
-                <button type="button" onClick={onSignOut} className="min-h-11 self-start hover:text-[#ededed] hover:underline">
-                  {t("home.signOut")}
-                </button>
-              </>
-            ) : (
-              <span>{t("desktop.notSignedIn")}</span>
-            )}
-          </div>
-        </div>
+        {navBody(false)}
       </nav>
 
-      <main className="mx-auto flex w-full min-w-0 max-w-[1280px] flex-1 flex-col gap-5 px-4 py-6 lg:px-9 lg:py-8">
+      <main
+        inert={menuOpen}
+        className="mx-auto flex w-full min-w-0 max-w-[1280px] flex-1 flex-col gap-5 px-4 py-6 lg:px-9 lg:py-8"
+      >
         {children}
       </main>
+
+      {/* Phone: the same sidebar, sliding in over a dimmed page. */}
+      {menuOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("desktop.nav.label")}
+          className="fixed inset-0 z-50 lg:hidden"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setMenuOpen(false);
+          }}
+        >
+          {/* The dimmed page is a way out for a pointer; keyboards have
+              Close and Escape, so it stays out of the tab order. */}
+          <div aria-hidden="true" className="absolute inset-0 bg-black/60" onClick={() => setMenuOpen(false)} />
+          <nav
+            aria-label={t("desktop.nav.label")}
+            className="absolute inset-y-0 left-0 flex w-[304px] max-w-[85%] flex-col gap-4 overflow-y-auto border-r border-neutral-700 bg-black px-3.5 pb-6 pt-1.5 text-[#ededed] [--background:#000] [--foreground:#ededed]"
+          >
+            <div className="flex items-center justify-between pl-2">
+              <span className="flex items-center gap-2.5">
+                <Mark className="h-[26px] w-[26px]" />
+                <span className="text-xl font-semibold tracking-tight">contado</span>
+              </span>
+              <button
+                ref={closeButton}
+                type="button"
+                aria-label={t("desktop.nav.close")}
+                onClick={() => setMenuOpen(false)}
+                className="flex h-11 w-11 items-center justify-center rounded-lg hover:bg-neutral-900"
+              >
+                <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+            {navBody(true)}
+          </nav>
+        </div>
+      )}
     </div>
   );
 }

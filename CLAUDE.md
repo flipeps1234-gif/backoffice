@@ -723,6 +723,41 @@ gate needs a different approach than one more patch: pass 11 should
 review it as a whole state machine (the review this pass could not finish)
 and consider replacing the four mechanisms with one rule.
 
+## Phone layout on /app, keyword pages as the homepage — 2026-10-07
+
+Owner: "push new mobile layout, but keep the old one somewhere" — /app
+now serves ONE component tree at every width: `UploadScreen
+layout="desktop"` in desktop-shell.tsx. At lg+ it is the sidebar app as
+before; below lg it is look B of the mobile redesign (previewed at
+/demoo): a slim black banner (menu, brand → Dashboard, "To check N" or
+the language picker), the sidebar as a slide-in modal menu (focus to
+Close, Escape, body locked, page inert, focus back to the menu button),
+and a Dashboard with two phone-only blocks under the desktop chart —
+Upload (green) / Log sale / Log expense, and "Total owed to you" (the
+three oldest open sales, a heavier rule under the total). app-frame.tsx
+no longer picks a layout at load. The old phone layout lives at
+/app/classic (ClassicFrame, noindex, an allowed sign-in return path),
+linked from the phone menu ("Classic phone layout"); it links back with
+"New layout". Both links are full page loads, so the two layouts never
+share a mounted Ledger. Checked in a browser at 390 and 1280: banner,
+menu behaviour, every phone block, Owed from the menu, /app/classic, no
+sideways scroll, sidebar unchanged at 1280.
+
+Owner: "make the SEO page look like the homepage" (after choosing against
+a search-referrer redirect — Google's "sneaky redirects" policy; the
+reasoning is in the 2026-10-07 conversation). The seven keyword pages
+(/for/<trade>, /track/<channel>) render the homepage (landing.tsx
+`Landing`) with their own headline and subhead, and their own section
+before the last CTA (keyword-section.tsx: pain points, what contado does,
+the language line, their FAQ, sibling links). Titles, canonicals,
+keywords and FAQPage markup are unchanged, so each page still answers its
+search, and Google and visitors see the same page. The homepage's entry
+effect (forward a sign-in link to the app, bounce a signed-in visitor to
+/app) runs only on `/` (`entry`), so someone who navigates to a keyword
+page can read it. Verified: /for/cleaners and /track/venmo render the
+homepage sections under their own H1; a signed-in visitor stays; `/`
+still bounces.
+
 ## Phone demo at /demoo — 2026-10-04
 
 Owner: "turn it into an interactive demo and put it at /demoo" — look B

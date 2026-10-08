@@ -145,7 +145,7 @@ export default function SignIn({
    *  Google returns to the bare origin (src/lib/return-to.ts). Recorded at
    *  the moment a sign-in is STARTED, never on mount — a second tab's
    *  sign-in screen must not decide where this one lands. */
-  returnTo?: "/app" | "/demooo";
+  returnTo?: "/app" | "/app/classic" | "/demooo";
 } = {}) {
   const { t } = useLocale();
   const [sent, setSent] = useState(false);

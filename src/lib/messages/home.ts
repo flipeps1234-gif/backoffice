@@ -99,6 +99,7 @@ export const messages = {
     es: "Leímos tus capturas, pero no pudimos compararlas con tus pagos guardados, así que no se agregó nada. Revisa tu conexión y vuelve a subirlas.",
     pt: "Lemos seus prints, mas não conseguimos conferi-los com seus pagamentos salvos, então nada foi adicionado. Verifique sua conexão e envie de novo.",
   },
+  "home.newLayout": { en: "New layout", es: "Nuevo diseño", pt: "Novo layout" },
   "home.errLoadFailed": {
     en: "Couldn't load your saved payments.",
     es: "No pudimos cargar tus pagos guardados.",
