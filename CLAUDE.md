@@ -723,6 +723,34 @@ gate needs a different approach than one more patch: pass 11 should
 review it as a whole state machine (the review this pass could not finish)
 and consider replacing the four mechanisms with one rule.
 
+## Compliance pass — 2026-10-08 (owner: "make sure I have all these", a 20-item checklist)
+Audit + verified gaps in COMPLIANCE-AUDIT.md (branch fix/compliance). Owner
+decisions the code now follows — do not drift from them:
+- **Founding hundred = a real 100** (0034 `founding_cap`): full is full for
+  everyone (no waitlist; never reveal who is listed); GET /api/founding
+  says open/closed for the page copy.
+- **No Google Analytics for EU/EEA, UK, Switzerland, Brazil** (GET /api/geo,
+  lib/analytics-region.ts): unknown country = no analytics; DNT and GPC are
+  checked first; /join is never tracked.
+- **"Free during preview"**: everything free now; current users keep what
+  they use today; paid modules later, for new users; the founding price
+  covers the modules (not seats). Every page description says so.
+- **Generous anti-abuse ceiling** (0035 `account_write_budget`): 3,000 rows
+  and 300 sale photos per account per UTC day, client roles only, SQLSTATE
+  PT429 → the save queue parks the entry until the reset (never drops it).
+  Abuse protection, not a usage cap — keep it far above real use.
+- Terms min age 18 (legal drafts on feat/teams); TERMS_VERSION 2026-10-08.
+Rules this pass set: copy may never claim more than the code does (33
+claims were corrected — "no limits", "automatically", "backed up",
+"forever", cash screenshots, Zelle exports); AA contrast tokens in
+design-tokens.md for all new UI (secondary text `text-neutral-600
+dark:text-neutral-400`, input borders `neutral-500`, green CTAs
+`emerald-700`); 44px tap targets; phone numbers stored only with consent
+and a live channel; JPEG/WebP never leave the device with EXIF/GPS; STOP/HELP
+in EN/ES/PT on both webhooks. The 2026-10-08 review of 9ce3806 fixed: sticky
+elements pin below the phone banner, the phone menu closes at lg and on
+Sign out, layout links ask the Ledger first (LAYOUT_EVENT).
+
 ## Phone layout on /app, keyword pages as the homepage — 2026-10-07
 
 Owner: "push new mobile layout, but keep the old one somewhere" — /app
