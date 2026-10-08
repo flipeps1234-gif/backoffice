@@ -70,3 +70,18 @@ export const clientIp = (headers: Pick<Headers, "get">): string => {
   if (cf && peer && isCloudflareIp(peer)) return cf;
   return peer || cf || "unknown";
 };
+
+/**
+ * The caller's country (ISO 3166-1 alpha-2, upper case), for the analytics
+ * region rule — by the same trust rule as clientIp: Cloudflare's
+ * `cf-ipcountry` only when the peer IS a Cloudflare edge (anyone reaching the
+ * *.vercel.app host directly could type it); otherwise Vercel's
+ * `x-vercel-ip-country`, which Vercel derives from the peer it accepted.
+ * "" when nothing says.
+ */
+export const clientCountry = (headers: Pick<Headers, "get">): string => {
+  const peer = headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "";
+  const cf = headers.get("cf-ipcountry")?.trim().toUpperCase() ?? "";
+  if (cf && peer && isCloudflareIp(peer)) return cf;
+  return headers.get("x-vercel-ip-country")?.trim().toUpperCase() ?? "";
+};
