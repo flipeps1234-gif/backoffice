@@ -34,4 +34,9 @@ export const messages = {
   "common.yes": { en: "Yes", es: "Sí", pt: "Sim" },
   "common.no": { en: "No", es: "No", pt: "Não" },
   "common.language": { en: "Language", es: "Idioma", pt: "Idioma" },
+  "common.skipToContent": {
+    en: "Skip to content",
+    es: "Saltar al contenido",
+    pt: "Pular para o conteúdo",
+  },
 } as const;

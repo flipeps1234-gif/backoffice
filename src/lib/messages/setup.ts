@@ -82,7 +82,7 @@ export const messages = {
   // screen before it), so it names its subject and what the two exports
   // are — nothing here may lean on a screen that no longer exists.
   "setup.businessIntro": {
-    en: "Your name and state go on top of the tax-ready CSV and the proof of income you can export later — nothing else uses them. Everything here is optional; you can change it in Settings.",
+    en: "Your name and state go on top of the tax CSV and the proof of income you can export later — nothing else uses them. Everything here is optional; you can change it in Settings.",
     // "el estado donde trabajas", not "tu estado" (which reads as status
     // or mood before the field label is in view), and "CSV de impuestos"
     // — the name the Settings hint uses for the same file.

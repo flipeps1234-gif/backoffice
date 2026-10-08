@@ -5,7 +5,7 @@
   "components": [
     {
       "type": "BODY",
-      "text": "{{1}} — your {{2}} recap: {{3}} in, {{4}} out, {{5}} kept. Full picture in the app."
+      "text": "{{1}} — your {{2}} recap: {{3}} in, {{4}} out, {{5}} kept. Full picture in the app. Reply STOP to opt out."
     }
   ],
   "_note": "Draft for Meta Business Manager submission. Not submitted. Variables are positional; keep data minimal (names + amounts only)."

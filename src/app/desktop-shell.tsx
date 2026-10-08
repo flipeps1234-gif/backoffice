@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { MessageKey } from "@/lib/i18n";
 import LocalePicker from "./locale-picker";
 import Mark from "./mark";
+import SkipLink from "./skip-link";
 import { useLocale } from "./use-locale";
 
 /**
@@ -144,14 +145,22 @@ export default function DesktopShell({
 
   // The phone menu is modal: the page behind it does not scroll, focus
   // starts on Close and goes back to the menu button when it shuts — from
-  // the cleanup, because the banner is inert until that render.
+  // the cleanup, because the banner is inert until that render. Escape is
+  // heard on the document, not only inside the menu: focus can leave it
+  // (a click on its blank space puts focus on <body>), and Escape must
+  // still close it.
   useEffect(() => {
     if (!menuOpen) return;
     const before = document.body.style.overflow;
     const opener = menuButton.current;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
     document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKey);
     closeButton.current?.focus();
     return () => {
+      document.removeEventListener("keydown", onKey);
       document.body.style.overflow = before;
       opener?.focus();
     };
@@ -244,9 +253,13 @@ export default function DesktopShell({
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-neutral-200 text-foreground lg:flex-row dark:bg-neutral-900">
-      {/* Phone: the slim black banner. */}
+      {/* First in the page: past the banner or the sidebar to <main>. */}
+      <SkipLink inert={menuOpen} />
+      {/* Phone: the slim black banner. Sticky, so globals.css pads focus
+          scrolling below it (data-app-banner). */}
       <header
         inert={menuOpen}
+        data-app-banner
         className="sticky top-0 z-30 flex h-14 flex-none items-center gap-1 bg-black pl-1.5 pr-3 text-[#ededed] [--background:#000] [--foreground:#ededed] lg:hidden"
       >
         <button
@@ -300,8 +313,10 @@ export default function DesktopShell({
       </nav>
 
       <main
+        id="content"
+        tabIndex={-1}
         inert={menuOpen}
-        className="mx-auto flex w-full min-w-0 max-w-[1280px] flex-1 flex-col gap-5 px-4 py-6 lg:px-9 lg:py-8"
+        className="mx-auto flex w-full min-w-0 max-w-[1280px] flex-1 flex-col gap-5 px-4 py-6 outline-none lg:px-9 lg:py-8"
       >
         {children}
       </main>
@@ -313,9 +328,6 @@ export default function DesktopShell({
           aria-modal="true"
           aria-label={t("desktop.nav.label")}
           className="fixed inset-0 z-50 lg:hidden"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setMenuOpen(false);
-          }}
         >
           {/* The dimmed page is a way out for a pointer; keyboards have
               Close and Escape, so it stays out of the tab order. */}
@@ -357,6 +369,7 @@ export default function DesktopShell({
 export function DesktopGate({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen w-full flex-col bg-neutral-200 text-foreground dark:bg-neutral-900">
+      <SkipLink />
       <header className="flex items-center justify-between gap-4 bg-black px-4 py-4 text-[#ededed] [--background:#000] [--foreground:#ededed] lg:px-9">
         {/* The page's h1 and <main>, as the phone frame has (app-frame.tsx):
             terms, sign-in and the tour start at h2 or have no heading, so
@@ -368,7 +381,7 @@ export function DesktopGate({ children }: { children: ReactNode }) {
         </h1>
         <LocalePicker compact onDark />
       </header>
-      <main className="mx-auto w-full max-w-xl px-4 py-10">
+      <main id="content" tabIndex={-1} className="mx-auto w-full max-w-xl px-4 py-10 outline-none">
         <div className="rounded-xl border border-neutral-300 bg-background p-6 dark:border-neutral-700">{children}</div>
       </main>
     </div>

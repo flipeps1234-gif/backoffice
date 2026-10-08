@@ -45,8 +45,10 @@ export default function DropZone({
   }, []);
 
   return (
+    // The input is sr-only, so the box itself shows the keyboard focus the
+    // input holds (WCAG 2.4.7).
     <label
-      className={`block rounded-lg border-2 border-dashed px-6 py-10 text-center transition-colors ${
+      className={`block rounded-lg border-2 border-dashed px-6 py-10 text-center ring-neutral-900 transition-colors has-[:focus-visible]:ring-2 dark:ring-neutral-100 ${
         busy
           ? "pointer-events-none border-neutral-300 opacity-50"
           : dragging
@@ -95,7 +97,7 @@ export default function DropZone({
             ? t("shell.dropHere")
             : t("shell.dropPrompt")}
       </span>
-      <span className="mt-1 block text-sm text-neutral-500">
+      <span className="mt-1 block text-sm text-neutral-600 dark:text-neutral-400">
         {busy
           ? t("shell.dropBusyHint")
           : // Tap first: the phone is the primary target, and there is no

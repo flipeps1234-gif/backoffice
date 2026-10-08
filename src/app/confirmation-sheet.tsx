@@ -17,13 +17,15 @@ import { CATEGORIES, isCategoryId } from "@/lib/category";
  * user only touches what we flagged. Flagged fields carry an amber ring.
  */
 
-const labelClass = "block text-xs font-medium text-neutral-500 mb-1";
+// neutral-600 with no dark: variant — the rows stay white in both themes,
+// where a dark-mode neutral-400 would read 2.6:1 (design-tokens.md).
+const labelClass = "block text-xs font-medium text-neutral-600 mb-1";
 
 const inputClass = (flagged: boolean) =>
   [
     "w-full rounded-md border bg-white px-3 py-2 text-sm text-neutral-900",
-    "placeholder:text-neutral-400 focus:outline-none focus:border-neutral-900",
-    flagged ? "border-amber-500 ring-2 ring-amber-200" : "border-neutral-300",
+    "placeholder:text-neutral-500 focus:outline-none focus:border-neutral-900",
+    flagged ? "border-amber-500 ring-2 ring-amber-200" : "border-neutral-500",
   ].join(" ");
 
 export default function ConfirmationSheet({
@@ -75,7 +77,7 @@ export default function ConfirmationSheet({
         <p className="text-sm tabular-nums font-semibold">
           {formatCents(inCents)}
           {outCents > 0 && (
-            <span className="text-red-500"> −{formatCents(outCents)}</span>
+            <span className="text-red-600 dark:text-red-400"> −{formatCents(outCents)}</span>
           )}
         </p>
       </header>
@@ -131,7 +133,7 @@ export default function ConfirmationSheet({
               {canRemove && (
                 <button
                   type="button"
-                  className="tap text-xs text-neutral-500 hover:underline"
+                  className="tap text-xs text-neutral-600 hover:underline"
                   onClick={() => onRemove?.(tx.id)}
                 >
                   {t("sheet.notAPayment")}

@@ -165,6 +165,33 @@ export const messages = {
     es: "Leer capturas no está disponible ahora. No se leyó nada.",
     pt: "A leitura de capturas está indisponível agora. Nada foi lido.",
   },
+  // The extract route's usage-limit 429 (code "usage_limit"). The server's
+  // countdown runs to a UTC midnight, so "today at 7:00 PM" is the common
+  // case in the Americas; {time} and {date} are this device's clock in its
+  // own format. Neutral about WHICH limit (the account's or the shared
+  // one) — the route doesn't say, and the reset moment is the same.
+  "home.errUsageToday": {
+    en: "Reading screenshots has hit its limit for now. Uploads resume today at {time}.",
+    es: "La lectura de capturas llegó a su límite por ahora. Podrás subir de nuevo hoy a las {time}.",
+    pt: "A leitura de capturas atingiu o limite por enquanto. Você poderá enviar de novo hoje às {time}.",
+  },
+  "home.errUsageTomorrow": {
+    en: "Reading screenshots has hit its limit for now. Uploads resume tomorrow at {time}.",
+    es: "La lectura de capturas llegó a su límite por ahora. Podrás subir de nuevo mañana a las {time}.",
+    pt: "A leitura de capturas atingiu o limite por enquanto. Você poderá enviar de novo amanhã às {time}.",
+  },
+  // Further out than tomorrow only when the monthly cap is the one hit.
+  "home.errUsageLater": {
+    en: "Reading screenshots has hit this month's limit. Uploads resume on {date}.",
+    es: "La lectura de capturas llegó al límite de este mes. Podrás subir de nuevo el {date}.",
+    pt: "A leitura de capturas atingiu o limite deste mês. Você poderá enviar de novo em {date}.",
+  },
+  // retryAfter ≤ 120 s: too many readings in flight at once (a lease).
+  "home.errUsageBusy": {
+    en: "Too many screenshots are being read right now. Try again in a couple of minutes.",
+    es: "Se están leyendo demasiadas capturas ahora mismo. Intenta de nuevo en un par de minutos.",
+    pt: "Há muitas capturas sendo lidas agora. Tente de novo em alguns minutos.",
+  },
   "home.errNetwork": {
     en: "Couldn't reach the server. Check your connection and try again.",
     es: "No pudimos conectar con el servidor. Revisa tu conexión e intenta de nuevo.",

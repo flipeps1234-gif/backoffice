@@ -41,7 +41,7 @@ export default function ProgressBar({
       <div className="flex items-baseline justify-between gap-3">
         <p className="text-base font-medium">{label}</p>
         {pct !== null && (
-          <p className="text-sm tabular-nums text-neutral-500">{pct}%</p>
+          <p className="text-sm tabular-nums text-neutral-600 dark:text-neutral-400">{pct}%</p>
         )}
       </div>
 
@@ -56,7 +56,7 @@ export default function ProgressBar({
         )}
       </div>
 
-      {detail && <p className="text-sm text-neutral-500">{detail}</p>}
+      {detail && <p className="text-sm text-neutral-600 dark:text-neutral-400">{detail}</p>}
     </div>
   );
 }

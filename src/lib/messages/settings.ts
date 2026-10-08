@@ -159,9 +159,9 @@ export const messages = {
     pt: "Um aviso no app de janeiro a meados de abril com suas exportações à mão.",
   },
   "settings.whatsappTitle": {
-    en: "WhatsApp alerts",
-    es: "Alertas por WhatsApp",
-    pt: "Alertas por WhatsApp",
+    en: "Text & WhatsApp alerts",
+    es: "Alertas por SMS y WhatsApp",
+    pt: "Alertas por SMS e WhatsApp",
   },
   "settings.whatsappDesc": {
     en: "Owed reminders, match confirmations and a monthly recap, on WhatsApp or by text. Not live yet — signing up now just records your number and permission.",
@@ -189,9 +189,9 @@ export const messages = {
     pt: "Texto (SMS)",
   },
   "settings.smsConsent": {
-    en: "Yes — text this number about my business (owed reminders, confirmations, recaps). Message and data rates may apply. Reply STOP any time.",
-    es: "Sí — envíen mensajes de texto a este número sobre mi negocio (recordatorios de cobros, confirmaciones, resúmenes). Pueden aplicar tarifas de mensajes y datos. Responde STOP cuando quieras.",
-    pt: "Sim — enviem mensagens de texto para este número sobre meu negócio (lembretes de cobrança, confirmações, resumos). Podem ser cobradas tarifas de mensagens e dados. Responda STOP quando quiser.",
+    en: "Yes — text me contado alerts at this number: owed reminders, match confirmations and a monthly recap. Message frequency varies. Msg & data rates may apply. Reply HELP for help, STOP to cancel. Not required to use contado.",
+    es: "Sí — envíenme alertas de contado por SMS a este número: recordatorios de cobros, confirmaciones de pagos emparejados y un resumen mensual. La frecuencia de los mensajes varía. Pueden aplicar tarifas de mensajes y datos. Responde HELP para obtener ayuda o STOP para cancelar. No es necesario para usar contado.",
+    pt: "Sim — enviem alertas do contado por SMS para este número: lembretes de cobrança, confirmações de pagamentos vinculados e um resumo mensal. A frequência das mensagens varia. Podem ser cobradas tarifas de mensagens e dados. Responda HELP para ajuda ou STOP para cancelar. Não é obrigatório para usar o contado.",
   },
   "settings.phoneLabel": {
     en: "Phone number (with country code)",
@@ -204,9 +204,9 @@ export const messages = {
     pt: "Use o formato internacional: +, código do país, número.",
   },
   "settings.whatsappConsent": {
-    en: "Yes — message this number about my business (owed reminders, confirmations, recaps). Reply STOP any time.",
-    es: "Sí — envíen mensajes a este número sobre mi negocio (recordatorios de cobros, confirmaciones, resúmenes). Responde STOP cuando quieras.",
-    pt: "Sim — enviem mensagens para este número sobre meu negócio (lembretes de cobrança, confirmações, resumos). Responda STOP quando quiser.",
+    en: "Yes — contado may message this number on WhatsApp about my business (owed reminders, confirmations, recaps). Reply STOP any time.",
+    es: "Sí — contado puede escribirme a este número por WhatsApp sobre mi negocio (recordatorios de cobros, confirmaciones, resúmenes). Responde STOP cuando quieras.",
+    pt: "Sim — o contado pode me mandar mensagens neste número pelo WhatsApp sobre meu negócio (lembretes de cobrança, confirmações, resumos). Responda STOP quando quiser.",
   },
   "settings.consentSince": {
     en: "Opted in {date}.",
@@ -230,14 +230,14 @@ export const messages = {
     pt: "Dados e privacidade",
   },
   "settings.exportAll": {
-    en: "Export everything (CSV)",
-    es: "Exportar todo (CSV)",
-    pt: "Exportar tudo (CSV)",
+    en: "Export every row (CSV)",
+    es: "Exportar cada fila (CSV)",
+    pt: "Exportar cada linha (CSV)",
   },
   "settings.privacyPromise": {
-    en: "Your rows are yours: export them free, forever. We don't sell your data, there are no ads, and the screenshots you upload are read by OpenAI and not kept by contado (OpenAI may hold them up to 30 days to monitor for abuse) — only photos you attach to a sale are kept. Deleting your account erases everything for good.",
-    es: "Tus registros son tuyos: expórtalos gratis, siempre. No vendemos tus datos, no hay anuncios, y las capturas que subes las lee OpenAI y contado no las guarda (OpenAI puede retenerlas hasta 30 días para vigilar abusos) — solo se guardan las fotos que adjuntas a una venta. Borrar tu cuenta elimina todo para siempre.",
-    pt: "Seus registros são seus: exporte grátis, sempre. Não vendemos seus dados, não há anúncios, e as capturas enviadas são lidas pela OpenAI e o contado não as guarda (a OpenAI pode retê-las por até 30 dias para monitorar abusos) — só ficam as fotos anexadas a uma venda. Apagar sua conta elimina tudo de vez.",
+    en: "Your rows are yours: export them free, forever. We don't sell your data, there are no ads, and the screenshots you upload are read by OpenAI and not kept by contado (OpenAI may hold them up to 30 days to monitor for abuse) — only photos you attach to a sale are kept. Deleting your account erases your ledger for good (a founding-list email is kept until you ask us to remove it).",
+    es: "Tus registros son tuyos: expórtalos gratis, siempre. No vendemos tus datos, no hay anuncios, y las capturas que subes las lee OpenAI y contado no las guarda (OpenAI puede retenerlas hasta 30 días para vigilar abusos) — solo se guardan las fotos que adjuntas a una venta. Borrar tu cuenta elimina tu libro para siempre (un correo de la lista de fundadores se guarda hasta que pidas borrarlo).",
+    pt: "Seus registros são seus: exporte grátis, sempre. Não vendemos seus dados, não há anúncios, e as capturas enviadas são lidas pela OpenAI e o contado não as guarda (a OpenAI pode retê-las por até 30 dias para monitorar abusos) — só ficam as fotos anexadas a uma venda. Apagar sua conta elimina seu livro-caixa de vez (um e-mail da lista de fundadores fica guardado até você pedir para remover).",
   },
   "settings.deleteAccount": {
     en: "Delete account",
@@ -245,9 +245,9 @@ export const messages = {
     pt: "Apagar conta",
   },
   "settings.deleteExplain": {
-    en: "Everything — payments, sales, clients, photos — is erased for good 7 days after you confirm. You can cancel any time in those 7 days. Export your CSV first if you want a copy — photos aren't in it, so save any you need from each sale.",
-    es: "Todo — pagos, ventas, clientes, fotos — se elimina para siempre 7 días después de confirmar. Puedes cancelar en cualquier momento durante esos 7 días. Exporta tu CSV antes si quieres una copia — las fotos no van en él, así que guarda las que necesites desde cada venta.",
-    pt: "Tudo — pagamentos, vendas, clientes, fotos — é eliminado de vez 7 dias depois de confirmar. Você pode cancelar a qualquer momento nesses 7 dias. Exporte seu CSV antes se quiser uma cópia — as fotos não vão nele, então salve as que precisar em cada venda.",
+    en: "Your ledger — payments, sales, clients, photos — is erased for good 7 days after you confirm. You can cancel any time in those 7 days. Export your CSV first if you want a copy — photos aren't in it, so save any you need from each sale. A founding-list email is kept until you ask us to remove it.",
+    es: "Tu libro — pagos, ventas, clientes, fotos — se elimina para siempre 7 días después de confirmar. Puedes cancelar en cualquier momento durante esos 7 días. Exporta tu CSV antes si quieres una copia — las fotos no van en él, así que guarda las que necesites desde cada venta. Un correo de la lista de fundadores se guarda hasta que pidas borrarlo.",
+    pt: "Seu livro-caixa — pagamentos, vendas, clientes, fotos — é eliminado de vez 7 dias depois de confirmar. Você pode cancelar a qualquer momento nesses 7 dias. Exporte seu CSV antes se quiser uma cópia — as fotos não vão nele, então salve as que precisar em cada venda. Um e-mail da lista de fundadores fica guardado até você pedir para remover.",
   },
   "settings.deleteTypeEmail": {
     en: "Type your email to confirm: {email}",
@@ -260,9 +260,9 @@ export const messages = {
     pt: "Apagar minha conta em 7 dias",
   },
   "settings.deletePending": {
-    en: "Deletion scheduled — everything is erased on {date}.",
-    es: "Borrado programado — todo se elimina el {date}.",
-    pt: "Exclusão agendada — tudo será eliminado em {date}.",
+    en: "Deletion scheduled — your ledger is erased on {date}.",
+    es: "Borrado programado — tu libro se elimina el {date}.",
+    pt: "Exclusão agendada — seu livro-caixa será eliminado em {date}.",
   },
   "settings.deleteCancel": {
     en: "Cancel deletion",
@@ -274,16 +274,16 @@ export const messages = {
     es: "No se pudo. Revisa tu conexión e inténtalo de nuevo.",
     pt: "Não deu certo. Verifique sua conexão e tente de novo.",
   },
-  // ---- Backup ----
+  // ---- Sync (a sync to the account, not a backup: no restore exists) ----
   "settings.backup": {
-    en: "Backup",
-    es: "Respaldo",
-    pt: "Backup",
+    en: "Sync",
+    es: "Sincronización",
+    pt: "Sincronização",
   },
   "settings.backupOk": {
-    en: "✓ Backed up instantly — every change saves to your account as you go.",
-    es: "✓ Respaldado al instante — cada cambio se guarda en tu cuenta al momento.",
-    pt: "✓ Backup instantâneo — cada mudança é salva na sua conta na hora.",
+    en: "✓ Saved to your account — every change syncs as you go.",
+    es: "✓ Guardado en tu cuenta — cada cambio se sincroniza al momento.",
+    pt: "✓ Salvo na sua conta — cada mudança é sincronizada na hora.",
   },
   "settings.backupNone": {
     en: "Not signed in — nothing is saved beyond this screen.",
@@ -300,11 +300,6 @@ export const messages = {
     en: "Text us on WhatsApp",
     es: "Escríbenos por WhatsApp",
     pt: "Fale com a gente no WhatsApp",
-  },
-  "settings.supportSoon": {
-    en: "Support line — coming soon",
-    es: "Línea de ayuda — muy pronto",
-    pt: "Canal de ajuda — em breve",
   },
   "settings.showTour": {
     en: "Show the welcome tour",

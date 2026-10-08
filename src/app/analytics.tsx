@@ -6,7 +6,7 @@ import Script from "next/script";
 
 /**
  * Google Analytics 4 for the PUBLIC website — the company pages, not the
- * ledger. Four rules, all deliberate:
+ * ledger. Five rules, all deliberate:
  *
  * 1. Off unless NEXT_PUBLIC_GA_MEASUREMENT_ID is set. No ID, no script,
  *    no request — the default build is analytics-free.
@@ -17,14 +17,21 @@ import Script from "next/script";
  *    `window["ga-disable-<ID>"]` is set, so a resident tag drops every
  *    hit. The privacy page says exactly this: the app never SENDS
  *    analytics.
- * 3. Do Not Track is honored: a browser asking not to be tracked gets
- *    nothing loaded at all.
+ * 3. Do Not Track AND Global Privacy Control are honored: a browser
+ *    asking not to be tracked, or signalling an opt-out of sale/sharing
+ *    (GPC — the signal California and several other US states require
+ *    sites to honor as an opt-out), gets nothing loaded at all.
  * 4. Page views are GA4's own: `config` sends the first view and GA4's
  *    default Enhanced Measurement counts client-side navigations (the
  *    history-change page_view). No manual page_view — sending one per
  *    pathname on top of Enhanced Measurement double-counts every
  *    client navigation. DEPLOY.md notes to leave Enhanced Measurement
  *    on (it is the default).
+ * 5. Google Signals and ad personalization are OFF in the config call,
+ *    whatever the property's admin settings say: no cross-device joining
+ *    to signed-in Google accounts, nothing fed to ads — so what the
+ *    privacy page says about sharing no longer hangs on a dashboard
+ *    toggle. It is also why the CSP allows no doubleclick host.
  *
  * No dependency: the official snippet is four lines and next/script
  * already exists (boring wins).
@@ -64,8 +71,9 @@ const noSubscribe = () => () => {};
 /**
  * Fire a GA4 event from anywhere on the public site. Every guard the
  * page-view path has applies here too, by construction: if the ID is
- * unset, the browser sent Do Not Track, or GA was never armed on this
- * page, `window.gtag` does not exist and this is a no-op. The path
+ * unset, the browser sent Do Not Track or Global Privacy Control, or GA
+ * was never armed on this page, `window.gtag` does not exist and this is
+ * a no-op. The path
  * check is belt-and-braces for the shared components (the language
  * picker also renders inside /app). Events carry NO personal data —
  * names and coarse params only, never an email or an amount.
@@ -81,13 +89,19 @@ export function trackEvent(
   w.gtag("event", name, { ...params });
 }
 
-/** True only on a hydrated client that has NOT asked for Do Not Track.
- *  The server snapshot is false, so the server renders nothing and the
- *  client decides after hydration — no mismatch, no flash of a script. */
+/** True only on a hydrated client that has asked for neither Do Not Track
+ *  nor Global Privacy Control (navigator.globalPrivacyControl — Firefox,
+ *  Brave, DuckDuckGo and privacy extensions set it; it isn't in the DOM
+ *  types yet). The server snapshot is false, so the server renders nothing
+ *  and the client decides after hydration — no mismatch, no flash of a
+ *  script. */
 const useTrackingAllowed = (): boolean =>
   useSyncExternalStore(
     noSubscribe,
-    () => navigator.doNotTrack !== "1",
+    () =>
+      navigator.doNotTrack !== "1" &&
+      (navigator as Navigator & { globalPrivacyControl?: boolean })
+        .globalPrivacyControl !== true,
     () => false,
   );
 
@@ -121,7 +135,11 @@ export default function Analytics() {
     }
     if (!w.__gaReady) {
       w.gtag("js", new Date());
-      w.gtag("config", GA_ID);
+      // Rule 5: Signals and ad personalization off, from the tag itself.
+      w.gtag("config", GA_ID, {
+        allow_google_signals: false,
+        allow_ad_personalization_signals: false,
+      });
       w.__gaReady = true;
     }
   }, [enabled]);

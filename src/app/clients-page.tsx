@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { findClientByName, type Client } from "@/lib/client";
 import { formatMiles, parseMilesToTenths } from "@/lib/mileage";
 import {
@@ -34,16 +34,16 @@ const localToday = (): string => {
   return `${now.getFullYear()}-${month}-${day}`;
 };
 
-const labelClass = "mb-1 block text-xs font-medium text-neutral-500";
+const labelClass = "mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-400";
 const fieldClass =
-  "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 " +
-  "placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none";
+  "w-full rounded-md border border-neutral-500 bg-white px-3 py-2 text-sm text-neutral-900 " +
+  "placeholder:text-neutral-500 focus:border-neutral-900 focus:outline-none";
 /** fieldClass minus w-full: inside a flex row, w-full starves the flex
  *  siblings (the line's name label truncated to nothing) — a fixed narrow
  *  width that never grows is the point here. */
 const narrowFieldClass =
-  "shrink-0 rounded-md border border-neutral-300 bg-white px-2 py-2 text-sm text-neutral-900 " +
-  "placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none";
+  "shrink-0 rounded-md border border-neutral-500 bg-white px-2 py-2 text-sm text-neutral-900 " +
+  "placeholder:text-neutral-500 focus:border-neutral-900 focus:outline-none";
 
 /** A draft line keeps quantity as TEXT while the owner types — "2." must
  *  not snap to 2 under their thumb. Parsed and validated at save. */
@@ -107,6 +107,21 @@ export default function ClientsPage({
     null,
   );
 
+  // Focus follows the screen (as in the setup wizard): opening a client,
+  // going back to the list and leaving the edit form each unmount the
+  // button that was pressed, so the heading now showing takes focus
+  // instead of <body> (Edit lands on the name field). Not on a plain
+  // mount, where the section's opener is still there — but a client
+  // opened from search lands on its heading: the result is gone.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const screen = `${openId ?? ""}|${editing}`;
+  const shownScreen = useRef(initialOpenId ? null : screen);
+  useEffect(() => {
+    if (shownScreen.current === screen) return;
+    shownScreen.current = screen;
+    headingRef.current?.focus();
+  }, [screen]);
+
   function startTemplateEdit(tpl: RecurringTemplate) {
     setEditTplId(tpl.id);
     setDraft(
@@ -157,7 +172,7 @@ export default function ClientsPage({
         <div className="flex items-baseline justify-between">
           <button
             type="button"
-            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
             onClick={() => {
               setOpenId(null);
               setEditing(false);
@@ -167,7 +182,7 @@ export default function ClientsPage({
           </button>
           <button
             type="button"
-            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
             onClick={onClose}
           >
             {t("common.close")}
@@ -183,6 +198,7 @@ export default function ClientsPage({
               <input
                 id="client-name"
                 maxLength={400}
+                autoFocus
                 className={fieldClass}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -226,7 +242,7 @@ export default function ClientsPage({
                 value={distance}
                 onChange={(e) => setDistance(e.target.value)}
               />
-              <p className="mt-1 text-xs text-neutral-500">
+              <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
                 {t("clients.distanceHint")}
               </p>
             </div>
@@ -257,13 +273,15 @@ export default function ClientsPage({
           </div>
         ) : (
           <div>
-            <h2 className="text-lg font-semibold">{detail.name}</h2>
+            <h2 ref={headingRef} tabIndex={-1} className="text-lg font-semibold focus:outline-none">
+              {detail.name}
+            </h2>
             {detail.notes && (
-              <p className="mt-1 text-sm text-neutral-500">{detail.notes}</p>
+              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{detail.notes}</p>
             )}
             <button
               type="button"
-              className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+              className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
               onClick={() => {
                 setName(detail.name);
                 setNotes(detail.notes);
@@ -309,7 +327,7 @@ export default function ClientsPage({
                             t("clients.sale")}{" "}
                           · {formatCents(saleTotalCents(tpl))}
                         </p>
-                        <p className="text-xs text-neutral-500">
+                        <p className="text-xs text-neutral-600 dark:text-neutral-400">
                           {tpl.cadence.type === "weekly"
                             ? t("sale.cadenceWeekly")
                             : tpl.cadence.type === "biweekly"
@@ -430,7 +448,7 @@ export default function ClientsPage({
                             >
                               <span className="min-w-0 flex-1 truncate">
                                 {item.name || t("clients.custom")}
-                                <span className="ml-1 text-xs text-neutral-500">
+                                <span className="ml-1 text-xs text-neutral-600 dark:text-neutral-400">
                                   {t("clients.each", {
                                     amount: formatCents(item.unitCents),
                                   })}
@@ -554,7 +572,7 @@ export default function ClientsPage({
                         </div>
 
                         <div className="flex items-baseline justify-between">
-                          <span className="text-xs text-neutral-500">
+                          <span className="text-xs text-neutral-600 dark:text-neutral-400">
                             {t("clients.futureOnly")}
                           </span>
                           <span className="text-sm font-semibold tabular-nums">
@@ -603,7 +621,7 @@ export default function ClientsPage({
         <section>
           <h3 className="mb-2 text-sm font-medium">{t("clients.history")}</h3>
           {theirSales.length === 0 ? (
-            <p className="text-sm text-neutral-500">{t("clients.noSales")}</p>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("clients.noSales")}</p>
           ) : (
             <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
               {theirSales.map((sale) => (
@@ -614,7 +632,7 @@ export default function ClientsPage({
                         {sale.lineItems.map((i) => i.name).join(", ") ||
                           t("clients.sale")}
                       </p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs text-neutral-600 dark:text-neutral-400">
                         {sale.date} ·{" "}
                         {sale.state === "open"
                           ? t("clients.owesYou")
@@ -637,28 +655,40 @@ export default function ClientsPage({
                     </button>
                   </div>
                   {/* Proof-of-work, when the owner attached any. The photo
-                      expands in place — no lightbox machinery. */}
+                      expands in place — no lightbox machinery. A button, not
+                      a clickable <img>: reachable by keyboard, and it says
+                      whether it is open (aria-expanded). */}
                   {(sale.notes || sale.photo) && (
                     <div className="mt-1.5 flex items-start gap-2">
                       {sale.photo && (
-                        // eslint-disable-next-line @next/next/no-img-element -- data URL, no loader
-                        <img
-                          src={sale.photo}
-                          alt={t("clients.salePhotoAlt")}
-                          className={
+                        <button
+                          type="button"
+                          aria-expanded={expandedPhotoSaleId === sale.id}
+                          className={`rounded-md ${
                             expandedPhotoSaleId === sale.id
-                              ? "max-h-80 max-w-full cursor-zoom-out rounded-md object-contain"
-                              : "h-10 w-10 shrink-0 cursor-zoom-in rounded-md object-cover"
-                          }
+                              ? "min-w-0 max-w-full cursor-zoom-out"
+                              : "shrink-0 cursor-zoom-in"
+                          }`}
                           onClick={() =>
                             setExpandedPhotoSaleId(
                               expandedPhotoSaleId === sale.id ? null : sale.id,
                             )
                           }
-                        />
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element -- data URL, no loader */}
+                          <img
+                            src={sale.photo}
+                            alt={t("clients.salePhotoAlt")}
+                            className={
+                              expandedPhotoSaleId === sale.id
+                                ? "max-h-80 max-w-full rounded-md object-contain"
+                                : "h-10 w-10 rounded-md object-cover"
+                            }
+                          />
+                        </button>
                       )}
                       {sale.notes && (
-                        <p className="min-w-0 whitespace-pre-wrap text-xs text-neutral-500">
+                        <p className="min-w-0 whitespace-pre-wrap text-xs text-neutral-600 dark:text-neutral-400">
                           {sale.notes}
                         </p>
                       )}
@@ -677,10 +707,12 @@ export default function ClientsPage({
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">{t("clients.title")}</h2>
+        <h2 ref={headingRef} tabIndex={-1} className="text-sm font-semibold focus:outline-none">
+          {t("clients.title")}
+        </h2>
         <button
           type="button"
-          className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+          className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
           onClick={onClose}
         >
           {t("common.close")}
@@ -688,7 +720,7 @@ export default function ClientsPage({
       </div>
 
       {clients.length === 0 ? (
-        <p className="text-sm text-neutral-500">{t("clients.empty")}</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("clients.empty")}</p>
       ) : (
         <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
           {[...clients]
@@ -721,7 +753,7 @@ export default function ClientsPage({
                       )}
                     </span>
                     {owed > 0 && (
-                      <span className="text-sm tabular-nums text-neutral-500">
+                      <span className="text-sm tabular-nums text-neutral-600 dark:text-neutral-400">
                         {t("clients.owesAmount", { amount: formatCents(owed) })}
                       </span>
                     )}

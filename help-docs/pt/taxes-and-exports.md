@@ -11,5 +11,5 @@ O contado guarda um registro com que o seu contador consegue trabalhar. Ele não
 ## Quando chega a hora
 
 - **CSV para o seu contador**: receitas e despesas reais do negócio, da mais antiga para a mais nova, com categorias. Seu contador abre direto.
-- **Comprovante de renda**: um demonstrativo imprimível do que você registrou — imprima ou salve em PDF.
-- **Exportar tudo**: cada pagamento, venda, cliente e arranjo repetido que você registrou, num arquivo só. Seu, grátis, sempre.
+- **Comprovante de renda**: um resumo imprimível do que você registrou — imprima ou salve em PDF. Ele vem dos seus próprios registros; não é um demonstrativo verificado.
+- **Exportar cada linha**: cada pagamento, venda, cliente, produto e arranjo repetido que você registrou, num arquivo só — as fotos anexadas às vendas não vão junto. Seu, grátis, sempre.

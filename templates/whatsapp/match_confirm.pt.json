@@ -5,7 +5,7 @@
   "components": [
     {
       "type": "BODY",
-      "text": "{{1}}: o pagamento de {{2}} de {{3}} foi vinculado ao serviço. Nada a fazer — suas contas se atualizaram sozinhas."
+      "text": "{{1}}: o pagamento de {{2}} de {{3}} foi vinculado ao serviço. Nada a fazer — suas contas se atualizaram sozinhas. Responda STOP para não receber mais mensagens."
     }
   ],
   "_note": "Draft for Meta Business Manager submission. Not submitted. Variables are positional; keep data minimal (names + amounts only)."

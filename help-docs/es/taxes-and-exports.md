@@ -11,5 +11,5 @@ contado guarda un registro con el que tu preparador de impuestos puede trabajar.
 ## Cuando llega la hora
 
 - **CSV para tu preparador**: ingresos y gastos reales del negocio, del más viejo al más nuevo, con categorías. Tu preparador lo abre directamente.
-- **Comprobante de ingresos**: un estado imprimible de lo que registraste — imprímelo o guárdalo como PDF.
-- **Exportar todo**: cada pago, venta, cliente y arreglo repetido que registraste, en un archivo. Tuyo, gratis, siempre.
+- **Comprobante de ingresos**: un resumen imprimible de lo que registraste — imprímelo o guárdalo como PDF. Sale de tus propios registros; no es un estado verificado.
+- **Exportar cada fila**: cada pago, venta, cliente, producto y arreglo repetido que registraste, en un archivo — las fotos adjuntas a las ventas no van incluidas. Tuyo, gratis, siempre.

@@ -88,26 +88,26 @@ export default function ProductCard({
       <div className="mt-2 flex items-end justify-between gap-3">
         <dl className="space-y-0.5 text-sm">
           <div className="flex gap-2">
-            <dt className="w-10 text-neutral-500">{t("products.gain")}</dt>
+            <dt className="w-10 text-neutral-600 dark:text-neutral-400">{t("products.gain")}</dt>
             <dd className="tabular-nums">
               {gain}
             </dd>
           </div>
           <div className="flex gap-2">
-            <dt className="w-10 text-neutral-500">{t("products.loss")}</dt>
+            <dt className="w-10 text-neutral-600 dark:text-neutral-400">{t("products.loss")}</dt>
             <dd className="tabular-nums text-neutral-600 dark:text-neutral-400">
               {cost === null ? "—" : `${formatCents(cost)}${perUnit}`}
             </dd>
           </div>
         </dl>
         <div className="text-right">
-          <p className="text-xs uppercase tracking-wide text-neutral-500">
+          <p className="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
             {t("products.net")}
           </p>
           <p
             className={`text-lg font-semibold tabular-nums ${
               net === null
-                ? "text-neutral-400"
+                ? "text-neutral-600 dark:text-neutral-400"
                 : net >= 0
                   ? "text-emerald-700 dark:text-emerald-400"
                   : "text-red-700 dark:text-red-400"
@@ -128,11 +128,15 @@ export default function ProductCard({
 
   // A picker card's whole surface is "one more" — the biggest possible
   // target for a thumb in a driveway; the − button is the way back down.
+  // A plain box, not a <button>: the steppers inside are buttons, and a
+  // button inside a button is invalid HTML that keyboards and screen
+  // readers handle unpredictably. The + stepper is the same action for
+  // anyone not tapping the surface.
   if (picking) {
     return (
-      <button type="button" className={frame} onClick={() => onStep?.(1)}>
+      <div className={frame} onClick={() => onStep?.(1)}>
         {body}
-      </button>
+      </div>
     );
   }
   if (onTap) {

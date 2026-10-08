@@ -1,11 +1,22 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { isStopMessage } from "@/lib/notify/whatsapp";
+import {
+  accountLanguage,
+  accountsForSender,
+  optOutSender,
+  replyLanguage,
+} from "@/lib/notify/inbound";
+import {
+  inboundKeyword,
+  keywordReply,
+  twilioAnswers,
+} from "@/lib/notify/keywords";
+import { smsEnabled } from "@/lib/notify/sms";
 import { serviceClient } from "@/lib/notify/store";
 
 /**
  * Twilio SMS webhook — SPIKE (dark). One endpoint for both configs:
- * inbound messages (Body/From — STOP handling, mirroring the WhatsApp
- * webhook) and status callbacks (MessageSid/MessageStatus → queue).
+ * inbound messages (Body/From — STOP/HELP handling, mirroring the
+ * WhatsApp webhook) and status callbacks (MessageSid/MessageStatus → queue).
  *
  * Signature: Twilio signs POSTs with X-Twilio-Signature = base64
  * HMAC-SHA1(auth token, full URL + form params concatenated sorted by
@@ -14,16 +25,34 @@ import { serviceClient } from "@/lib/notify/store";
  * outside production they're accepted with a loud log, same posture as
  * the WhatsApp side.
  *
- * Twilio expects TwiML back; an empty <Response/> means "no reply" —
- * Twilio itself auto-handles the carrier-level STOP keyword, this
- * records OUR copy of the opt-out so the pipeline never queues again.
+ * Twilio expects TwiML back; an empty <Response/> means "no reply".
+ * Twilio itself auto-handles its own English keywords (a bare STOP, HELP
+ * — keywords.ts twilioAnswers); this records OUR copy of every opt-out
+ * so the pipeline never queues again, and answers what Twilio doesn't:
+ * the Spanish and Portuguese words, "opt out", HELP inside a sentence.
+ * Replies ride the TwiML response itself, in the account's language when
+ * the number has one (inbound.ts, shared with the WhatsApp webhook), and
+ * only while SMS_ENABLED is on — dark means silent, same as the sender.
  */
 
-const twimlEmpty = () =>
-  new Response('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', {
-    status: 200,
-    headers: { "Content-Type": "text/xml" },
-  });
+const xmlEscape = (text: string) =>
+  text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+const twiml = (reply?: string) =>
+  new Response(
+    '<?xml version="1.0" encoding="UTF-8"?><Response>' +
+      (reply ? `<Message>${xmlEscape(reply)}</Message>` : "") +
+      "</Response>",
+    {
+      status: 200,
+      headers: { "Content-Type": "text/xml" },
+    },
+  );
+
+const twimlEmpty = () => twiml();
 
 const signatureValid = (
   request: Request,
@@ -106,22 +135,42 @@ export async function POST(request: Request) {
     return twimlEmpty();
   }
 
-  // Inbound message: STOP (and es/pt equivalents — isStopMessage is
-  // shared with the WhatsApp webhook, one opt-out vocabulary).
+  // Inbound message: an opt-out or a help request, in any of the three
+  // languages (keywords.ts — shared with the WhatsApp webhook, one
+  // vocabulary for both channels).
   const from = params.get("From");
   const body = params.get("Body") ?? "";
-  if (from && isStopMessage(body)) {
-    if (db) {
-      const { error } = await db
-        .from("notification_prefs")
-        .update({ opted_out_at: new Date().toISOString() })
-        .eq("phone", from);
-      if (error) console.error("sms opt-out write failed:", error.message);
-      else console.log(`sms STOP honored for ${last4(from)}`);
-    } else {
-      console.log(`sms STOP (no service key, not saved): ${last4(from)} asked out`);
-    }
+  const keyword = from ? inboundKeyword(body) : null;
+  if (!from || !keyword) return twimlEmpty();
+  // Twilio already answered a bare STOP/HELP; a second reply is noise.
+  const mayReply = smsEnabled() && !twilioAnswers(body);
+
+  if (keyword.kind === "help") {
+    if (!mayReply) return twimlEmpty();
+    const lang = db ? await accountLanguage(db, await accountsForSender(db, from)) : null;
+    return twiml(keywordReply({ ...keyword, lang: replyLanguage(keyword, lang, from) }));
   }
 
+  if (db) {
+    const result = await optOutSender(db, from);
+    if (!result.ok) {
+      // No confirmation: "you're unsubscribed" would be a lie until the
+      // write lands.
+      console.error("sms opt-out write failed:", result.error);
+      return twimlEmpty();
+    }
+    // Landed means rows changed, not "no error" (an update matching nothing
+    // is a success to PostgREST). None: no prefs row holds this number in
+    // any form, so nothing alerts it — say so in the log.
+    if (result.accountIds.length > 0) {
+      console.log(`sms STOP honored for ${last4(from)}`);
+    } else {
+      console.warn(`sms STOP matched no prefs row ${last4(from)}`);
+    }
+    if (!mayReply) return twimlEmpty();
+    const lang = await accountLanguage(db, result.accountIds);
+    return twiml(keywordReply({ ...keyword, lang: replyLanguage(keyword, lang, from) }));
+  }
+  console.log(`sms STOP (no service key, not saved): ${last4(from)} asked out`);
   return twimlEmpty();
 }

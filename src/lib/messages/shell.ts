@@ -24,9 +24,13 @@ export const messages = {
     pt: "Aguarde — isso leva alguns segundos.",
   },
   "shell.dropHint": {
-    en: "Venmo, Cash App, or Zelle. Pick as many as you like — or drag them in.",
-    es: "Venmo, Cash App o Zelle. Elige todas las que quieras — o arrástralas aquí.",
-    pt: "Venmo, Cash App ou Zelle. Escolha quantas quiser — ou arraste para cá.",
+    // "Several", not a number: the web reads any selection, four files per
+    // request (chunkForUpload), so api/extract's 20-per-request cap never
+    // binds here, while the iPhone picker stops at 20. What does bound a
+    // day is the fair-use limit, explained in the help center.
+    en: "Venmo, Cash App, or Zelle. Pick several at once — or drag them in.",
+    es: "Venmo, Cash App o Zelle. Elige varias a la vez — o arrástralas aquí.",
+    pt: "Venmo, Cash App ou Zelle. Escolha várias de uma vez — ou arraste para cá.",
   },
   "shell.working": {
     en: "Working…",

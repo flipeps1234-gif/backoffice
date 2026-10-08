@@ -85,7 +85,7 @@ export default function OwedTab({
         {onClose && (
           <button
             type="button"
-            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
             onClick={onClose}
           >
             {t("common.close")}
@@ -98,14 +98,14 @@ export default function OwedTab({
       </p>
 
       {open.length === 0 && staleExpected.length === 0 && (
-        <p className="text-sm text-neutral-500">{t("owed.empty")}</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("owed.empty")}</p>
       )}
 
       {sorted.map(([clientKey, clientSales]) => (
         <section key={clientKey || "none"}>
           <h3 className="mb-2 text-sm font-medium">
             {nameOf(clientKey || null)}
-            <span className="ml-2 text-neutral-500">
+            <span className="ml-2 text-neutral-600 dark:text-neutral-400">
               {formatCents(owedCents(clientSales))} ·{" "}
               {t(
                 clientSales.length === 1
@@ -125,12 +125,12 @@ export default function OwedTab({
                       {sale.lineItems.map((i) => i.name).join(", ") ||
                         t("owed.sale")}
                       {sale.recurringTemplateId && (
-                        <span className="ml-1 text-xs text-neutral-500">
+                        <span className="ml-1 text-xs text-neutral-600 dark:text-neutral-400">
                           · {t("owed.recurring")}
                         </span>
                       )}
                     </p>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-neutral-600 dark:text-neutral-400">
                       {sale.date}
                       {age >= OWED_FLAG_DAYS && (
                         <span className="ml-1 text-amber-700 dark:text-amber-400">
@@ -145,7 +145,7 @@ export default function OwedTab({
                         The owner links it by hand (pass-8 review). */}
                     <button
                       type="button"
-                      className="-mx-2 min-h-11 px-2 text-xs text-neutral-500 hover:underline dark:text-neutral-400"
+                      className="-mx-2 min-h-11 px-2 text-xs text-neutral-600 hover:underline dark:text-neutral-400"
                       onClick={() => onFindPayment(sale.id)}
                     >
                       {t("owed.findPayment")}
@@ -180,7 +180,7 @@ export default function OwedTab({
           <h3 className="mb-2 text-sm font-medium text-amber-700 dark:text-amber-400">
             {t("owed.staleTitle")}
           </h3>
-          <p className="mb-2 text-xs text-neutral-500">
+          <p className="mb-2 text-xs text-neutral-600 dark:text-neutral-400">
             {t("owed.staleBody", { days: EXPECTED_FLAG_DAYS })}
           </p>
           <ul className="divide-y divide-neutral-200 rounded-lg border border-amber-300 bg-white dark:divide-neutral-800 dark:border-amber-700 dark:bg-neutral-900">
@@ -240,7 +240,7 @@ export default function OwedTab({
                 ) : (
                   <button
                     type="button"
-                    className="mt-1 text-xs text-neutral-500 hover:underline"
+                    className="mt-1 text-xs text-neutral-600 dark:text-neutral-400 hover:underline"
                     onClick={() => setResolving(sale.id)}
                   >
                     {t("owed.resolve")}

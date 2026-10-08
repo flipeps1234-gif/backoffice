@@ -5,9 +5,9 @@ Quando você registra uma venda e o cliente ainda não pagou, ela vai para **A r
 ## Dar baixa numa venda em aberto
 
 - **Te deram dinheiro**: toque em **Recebi em dinheiro** na venda. Pronto — o dinheiro entra no seu livro com a data de hoje.
-- **Pagaram pelo app**: não faça nada. Na próxima vez que você enviar prints, o contado casa o pagamento com a venda por valor, nome e data — um pagamento com data até 10 dias da venda — e a venda dá baixa sozinha. Se pagaram outro valor — uma gorjeta, uma parte, duas transferências — ou mais tarde, toque em **Encontrar o pagamento…** embaixo da venda em A receber e escolha; o pagamento continua sendo o dinheiro e a venda dá baixa.
+- **Pagaram pelo app**: não faça nada. Na próxima vez que você enviar prints, o contado casa o pagamento com a venda por valor, nome e data — um pagamento com data até 10 dias da venda. Quando o valor e o nome batem com uma venda só, ela dá baixa sozinha; quando mais de uma poderia bater, o app pede para você escolher. Se pagaram outro valor — uma gorjeta, uma parte, duas transferências — ou mais tarde, toque em **Encontrar o pagamento…** embaixo da venda em A receber e escolha; o pagamento continua sendo o dinheiro e a venda dá baixa.
 
-Um pagamento nunca conta duas vezes: um pagamento casado e a venda dele são uma linha só de receita nos seus totais, não duas.
+Ele foi feito para que um pagamento conte uma vez só: um pagamento casado e a venda dele são uma linha só de receita nos seus totais, não duas.
 
 ## Clientes fixos
 

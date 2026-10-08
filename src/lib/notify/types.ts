@@ -83,11 +83,57 @@ export const activeConsentAt = (prefs: NotificationPrefs): string | null =>
       ? prefs.smsConsentAt
       : null;
 
+/**
+ * The phone number a save may store: only for an active channel (not Off)
+ * whose consent box is ticked, and only in E.164 form. Anything else
+ * stores "" — a number typed with the box unticked, or left behind when
+ * alerts go Off, was never ours to keep (the privacy page says the number
+ * is stored only if you turn reminders on). Both the Settings save and the
+ * data layer apply it, so no caller can write a number without consent.
+ */
+export const storablePhone = (prefs: NotificationPrefs): string => {
+  const phone = prefs.phone.trim();
+  return activeConsentAt(prefs) !== null && looksLikeE164(phone) ? phone : "";
+};
+
 /** Consent that stands for the ACTIVE channel: ticked, not since STOPped. */
 export const hasActiveConsent = (prefs: NotificationPrefs): boolean => {
   const consentAt = activeConsentAt(prefs);
   return (
     consentAt !== null &&
     (prefs.optedOutAt === null || prefs.optedOutAt < consentAt)
+  );
+};
+
+/** What Settings' alerts form shows: the channel picked, the number typed,
+ *  the box. It opens as (prefs.channel, prefs.phone, hasActiveConsent). */
+export type AlertsForm = { channel: NotifyChannel; phone: string; consent: boolean };
+
+/**
+ * Whether saving the alerts form would change anything — Save's lit state.
+ * Both sides read the way the save stores them: no tick means channel Off
+ * and no number (the save's channel rule, storablePhone). The form alone
+ * used to be read that way — so a number left in the field after a save
+ * that stored "" didn't keep Save lit — but a STOPped row keeps its number
+ * and channel while its consent reads false, so every opted-out account
+ * opened Settings with Save lit, one tap from erasing the number and the
+ * pre-STOP consent stamp (2026-10-08 review). The native app's
+ * ChannelAlertsView.dirty is the same rule.
+ */
+export const alertsFormDirty = (prefs: NotificationPrefs, form: AlertsForm): boolean => {
+  const storedConsent = hasActiveConsent(prefs);
+  const asSaved = (channel: NotifyChannel, phone: string, ticked: boolean) => ({
+    channel: ticked || channel === "off" ? channel : "off",
+    phone: ticked && channel !== "off" ? phone.trim() : "",
+  });
+  const mine = asSaved(form.channel, form.phone, form.consent);
+  const stored = asSaved(prefs.channel, prefs.phone, storedConsent);
+  return (
+    mine.channel !== stored.channel ||
+    mine.phone !== stored.phone ||
+    form.consent !== storedConsent ||
+    // Choosing Off on a row that isn't is a change even when the row
+    // already reads as Off (a STOPped number): that save clears the number.
+    (form.channel === "off" && prefs.channel !== "off")
   );
 };

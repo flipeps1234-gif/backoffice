@@ -44,7 +44,7 @@ export default function LocalePicker({
               ? "bg-foreground text-background"
               : onDark
                 ? "text-neutral-400 hover:bg-neutral-900"
-                : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-900"
+                : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-900"
           }`}
           onClick={() => {
             setLocale(option);

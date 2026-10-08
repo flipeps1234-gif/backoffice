@@ -6,7 +6,7 @@ import HowItWorksContent from "./how-it-works-content";
 export const metadata: Metadata = pageMetadata({
   title: "How it works",
   description:
-    "Screenshot your Venmo, Cash App and Zelle payments, check every row, sort with a swipe — and your books exist. Who owes you, your taxes, all free. No bank login.",
+    "Screenshot your Venmo, Cash App and Zelle payments, check every row, sort with a swipe — and your books exist. Who owes you and your Schedule C totals, all free. No bank login.",
   path: "/how-it-works",
   keywords: [
     "how contado works",

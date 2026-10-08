@@ -1,6 +1,6 @@
 "use client";
 
-import { PublicFooter, PublicHeader } from "../public-shell";
+import { PublicPage } from "../public-shell";
 import { useLocale } from "../use-locale";
 import type { MessageKey } from "@/lib/i18n";
 
@@ -25,12 +25,11 @@ const BLOCKS: [MessageKey, MessageKey][] = [
 export default function TermsContent() {
   const { t } = useLocale();
   return (
-    <main className="mx-auto w-full max-w-[40rem] px-4 py-8">
-      <PublicHeader />
+    <PublicPage className="mx-auto w-full max-w-[40rem] px-4 py-8">
       <h1 className="text-lg font-semibold tracking-tight">
         {t("terms.title")}
       </h1>
-      <p className="mt-1 text-sm text-neutral-500">{t("terms.subtitle")}</p>
+      <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{t("terms.subtitle")}</p>
 
       <div className="mt-8 space-y-6">
         {BLOCKS.map(([title, body]) => (
@@ -43,8 +42,7 @@ export default function TermsContent() {
         ))}
       </div>
 
-      <p className="mt-8 text-xs text-neutral-500">{t("help.legalNote")}</p>
-      <PublicFooter />
-    </main>
+      <p className="mt-8 text-xs text-neutral-600 dark:text-neutral-400">{t("help.legalNote")}</p>
+    </PublicPage>
   );
 }

@@ -46,7 +46,7 @@ export default function SearchPanel({
         <input
           type="search"
           aria-label={t("search.label")}
-          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none"
+          className="w-full rounded-md border border-neutral-500 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-500 focus:border-neutral-900 focus:outline-none"
           placeholder={t("search.placeholder")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -54,7 +54,7 @@ export default function SearchPanel({
         {trimmed && (
           <button
             type="button"
-            className="shrink-0 text-sm text-neutral-500 hover:underline"
+            className="shrink-0 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
             onClick={() => setQuery("")}
           >
             {t("search.clear")}
@@ -65,14 +65,14 @@ export default function SearchPanel({
       {results && (
         <div className="space-y-3 rounded-lg border border-neutral-200 bg-white p-3 text-sm dark:border-neutral-800 dark:bg-neutral-900">
           {empty && (
-            <p className="text-neutral-500">
+            <p className="text-neutral-600 dark:text-neutral-400">
               {t("search.noResults", { query: trimmed })}
             </p>
           )}
 
           {results.clients.length > 0 && (
             <section>
-              <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
                 {t("search.clients")}
               </h3>
               <ul>
@@ -91,7 +91,7 @@ export default function SearchPanel({
                           {client.name}
                         </span>
                         {owed > 0 && (
-                          <span className="shrink-0 text-xs tabular-nums text-neutral-500">
+                          <span className="shrink-0 text-xs tabular-nums text-neutral-600 dark:text-neutral-400">
                             {t("search.owesShort", {
                               amount: formatCents(owed),
                             })}
@@ -107,7 +107,7 @@ export default function SearchPanel({
 
           {results.sales.length > 0 && (
             <section>
-              <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
                 {t("search.sales")}
               </h3>
               <ul className="space-y-1.5">
@@ -116,13 +116,13 @@ export default function SearchPanel({
                     <span className="min-w-0 flex-1 truncate">
                       {sale.lineItems.map((i) => i.name).join(", ") || "—"}
                       {clientName(sale.clientId) && (
-                        <span className="text-neutral-500">
+                        <span className="text-neutral-600 dark:text-neutral-400">
                           {" "}
                           · {clientName(sale.clientId)}
                         </span>
                       )}
                     </span>
-                    <span className="shrink-0 text-xs text-neutral-500">
+                    <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">
                       {sale.date} ·{" "}
                       {sale.state === "open"
                         ? t("search.saleOpen")
@@ -141,7 +141,7 @@ export default function SearchPanel({
 
           {results.transactions.length > 0 && (
             <section>
-              <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
                 {t("search.payments")}
               </h3>
               <ul className="space-y-1.5">
@@ -150,16 +150,16 @@ export default function SearchPanel({
                     <span className="min-w-0 flex-1 truncate">
                       {tx.payer || "—"}
                       {tx.memo && (
-                        <span className="text-neutral-500"> · {tx.memo}</span>
+                        <span className="text-neutral-600 dark:text-neutral-400"> · {tx.memo}</span>
                       )}
                     </span>
-                    <span className="shrink-0 text-xs text-neutral-500">
+                    <span className="shrink-0 text-xs text-neutral-600 dark:text-neutral-400">
                       {tx.date || "—"}
                       {tx.direction === "out" && ` · ${t("search.expense")}`}
                     </span>
                     <span
                       className={`shrink-0 font-medium tabular-nums ${
-                        tx.direction === "out" ? "text-red-600" : ""
+                        tx.direction === "out" ? "text-red-600 dark:text-red-400" : ""
                       }`}
                     >
                       {tx.direction === "out" ? "−" : ""}

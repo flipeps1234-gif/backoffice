@@ -166,7 +166,7 @@ export function TryFrame({
       <div className="overflow-hidden rounded-xl border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
         {children}
       </div>
-      <figcaption className="mt-2 flex items-center justify-center gap-3 text-center text-xs text-neutral-500">
+      <figcaption className="mt-2 flex items-center justify-center gap-3 text-center text-xs text-neutral-600 dark:text-neutral-400">
         <span>{label}</span>
         {onReset && (
           /* min-h-11: the welcome tour mounts this inside the app, where
@@ -190,8 +190,20 @@ export function TryFrame({
  *  longer trusts the browser: a transparent cover sits ABOVE the demo
  *  and swallows every tap before it can reach an input (isolate caps
  *  the demo's own z-indexes under it), and a focus-capture backstop
- *  blurs anything that somehow gets focus anyway. */
-export function DemoFrame({ label, children }: { label: string; children: React.ReactNode }) {
+ *  blurs anything that somehow gets focus anyway.
+ *
+ *  Because the demo is hidden from assistive tech, `description` says in
+ *  words what a sighted visitor sees there; it rides in the figcaption,
+ *  screen-reader only, after the visible "Demo data" label. */
+export function DemoFrame({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description: string;
+  children: React.ReactNode;
+}) {
   return (
     <figure className="mx-auto w-full max-w-sm">
       <div
@@ -210,8 +222,9 @@ export function DemoFrame({ label, children }: { label: string; children: React.
         </div>
         <div aria-hidden="true" className="absolute inset-0 z-10" />
       </div>
-      <figcaption className="mt-2 text-center text-xs text-neutral-500">
+      <figcaption className="mt-2 text-center text-xs text-neutral-600 dark:text-neutral-400">
         {label}
+        <span className="sr-only">: {description}</span>
       </figcaption>
     </figure>
   );

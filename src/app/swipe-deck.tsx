@@ -91,7 +91,7 @@ export default function SwipeDeck({
               amount: formatCents(card.amountCents),
             },
           )}
-          className="absolute inset-0 h-52 cursor-grab touch-none select-none rounded-xl border border-neutral-300 bg-white p-5 shadow-sm active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-neutral-900"
+          className="absolute inset-0 h-52 cursor-grab touch-none select-none rounded-xl border border-neutral-300 bg-white p-5 shadow-sm active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:ring-offset-2 dark:focus:ring-neutral-100 dark:focus:ring-offset-neutral-900"
           style={{
             transform: `translateX(${dragX}px) rotate(${dragX / 20}deg)`,
             transition: dragging ? "none" : "transform 150ms",
@@ -121,7 +121,7 @@ export default function SwipeDeck({
           <p className="mt-1 text-lg text-neutral-900">
             {card.payer || t("sheet.unknownPayer")}
           </p>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-1 text-sm text-neutral-600">
             {card.date || t("sheet.noDate")}
             {card.memo && ` · ${card.memo}`}
           </p>
@@ -129,7 +129,7 @@ export default function SwipeDeck({
           {leaning && (
             <p
               className={`mt-4 text-sm font-semibold uppercase tracking-wide ${
-                towardBusiness ? "text-emerald-600" : "text-neutral-400"
+                towardBusiness ? "text-emerald-700" : "text-neutral-600"
               }`}
             >
               {towardBusiness ? t("sheet.business") : t("sheet.personal")}
@@ -148,7 +148,7 @@ export default function SwipeDeck({
         </button>
         <button
           type="button"
-          className="flex-1 rounded-lg bg-emerald-600 px-4 py-4 text-base font-medium text-white hover:bg-emerald-700"
+          className="flex-1 rounded-lg bg-emerald-700 px-4 py-4 text-base font-medium text-white hover:bg-emerald-800"
           onClick={() => decide(true)}
         >
           {t("sheet.business")}
@@ -157,7 +157,7 @@ export default function SwipeDeck({
 
       <button
         type="button"
-        className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline disabled:opacity-40 disabled:hover:no-underline"
+        className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline disabled:opacity-40 disabled:hover:no-underline"
         disabled={!canUndo}
         onClick={onUndo}
       >

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import BrandHome from "./brand-home";
 import LocalePicker from "./locale-picker";
+import SkipLink from "./skip-link";
 import UploadScreen from "./upload-screen";
 import { useLocale } from "./use-locale";
 
@@ -21,11 +22,13 @@ export default function AppFrame() {
 }
 
 /** The classic phone frame: the brand and the language picker over the
- *  hub. Used by /app/classic. */
+ *  hub, and the hub as the page's <main> (the skip link's target). Used by
+ *  /app/classic. */
 export function ClassicFrame({ children }: { children: ReactNode }) {
   const { t } = useLocale();
   return (
-    <main className="mx-auto w-full max-w-lg px-4 py-8 lg:max-w-5xl lg:px-8">
+    <div className="mx-auto w-full max-w-lg px-4 py-8 lg:max-w-5xl lg:px-8">
+      <SkipLink />
       {/* The picker lives in the permanent header — every screen, every
           state, including signed-out. A language switcher you have to hunt
           for might as well not exist. */}
@@ -38,13 +41,15 @@ export function ClassicFrame({ children }: { children: ReactNode }) {
         <span className="flex items-center gap-3">
           {/* A full page load to the new layout, so the two never share a
               mounted Ledger. */}
-          <a href="/app" className="-mx-1 min-h-11 px-1 py-3 text-xs text-neutral-500 hover:underline dark:text-neutral-400">
+          <a href="/app" className="-mx-1 min-h-11 px-1 py-3 text-xs text-neutral-600 hover:underline dark:text-neutral-400">
             {t("home.newLayout")}
           </a>
           <LocalePicker compact />
         </span>
       </div>
-      {children}
-    </main>
+      <main id="content" tabIndex={-1} className="outline-none">
+        {children}
+      </main>
+    </div>
   );
 }

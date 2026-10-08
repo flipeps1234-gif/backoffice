@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import ProductCard from "./product-card";
 import { findByName, type RateUnit, type Service } from "@/lib/service";
 import { dollarsToCents } from "@/lib/transaction";
@@ -13,10 +14,10 @@ import { useLocale } from "./use-locale";
  * exactly where the sketch puts it.
  */
 
-const labelClass = "mb-1 block text-xs font-medium text-neutral-500";
+const labelClass = "mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-400";
 const fieldClass =
-  "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 " +
-  "placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none";
+  "w-full rounded-md border border-neutral-500 bg-white px-3 py-2 text-sm text-neutral-900 " +
+  "placeholder:text-neutral-500 focus:border-neutral-900 focus:outline-none";
 
 type PricingChoice = "flat" | RateUnit;
 
@@ -43,9 +44,9 @@ export function EditForm({
   services: Service[];
   onSave: (service: Service) => void;
   onCancel: () => void;
-  /** Focus the name field on mount. The tour turns this on: "Add a
-   *  service" unmounts itself to mount this form, and focus must land
-   *  somewhere spoken, not on <body>. Products keeps it off. */
+  /** Focus the name field on mount. The tour and Products both turn this
+   *  on: the card or button that opened the form unmounts itself to mount
+   *  it, and focus must land somewhere spoken, not on <body>. */
   autoFocusName?: boolean;
 }) {
   const { t } = useLocale();
@@ -203,6 +204,18 @@ export default function ProductsPage({
   const { t } = useLocale();
   /** "new" | a service id | null (just browsing). */
   const [editing, setEditing] = useState<string | null>(null);
+  // Focus follows the form (WCAG 2.4.3): it opens on its name field, and
+  // Save or Cancel hands focus back to what opened it — the product's
+  // card, or "New product" — instead of dropping it on <body> with the
+  // form. flushSync: the card must be back in the DOM to take focus.
+  const listRef = useRef<HTMLDivElement>(null);
+  const newRef = useRef<HTMLButtonElement>(null);
+  function closeForm() {
+    const index = services.findIndex((service) => service.id === editing);
+    flushSync(() => setEditing(null));
+    const opener = index < 0 ? newRef.current : listRef.current?.children[index];
+    if (opener instanceof HTMLElement) opener.focus();
+  }
 
   return (
     <div className="space-y-4">
@@ -210,7 +223,7 @@ export default function ProductsPage({
         <h2 className="text-sm font-semibold">{t("products.title")}</h2>
         <button
           type="button"
-          className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+          className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
           onClick={onClose}
         >
           {t("common.close")}
@@ -218,10 +231,10 @@ export default function ProductsPage({
       </div>
 
       {services.length === 0 && editing === null && (
-        <p className="text-sm text-neutral-500">{t("products.empty")}</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("products.empty")}</p>
       )}
 
-      <div className="space-y-3">
+      <div ref={listRef} className="space-y-3">
         {services.map((service) =>
           editing === service.id ? (
             <EditForm
@@ -233,11 +246,12 @@ export default function ProductsPage({
               key={JSON.stringify(service)}
               initial={service}
               services={services}
+              autoFocusName
               onSave={(next) => {
                 onUpdate(next);
-                setEditing(null);
+                closeForm();
               }}
-              onCancel={() => setEditing(null)}
+              onCancel={closeForm}
             />
           ) : (
             <ProductCard
@@ -253,14 +267,16 @@ export default function ProductsPage({
         <EditForm
           initial={null}
           services={services}
+          autoFocusName
           onSave={(service) => {
             onCreate(service);
-            setEditing(null);
+            closeForm();
           }}
-          onCancel={() => setEditing(null)}
+          onCancel={closeForm}
         />
       ) : (
         <button
+          ref={newRef}
           type="button"
           className="w-full rounded-xl border border-neutral-400 px-4 py-4 text-base font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-900"
           onClick={() => setEditing("new")}

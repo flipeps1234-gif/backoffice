@@ -495,7 +495,7 @@ export default function UploadScreen({
     layout === "desktop" ? <DesktopGate>{node}</DesktopGate> : node;
 
   if (loading || accepted === undefined) {
-    return gate(<p className="text-sm text-neutral-500">{t("home.loading")}</p>);
+    return gate(<p className="text-sm text-neutral-600 dark:text-neutral-400">{t("home.loading")}</p>);
   }
 
   // Before sign-in, deliberately. The disclosure that screenshots leave the
@@ -589,7 +589,7 @@ function LinkSignedIn({
       </button>
       <button
         type="button"
-        className="min-h-11 w-full text-sm text-neutral-500 hover:underline dark:text-neutral-400"
+        className="min-h-11 w-full text-sm text-neutral-600 hover:underline dark:text-neutral-400"
         onClick={onSignOut}
       >
         {t("signin.linkedNotMe")}
@@ -1507,6 +1507,34 @@ function Ledger({
     }
   }
 
+  /** The extract route's usage-limit 429 (`code: "usage_limit"`), in this
+   *  device's language and clock: WHEN reading comes back. `retryAfter` is
+   *  the server's countdown in seconds — 120 for a concurrency lease, else
+   *  to the UTC day or month boundary the caps reset on, which falls in the
+   *  evening across the Americas: "today at 7:00 PM", not "tomorrow".
+   *  null = no usable countdown, and the caller falls back. */
+  function usageLimitText(retryAfter: number): string | null {
+    if (!Number.isFinite(retryAfter) || retryAfter <= 0) return null;
+    if (retryAfter <= 120) return t("home.errUsageBusy");
+    const now = new Date();
+    const resume = new Date(now.getTime() + retryAfter * 1000);
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    const time = resume.toLocaleTimeString(tag, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+    if (resume.toDateString() === now.toDateString()) {
+      return t("home.errUsageToday", { time });
+    }
+    if (resume.toDateString() === tomorrow.toDateString()) {
+      return t("home.errUsageTomorrow", { time });
+    }
+    return t("home.errUsageLater", {
+      date: resume.toLocaleDateString(tag, { month: "long", day: "numeric" }),
+    });
+  }
+
   async function readFiles(files: File[]) {
     // accept="image/*" is only advice: the file dialog lets you switch it off,
     // and a drag-and-drop never consults it at all. Filter here so both ways
@@ -1638,7 +1666,14 @@ function Ledger({
         }
         const data = await response.json();
         if (!response.ok) {
-          failMessage = data.error ?? t("home.errReadGeneric");
+          // The usage limit is the one failure the route sends as a code:
+          // said here in the user's language, with when it lifts. Every
+          // other failure still passes the route's English through.
+          failMessage =
+            (data.code === "usage_limit" &&
+              usageLimitText(Number(data.retryAfter))) ||
+            data.error ||
+            t("home.errReadGeneric");
           unsentFiles = remaining(index);
           setError(failMessage);
           failed = true;
@@ -3266,7 +3301,7 @@ function Ledger({
    *  done") on that wrong account. Ledger is keyed on the user id, so
    *  signing out mid-tour unmounts it with nothing written. */
   const accountLine = accountId && (
-    <p className="flex items-center justify-between text-xs text-neutral-500">
+    <p className="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-400">
       <span>{email}</span>
       {/* min-h-11: inside the tour this is the ONLY exit that does not
           stamp the account "tour done" — a full tap target, not a
@@ -3336,7 +3371,7 @@ function Ledger({
               <p className="font-medium">
                 {t("home.recapTitle", { month: monthName })}
               </p>
-              <p className="text-neutral-500">
+              <p className="text-neutral-600 dark:text-neutral-400">
                 {t("home.recapBody", {
                   inAmount: formatCents(recapDue.inCents),
                   outAmount: formatCents(recapDue.outCents),
@@ -3347,7 +3382,7 @@ function Ledger({
             <button
               type="button"
               aria-label={t("common.dismiss")}
-              className="shrink-0 text-neutral-400 hover:text-neutral-600"
+              className="shrink-0 text-neutral-600 hover:text-foreground dark:text-neutral-400"
               onClick={() => {
                 markRecapShown(recapDue.month);
                 setRecapClosed(true);
@@ -3569,7 +3604,7 @@ function Ledger({
               </p>
               <button
                 type="button"
-                className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+                className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
                 onClick={undo}
                 disabled={decided.length === 0}
               >
@@ -3598,7 +3633,7 @@ function Ledger({
                   )}
                 </>
               ) : accountId && !saveFailed ? (
-                <p className="text-xs text-neutral-500">
+                <p className="text-xs text-neutral-600 dark:text-neutral-400">
                   {t("home.savedToAccount")}
                 </p>
               ) : accountId ? (
@@ -3618,7 +3653,7 @@ function Ledger({
                   >
                     {t("home.clearStartOver")}
                   </button>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-neutral-600 dark:text-neutral-400">
                     {t("home.notSignedIn")}
                   </p>
                 </>
@@ -3647,8 +3682,9 @@ function Ledger({
   const snapEl = stage === "upload" && (
     <label
       // Inert while a batch is in flight, for the same reason as the drop
-      // zone: a second upload mid-flight double-books the first.
-      className={`block rounded-lg border border-neutral-300 px-4 py-4 text-center text-base font-medium ${
+      // zone: a second upload mid-flight double-books the first. The ring
+      // shows the keyboard focus its sr-only input holds (as DropZone).
+      className={`block rounded-lg border border-neutral-300 px-4 py-4 text-center text-base font-medium ring-neutral-900 has-[:focus-visible]:ring-2 dark:ring-neutral-100 ${
         status === "reading"
           ? "pointer-events-none opacity-50"
           : "cursor-pointer hover:bg-neutral-50"
@@ -3805,7 +3841,7 @@ function Ledger({
               transient failure doesn't show the safe state forever. */}
           <button
             type="button"
-            className="mt-4 min-h-11 w-full text-center text-sm text-neutral-500 hover:underline"
+            className="mt-4 min-h-11 w-full text-center text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
             onClick={openSettings}
           >
             {t("settings.title")}
@@ -3958,7 +3994,7 @@ function Ledger({
   // the session check does until the three loads have landed (or one
   // has failed), so a first-use account meets the tour and nothing else.
   if (accountId !== null && setupDecision === "pending") {
-    const line = <p className="text-sm text-neutral-500">{t("home.loading")}</p>;
+    const line = <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("home.loading")}</p>;
     return desktop ? <DesktopGate>{line}</DesktopGate> : line;
   }
 
@@ -4024,11 +4060,11 @@ function Ledger({
     const heading = (title: string, sub?: string) => (
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {sub && <p className="text-sm text-neutral-500">{sub}</p>}
+        {sub && <p className="text-sm text-neutral-600 dark:text-neutral-400">{sub}</p>}
       </div>
     );
     const primary =
-      "inline-flex h-11 items-center justify-center rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-700";
+      "inline-flex h-11 items-center justify-center rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-800";
 
     function navigate(next: DesktopSection) {
       // A tour review owns the workspace (it is modal, as the full-screen

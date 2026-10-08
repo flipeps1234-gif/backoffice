@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { PublicFooter, PublicHeader } from "../public-shell";
+import { PublicPage } from "../public-shell";
 import { useLocale } from "../use-locale";
 
 /**
@@ -12,9 +12,7 @@ import { useLocale } from "../use-locale";
 export default function AboutContent() {
   const { t } = useLocale();
   return (
-    <main className="mx-auto w-full max-w-[40rem] px-4 py-8 lg:max-w-5xl">
-      <PublicHeader />
-
+    <PublicPage className="mx-auto w-full max-w-[40rem] px-4 py-8 lg:max-w-5xl">
       <h1 className="max-w-3xl text-4xl font-semibold tracking-tight">{t("site.aboutTitle")}</h1>
       <p className="mt-4 max-w-3xl text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{t("site.aboutIntro")}</p>
       <p className="mt-3 max-w-3xl text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{t("site.aboutWhat")}</p>
@@ -52,8 +50,6 @@ export default function AboutContent() {
           {t("site.aboutTalk")}
         </Link>
       </p>
-
-      <PublicFooter />
-    </main>
+    </PublicPage>
   );
 }

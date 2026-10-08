@@ -81,6 +81,26 @@ test('csv: ordinary text is unchanged and columns stay put for a comma reader', 
   assert.equal(a.at(-1), '20.00');                              // the amount is still the last column
 });
 
+test('csv: "every row" includes the products & services catalog, cost marked an estimate', () => {
+  const services = [
+    { id: 's1', name: 'Lawn mowing', pricing: { type: 'flat', cents: 6500 }, costCents: 1000 },
+    { id: 's2', name: 'Cleaning', pricing: { type: 'rate', cents: 18, unit: 'sqft' }, costCents: null },
+    { id: 's3', name: 'Ana;=cmd|calc', pricing: { type: 'rate', cents: 4500, unit: 'hour' }, costCents: 250 },
+  ];
+  const lines = everythingCsv([], services).replace(/^\uFEFF/, '').split('\r\n');
+  const at = lines.indexOf('services');
+  assert.ok(at > 0, 'a services section');
+  assert.equal(lines[at + 1], 'name,pricing,price,unit,cost_estimate');
+  assert.equal(lines[at + 2], 'Lawn mowing,flat,65.00,,10.00');
+  assert.equal(lines[at + 3], 'Cleaning,rate,0.18,sq ft,');
+  for (const delims of [[','], [';'], [',', ';', '\t']]) {
+    assert.deepEqual(cells(lines[at + 4], delims).filter(live), [], `live cell under ${JSON.stringify(delims)}`);
+  }
+  assert.equal(cells(lines[at + 4], [',']).at(-1), '2.50');
+  // An empty catalog adds no empty section.
+  assert.equal(everythingCsv([], []).includes('services'), false);
+});
+
 test('admin languageLabel: an account-chosen code is never an object key', () => {
   assert.equal(languageLabel('es'), 'Español');
   assert.equal(languageLabel('xx'), 'xx');

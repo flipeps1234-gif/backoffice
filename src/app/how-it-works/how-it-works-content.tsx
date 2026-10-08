@@ -14,7 +14,7 @@ import {
   owedDemo,
   useMounted,
 } from "../public-demos";
-import { PublicFooter, PublicHeader } from "../public-shell";
+import { PublicPage } from "../public-shell";
 import RunningTotals from "../running-totals";
 import SwipeDeck from "../swipe-deck";
 import { useLocale } from "../use-locale";
@@ -32,11 +32,14 @@ function Step({
   n,
   title,
   detail,
+  demo,
   children,
 }: {
   n: number;
   title: MessageKey;
   detail: MessageKey;
+  /** What the inert demo shows, in words, for screen readers. */
+  demo: MessageKey;
   children: React.ReactNode;
 }) {
   const { t } = useLocale();
@@ -44,14 +47,16 @@ function Step({
     <li className="space-y-3 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:space-y-0">
       <div className="space-y-3">
         <h2 className="text-base font-semibold">
-          <span className="mr-2 tabular-nums text-neutral-500">{n}</span>
+          <span className="mr-2 tabular-nums text-neutral-600 dark:text-neutral-400">{n}</span>
           {t(title)}
         </h2>
         <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
           {t(detail)}
         </p>
       </div>
-      <DemoFrame label={t("landing.demoData")}>{children}</DemoFrame>
+      <DemoFrame label={t("landing.demoData")} description={t(demo)}>
+        {children}
+      </DemoFrame>
     </li>
   );
 }
@@ -62,26 +67,24 @@ export default function HowItWorksContent() {
   const owed = mounted ? owedDemo() : null;
 
   return (
-    <main className="mx-auto w-full max-w-[40rem] px-4 py-8 lg:max-w-5xl">
-      <PublicHeader />
-
+    <PublicPage className="mx-auto w-full max-w-[40rem] px-4 py-8 lg:max-w-5xl">
       <h1 className="max-w-3xl text-4xl font-semibold tracking-tight">{t("site.howTitle")}</h1>
-      <p className="mt-3 text-sm text-neutral-500">{t("site.howIntro")}</p>
+      <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">{t("site.howIntro")}</p>
 
       <ol className="mt-10 space-y-10 lg:space-y-12">
-        <Step n={1} title="landing.step1Title" detail="site.how1Detail">
+        <Step n={1} title="landing.step1Title" detail="site.how1Detail" demo="landing.demoDescUpload">
           <DropZone busy={false} onFiles={noop} />
         </Step>
-        <Step n={2} title="site.how2Title" detail="site.how2Detail">
+        <Step n={2} title="site.how2Title" detail="site.how2Detail" demo="landing.demoDescSheet">
           <ConfirmationSheet transactions={SHEET_DEMO} onChange={noop} />
         </Step>
-        <Step n={3} title="site.how3Title" detail="site.how3Detail">
+        <Step n={3} title="site.how3Title" detail="site.how3Detail" demo="landing.demoDescSort">
           <div className="space-y-4">
             <Insights transactions={SHEET_DEMO} />
             <SwipeDeck pending={SHEET_DEMO} onDecide={noop} onUndo={noop} canUndo={false} />
           </div>
         </Step>
-        <Step n={4} title="landing.step3Title" detail="site.how4Detail">
+        <Step n={4} title="landing.step3Title" detail="site.how4Detail" demo="landing.demoDescBooks">
           <div className="px-4">
             <RunningTotals transactions={TOTALS_DEMO} />
           </div>
@@ -99,7 +102,7 @@ export default function HowItWorksContent() {
         <li className="space-y-3 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:space-y-0">
           <div className="space-y-3">
             <h2 className="text-base font-semibold">
-              <span className="mr-2 tabular-nums text-neutral-500">5</span>
+              <span className="mr-2 tabular-nums text-neutral-600 dark:text-neutral-400">5</span>
               {t("landing.owedTitle")}
             </h2>
             <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
@@ -107,7 +110,7 @@ export default function HowItWorksContent() {
             </p>
           </div>
           {owed && (
-            <DemoFrame label={t("landing.demoData")}>
+            <DemoFrame label={t("landing.demoData")} description={t("landing.demoDescOwed")}>
               <OwedTab
                 sales={owed.sales}
                 clients={owed.clients}
@@ -121,7 +124,7 @@ export default function HowItWorksContent() {
         </li>
         <li className="space-y-3 lg:max-w-3xl">
           <h2 className="text-base font-semibold">
-            <span className="mr-2 tabular-nums text-neutral-500">6</span>
+            <span className="mr-2 tabular-nums text-neutral-600 dark:text-neutral-400">6</span>
             {t("landing.taxTitle")}
           </h2>
           <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">
@@ -130,7 +133,7 @@ export default function HowItWorksContent() {
         </li>
       </ol>
 
-      <p className="mt-10 text-sm text-neutral-500">{t("landing.law")}</p>
+      <p className="mt-10 text-sm text-neutral-600 dark:text-neutral-400">{t("landing.law")}</p>
 
       <section className="mt-14 space-y-3">
         <h2 className="text-base font-semibold">{t("site.whatNot")}</h2>
@@ -145,8 +148,6 @@ export default function HowItWorksContent() {
       <div className="mt-14 lg:mx-auto lg:w-full lg:max-w-[40rem]">
         <Cta />
       </div>
-
-      <PublicFooter />
-    </main>
+    </PublicPage>
   );
 }

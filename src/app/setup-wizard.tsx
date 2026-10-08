@@ -46,9 +46,9 @@ import { useLocale } from "./use-locale";
  */
 
 const fieldClass =
-  "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 " +
-  "placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none";
-const labelClass = "mb-1 block text-xs font-medium text-neutral-500";
+  "w-full rounded-md border border-neutral-500 bg-white px-3 py-2 text-sm text-neutral-900 " +
+  "placeholder:text-neutral-500 focus:border-neutral-900 focus:outline-none";
+const labelClass = "mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-400";
 const primaryClass =
   "h-11 w-full rounded-lg bg-foreground px-4 text-base font-medium text-background hover:opacity-90 disabled:opacity-40";
 const secondaryClass =
@@ -218,7 +218,7 @@ export default function SetupWizard({
     case "business":
       body = (
         <div className="space-y-3">
-          <p className="text-sm text-neutral-500">{t("setup.businessIntro")}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("setup.businessIntro")}</p>
           <div>
             <label className={labelClass} htmlFor="setup-biz-name">
               {t("settings.businessName")}
@@ -263,9 +263,9 @@ export default function SetupWizard({
     case "services":
       body = (
         <div className="space-y-3">
-          <p className="text-sm text-neutral-500">{t("setup.servicesIntro")}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("setup.servicesIntro")}</p>
           {services.length === 0 && !addingService && (
-            <p className="text-sm text-neutral-500">{t("setup.noServicesYet")}</p>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("setup.noServicesYet")}</p>
           )}
           {/* Tap a card to edit it — the same form Products opens. While
               one is being edited, its card gives way to the form (as on
@@ -338,7 +338,7 @@ export default function SetupWizard({
             <li>{t(desktop ? "desktop.done2" : "setup.done2")}</li>
             <li>{t(desktop ? "desktop.done3" : "setup.done3")}</li>
           </ul>
-          <p className="text-xs text-neutral-500">{t("setup.doneAgain")}</p>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400">{t("setup.doneAgain")}</p>
         </div>
       );
       break;
@@ -440,7 +440,7 @@ export default function SetupWizard({
             <button
               ref={exitRef}
               type="button"
-              className="h-11 w-full text-sm text-neutral-500 hover:underline disabled:opacity-40"
+              className="h-11 w-full text-sm text-neutral-600 dark:text-neutral-400 hover:underline disabled:opacity-40"
               disabled={saving}
               onClick={() => endWith("exit", onSkip)}
             >

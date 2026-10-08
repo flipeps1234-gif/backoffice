@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import { saleAgeDays, saleTotalCents } from "@/lib/sale";
 import { NavIcon } from "./desktop-shell";
 import { revenueByService } from "@/lib/dashboard";
@@ -135,6 +135,8 @@ function Chart({
   const slot = n === 1 ? pw : pw / (n - 1);
   const color = SERIES_COLOR[series];
   const money = (c: number) => (c < 0 ? `−${formatCents(-c)}` : formatCents(c));
+  /** The month hit areas, for the arrow keys below. */
+  const points = useRef<(SVGRectElement | null)[]>([]);
 
   // The callout sits beside the active point, flipped left past midway.
   // Wide enough for five-figure amounts in ES/PT ("$123,456.78 entró ·
@@ -185,7 +187,7 @@ function Chart({
             y2={y(tick)}
             className={tick === 0 ? "stroke-neutral-400 dark:stroke-neutral-600" : "stroke-neutral-200 dark:stroke-neutral-800"}
           />
-          <text x={L - 12} y={y(tick) + 4} textAnchor="end" fontSize="12" className="fill-neutral-500">
+          <text x={L - 12} y={y(tick) + 4} textAnchor="end" fontSize="12" className="fill-neutral-600 dark:fill-neutral-400">
             {tick < 0 ? `−${axisLabel(-tick)}` : axisLabel(tick)}
           </text>
         </g>
@@ -219,13 +221,13 @@ function Chart({
           textAnchor="middle"
           fontSize="12"
           fontWeight={i === active ? 600 : 400}
-          className={i === active ? "fill-foreground" : "fill-neutral-500"}
+          className={i === active ? "fill-foreground" : "fill-neutral-600 dark:fill-neutral-400"}
         >
           {m}
         </text>
       ))}
       <g pointerEvents="none">
-        <rect x={bx} y={by} width={boxW} height={72} rx={8} className="fill-black dark:fill-neutral-700" />
+        <rect x={bx} y={by} width={boxW} height={72} rx={8} className="fill-black dark:fill-neutral-800" />
         <text x={bx + 14} y={by + 24} fontSize="12" fill="#a3a3a3">
           {monthTitle}
         </text>
@@ -239,15 +241,21 @@ function Chart({
           })}
         </text>
       </g>
+      {/* One Tab stop for the whole chart (a roving tabindex): the active
+          month takes Tab, and the arrow keys, Home and End move between
+          months — twelve stops in a row were twelve Tabs to get past it. */}
       {values.map((_, i) => (
         <rect
           key={i}
+          ref={(el) => {
+            points.current[i] = el;
+          }}
           x={x(i) - slot / 2}
           y={T}
           width={slot}
           height={ph + B - 4}
           fill="transparent"
-          tabIndex={0}
+          tabIndex={i === active ? 0 : -1}
           role="button"
           // The name carries the value, so a screen reader hears the
           // month's figure on focus, not just "Show March".
@@ -259,6 +267,22 @@ function Chart({
           onPointerEnter={() => onActive(i)}
           onFocus={() => onActive(i)}
           onClick={() => onActive(i)}
+          onKeyDown={(event) => {
+            const to =
+              event.key === "ArrowRight"
+                ? Math.min(i + 1, n - 1)
+                : event.key === "ArrowLeft"
+                  ? Math.max(i - 1, 0)
+                  : event.key === "Home"
+                    ? 0
+                    : event.key === "End"
+                      ? n - 1
+                      : null;
+            if (to === null) return;
+            event.preventDefault();
+            // Focus moves the active month too (onFocus above).
+            points.current[to]?.focus();
+          }}
           strokeWidth={2}
           className="cursor-pointer outline-none focus-visible:stroke-neutral-500"
         />
@@ -293,7 +317,7 @@ function Toggle<T extends string | number>({
           className={`h-9 whitespace-nowrap rounded-full px-3.5 text-sm transition-colors ${
             value === o.value
               ? "bg-foreground text-background"
-              : "text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"
           }`}
         >
           {o.label}
@@ -399,7 +423,7 @@ export default function DesktopOverview({
       // The red "couldn't load" banner above says what went wrong; this
       // card only says why its totals are missing.
       <section className={`${card} p-6`}>
-        <p className="py-10 text-center text-sm text-neutral-500">{t("desktop.loadWaiting")}</p>
+        <p className="py-10 text-center text-sm text-neutral-600 dark:text-neutral-400">{t("desktop.loadWaiting")}</p>
       </section>
     );
   }
@@ -408,16 +432,16 @@ export default function DesktopOverview({
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-1 flex-col gap-1.5">
-          <span className="text-xs uppercase tracking-wide text-neutral-500">
+          <span className="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
             {year === thisYear ? t("desktop.keptSoFar", { year }) : t("desktop.keptIn", { year })}
           </span>
           <h1 className="text-4xl font-semibold tracking-tight tabular-nums">{money(totalKept)}</h1>
-          <p className="text-sm text-neutral-500">
-            <span className="tabular-nums text-emerald-700 dark:text-emerald-400">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <span className="tabular-nums text-emerald-800 dark:text-emerald-400">
               {t("desktop.amountIn", { amount: formatCents(totalIn) })}
             </span>
             {" · "}
-            <span className="tabular-nums text-red-600 dark:text-red-400">
+            <span className="tabular-nums text-red-700 dark:text-red-400">
               {t("desktop.amountOut", { amount: formatCents(totalOut) })}
             </span>
             {expectedCents > 0 && (
@@ -434,7 +458,7 @@ export default function DesktopOverview({
                 <button
                   type="button"
                   onClick={onOwed}
-                  className="tabular-nums text-amber-700 underline-offset-2 hover:underline dark:text-amber-400"
+                  className="tabular-nums text-amber-800 underline-offset-2 hover:underline dark:text-amber-400"
                 >
                   {t("desktop.amountOwed", { amount: formatCents(owedCents) })}
                 </button>
@@ -471,7 +495,7 @@ export default function DesktopOverview({
       <section className={`${card} flex flex-col gap-3 px-5 py-5`}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold">{chartTitle}</h2>
-          <span className="text-xs text-neutral-500">
+          <span className="text-xs text-neutral-600 dark:text-neutral-400">
             {t("desktop.chart.hint", { amount: money(sum(values)) })}
           </span>
         </div>
@@ -492,7 +516,7 @@ export default function DesktopOverview({
             onActive={setActive}
           />
         ) : (
-          <p className="py-16 text-center text-sm text-neutral-500">
+          <p className="py-16 text-center text-sm text-neutral-600 dark:text-neutral-400">
             {pendingCount > 0
               ? t("desktop.emptyPending")
               : expectedCents > 0
@@ -559,7 +583,7 @@ export default function DesktopOverview({
             </span>
           </div>
           {owedOldest.length === 0 ? (
-            <p className="px-4 py-4 text-sm text-neutral-500">{t("owed.empty")}</p>
+            <p className="px-4 py-4 text-sm text-neutral-600 dark:text-neutral-400">{t("owed.empty")}</p>
           ) : (
             <ul className="flex flex-col">
               {owedOldest.slice(0, 3).map((sale) => (
@@ -573,7 +597,7 @@ export default function DesktopOverview({
                       <span className="truncate text-[15px] font-semibold">
                         {clients.find((c) => c.id === sale.clientId)?.name ?? t("owed.noClient")}
                       </span>
-                      <span className="text-[13px] text-neutral-500">
+                      <span className="text-[13px] text-neutral-600 dark:text-neutral-400">
                         {t("owed.daysOld", { days: Math.max(0, saleAgeDays(sale, today)) })}
                       </span>
                     </span>
@@ -591,7 +615,7 @@ export default function DesktopOverview({
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-base font-semibold">{t("desktop.revenueYear", { year })}</h2>
             {pickedService && (
-              <span className="text-xs tabular-nums text-neutral-500">
+              <span className="text-xs tabular-nums text-neutral-600 dark:text-neutral-400">
                 {t("desktop.serviceDetail", {
                   name: serviceName(pickedService),
                   jobs:
@@ -620,7 +644,7 @@ export default function DesktopOverview({
                   }`}
                   style={{ height: `${Math.max(4, Math.round((s.revenueCents / topRevenue) * 130))}px` }}
                 />
-                <span className="w-full truncate text-center text-xs text-neutral-500">{serviceName(s)}</span>
+                <span className="w-full truncate text-center text-xs text-neutral-600 dark:text-neutral-400">{serviceName(s)}</span>
               </button>
             ))}
           </div>

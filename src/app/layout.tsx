@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description:
-    "Turn Venmo, Cash App, Zelle and cash into real books, automatically. Built for cleaners, landscapers and barbers. Free.",
+    "Turn Venmo, Cash App, Zelle and cash into real books in a few taps. Built for cleaners, landscapers and barbers. Free.",
   applicationName: SITE_NAME,
   // The same base every page spreads into its own openGraph/twitter —
   // Next replaces nested objects instead of merging them (lib/seo.ts).
@@ -92,7 +92,8 @@ export default function RootLayout({
         </p>
         {children}
         {/* Public-site analytics only: gated on an env var, never on /app,
-            honors Do Not Track — see analytics.tsx. */}
+            honors Do Not Track and Global Privacy Control — see
+            analytics.tsx. */}
         <Analytics />
       </body>
     </html>

@@ -5,7 +5,7 @@ import type { NotificationPrefs } from "./notify/types";
 import { hasProfile, type BusinessProfile } from "./profile";
 import { cadenceLabel, type RecurringTemplate } from "./recurring";
 import { saleTotalCents, type Sale } from "./sale";
-import type { Service } from "./service";
+import { UNIT_LABELS, type Service } from "./service";
 import type { Transaction } from "./transaction";
 
 /**
@@ -144,10 +144,13 @@ export const mileageCsv = (
  * everything in v0.4, but the delete flow tells users this file is their
  * copy before a permanent purge — so it must also carry what v0.5/v0.6
  * added: the sales book (INCLUDING open ones, which have no payment row),
- * the client directory, and recurring templates. Photos are the one thing
- * that stays out (data-URLs don't belong in a spreadsheet); the delete
- * copy says so instead of pretending otherwise. Same sectioned shape as
- * the tax CSV's preamble — the audience is the owner, not a rigid parser.
+ * the client directory, and recurring templates — and the products &
+ * services catalog, which "every row" had missed (2026-10-08 review: the
+ * prices and cost estimates someone typed were purged with no copy).
+ * Photos are the one thing that stays out (data-URLs don't belong in a
+ * spreadsheet); the delete copy says so instead of pretending otherwise.
+ * Same sectioned shape as the tax CSV's preamble — the audience is the
+ * owner, not a rigid parser.
  */
 export const everythingCsv = (
   transactions: Transaction[],
@@ -240,6 +243,26 @@ export const everythingCsv = (
           field(client.name),
           field(client.notes),
           client.distanceTenths === null ? "" : formatMiles(client.distanceTenths),
+        ].join(","),
+      );
+    }
+  }
+
+  if (services.length > 0) {
+    // The catalog's cost is an ESTIMATE (never tax data) — the column says so.
+    lines.push(
+      "",
+      "services",
+      ["name", "pricing", "price", "unit", "cost_estimate"].join(","),
+    );
+    for (const service of services) {
+      lines.push(
+        [
+          field(service.name),
+          service.pricing.type,
+          dollars(service.pricing.cents),
+          service.pricing.type === "rate" ? UNIT_LABELS[service.pricing.unit] : "",
+          service.costCents == null ? "" : dollars(service.costCents),
         ].join(","),
       );
     }

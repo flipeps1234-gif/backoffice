@@ -71,7 +71,7 @@ export default function HistoryList({
         {onClose && (
           <button
             type="button"
-            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
             onClick={onClose}
           >
             {t("common.close")}
@@ -80,12 +80,12 @@ export default function HistoryList({
       </div>
 
       {groups.length === 0 && (
-        <p className="text-sm text-neutral-500">{t("insights.emptyHistory")}</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("insights.emptyHistory")}</p>
       )}
 
       {groups.map((group) => (
         <section key={group.date || "undated"}>
-          <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
             {dayLabel(group.date)}
           </h3>
           <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
@@ -110,18 +110,21 @@ export default function HistoryList({
                     <p className="truncate text-sm text-neutral-900">
                       {tx.payer || t("insights.noName")}
                     </p>
-                    <p className="truncate text-xs text-neutral-500">{detail}</p>
+                    <p className="truncate text-xs text-neutral-600">{detail}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {/* The list is white in both themes. Personal amounts
+                        used to fade (red-300, neutral-400: 1.9 and 2.6:1 on
+                        white); no lighter red reaches 4.5:1, so a personal
+                        expense keeps the money-out red, and its line says
+                        Personal. */}
                     <span
                       className={`text-sm font-medium tabular-nums ${
                         out
-                          ? tx.business
-                            ? "text-red-600"
-                            : "text-red-300"
+                          ? "text-red-600"
                           : tx.business
                             ? "text-neutral-900"
-                            : "text-neutral-400"
+                            : "text-neutral-600"
                       }`}
                     >
                       {out ? "−" : ""}

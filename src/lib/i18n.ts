@@ -38,9 +38,11 @@ import { messages as terms } from "./messages/terms";
  * - console.error strings — developer-facing.
  * - API route error bodies (extract). The server doesn't
  *   know the device's language; the client keys its own fallbacks and
- *   passes server detail through in English. Fixing this properly means
- *   error CODES in the API contract — noted for a later pass, not
- *   worth destabilizing the contract mid-v0.6.
+ *   passes server detail through in English. The first error CODE is in:
+ *   the usage-limit 429 carries code "usage_limit" plus retryAfter, which
+ *   the client maps to home.errUsage* in the device's language and clock.
+ *   The other errors still pass English through — the rest of the codes
+ *   are a later pass.
  * - Data written to the ledger (line-item names, the "Custom"/"Payment"
  *   fallbacks). Stored values must not depend on the screen language at
  *   the moment of logging; display-side fallbacks ARE translated.

@@ -15,7 +15,15 @@
 // 2026-08-15: v0.6.7 added ACCOUNT DELETION (7-day purge) — the
 // "nothing can be deleted" promise flipped, which is exactly the kind
 // of change the version exists for.
-export const TERMS_VERSION = "2026-08-15";
+// 2026-10-08: the photo block said screenshots are "read and discarded";
+// OpenAI may keep them up to 30 days for abuse checks. A third party
+// holding customers' names and amounts for a month is a change that
+// matters, and the gate promises to ask again for those. The same bump
+// carries the delete block (the ledger is erased, not "everything": a
+// founding-list email survives) and "every row" for "the lot" (the CSV
+// leaves photos out) — one re-ask, not two. The native app's
+// Terms.version moves in lockstep (DeviceSettings.swift).
+export const TERMS_VERSION = "2026-10-08";
 
 // Renamed from "swipebooks.terms" with the rebrand. A device that accepted
 // under the old key will not have this one, so it sees the terms once more —

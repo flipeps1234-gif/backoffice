@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { compressPhoto } from "./photo";
 import ProductCard from "./product-card";
 import { useLocale } from "./use-locale";
@@ -39,10 +39,10 @@ import { dollarsToCents, formatCents } from "@/lib/transaction";
  * engine needs the ledger and the ledger lives up there.
  */
 
-const labelClass = "mb-1 block text-xs font-medium text-neutral-500";
+const labelClass = "mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-400";
 const fieldClass =
-  "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 " +
-  "placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none";
+  "w-full rounded-md border border-neutral-500 bg-white px-3 py-2 text-sm text-neutral-900 " +
+  "placeholder:text-neutral-500 focus:border-neutral-900 focus:outline-none";
 
 /** Local calendar date — same rule as quick-add: toISOString would give
  *  tomorrow for an evening sale anywhere in the Americas. */
@@ -296,6 +296,14 @@ export default function NewSale({
   function backToProductsIfEmptied() {
     if (emptied) setStep("pick");
   }
+  // Focus follows the step (as in the setup wizard): the button that moved
+  // the flow on has just unmounted, so the new step's heading takes focus
+  // instead of <body>, and a screen reader hears where it landed. On mount
+  // too — Start sale and Log again unmount the button that opened the flow.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, [shownStep]);
   const knownClient =
     clients.find((c) => c.id === pickedClientId) ?? findClientByName(clients, clientName);
   const unknownName = clientName.trim() !== "" && !knownClient;
@@ -370,10 +378,12 @@ export default function NewSale({
 
   const header = (title: string) => (
     <div className="flex items-baseline justify-between">
-      <h2 className="text-sm font-semibold">{title}</h2>
+      <h2 ref={headingRef} tabIndex={-1} className="text-sm font-semibold focus:outline-none">
+        {title}
+      </h2>
       <button
         type="button"
-        className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+        className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
         onClick={onClose}
       >
         {t("common.close")}
@@ -389,7 +399,7 @@ export default function NewSale({
         <p className="text-center text-4xl font-semibold tabular-nums">
           {formatCents(totalCents)}
         </p>
-        <p className="text-center text-sm text-neutral-500">
+        <p className="text-center text-sm text-neutral-600 dark:text-neutral-400">
           {(knownClient?.name ?? clientName.trim()) || t("sale.noClient")} ·{" "}
           {lineItems.map((i) => i.name).join(", ") || t("sale.noItems")}
         </p>
@@ -399,7 +409,7 @@ export default function NewSale({
         <div className="flex gap-3">
           <button
             type="button"
-            className="flex-1 rounded-xl bg-emerald-700 px-4 py-6 text-lg font-semibold text-white hover:opacity-90"
+            className="flex-1 rounded-xl bg-emerald-700 px-4 py-6 text-lg font-semibold text-white hover:bg-emerald-800"
             onClick={() => setStep("method")}
           >
             {t("common.yes")}
@@ -414,7 +424,7 @@ export default function NewSale({
         </div>
         <button
           type="button"
-          className="min-h-11 w-full text-sm text-neutral-500 hover:underline"
+          className="min-h-11 w-full text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
           onClick={() => setStep("checkout")}
         >
           {t("sale.backToDetails")}
@@ -437,7 +447,7 @@ export default function NewSale({
         <div className="flex gap-3">
           <button
             type="button"
-            className="flex-1 rounded-xl bg-emerald-700 px-4 py-6 text-lg font-semibold text-white hover:opacity-90"
+            className="flex-1 rounded-xl bg-emerald-700 px-4 py-6 text-lg font-semibold text-white hover:bg-emerald-800"
             onClick={() => finish(true, "cash")}
           >
             {t("sale.cash")}
@@ -452,13 +462,13 @@ export default function NewSale({
           </button>
         </div>
         {!clientName.trim() && (
-          <p className="text-center text-sm text-neutral-500">
+          <p className="text-center text-sm text-neutral-600 dark:text-neutral-400">
             {t("sale.digitalNeedsClient")}
           </p>
         )}
         <button
           type="button"
-          className="min-h-11 w-full text-sm text-neutral-500 hover:underline"
+          className="min-h-11 w-full text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
           onClick={() => setStep("paid")}
         >
           {t("common.back")}
@@ -560,7 +570,7 @@ export default function NewSale({
           {!showProof && !notes && !photo ? (
             <button
               type="button"
-              className="-mx-2 min-h-11 px-2 text-sm font-medium text-neutral-500 hover:underline"
+              className="-mx-2 min-h-11 px-2 text-sm font-medium text-neutral-600 dark:text-neutral-400 hover:underline"
               onClick={() => setShowProof(true)}
             >
               {t("sale.addProof")}
@@ -592,19 +602,22 @@ export default function NewSale({
                     />
                     <button
                       type="button"
-                      className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+                      className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
                       onClick={() => setPhoto(null)}
                     >
                       {t("sale.photoRemove")}
                     </button>
                   </div>
                 ) : (
-                  <label className="inline-block cursor-pointer rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800">
+                  // sr-only, not hidden: a display:none input is out of the
+                  // tab order, so "Add a photo" was unreachable by keyboard.
+                  // The label shows the focus the input holds.
+                  <label className="inline-block cursor-pointer rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium ring-neutral-900 hover:bg-neutral-50 has-[:focus-visible]:ring-2 dark:border-neutral-600 dark:ring-neutral-100 dark:hover:bg-neutral-800">
                     {photoBusy ? t("sale.photoReading") : t("sale.photoAdd")}
                     <input
                       type="file"
                       accept="image/*"
-                      className="hidden"
+                      className="sr-only"
                       disabled={photoBusy}
                       onChange={(e) => {
                         void attachPhoto(e.target.files?.[0]);
@@ -614,7 +627,7 @@ export default function NewSale({
                   </label>
                 )}
                 {photoError && (
-                  <p className="mt-1 text-sm text-red-600">
+                  <p className="mt-1 text-sm text-red-600 dark:text-red-400">
                     {t("sale.photoError")}
                   </p>
                 )}
@@ -634,7 +647,7 @@ export default function NewSale({
             />
             {t("sale.makeRecurring")}
             {!clientName.trim() && (
-              <span className="font-normal text-neutral-500">
+              <span className="font-normal text-neutral-600 dark:text-neutral-400">
                 {t("sale.needsClient")}
               </span>
             )}
@@ -689,7 +702,7 @@ export default function NewSale({
                   <span>{t("sale.daysStarting", { date: date || today() })}</span>
                 </div>
               )}
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
                 {t("sale.recurringNote")}
               </p>
             </div>
@@ -709,7 +722,7 @@ export default function NewSale({
         </button>
         <button
           type="button"
-          className="min-h-11 w-full text-sm text-neutral-500 hover:underline"
+          className="min-h-11 w-full text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
           onClick={() => setStep("pick")}
         >
           {t("sale.backToProducts")}
@@ -779,7 +792,7 @@ export default function NewSale({
         {!clientName.trim() && (
           <button
             type="button"
-            className="min-h-11 w-full text-sm text-neutral-500 hover:underline"
+            className="min-h-11 w-full text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
             onClick={() => setStep("pick")}
           >
             {t("sale.skipForNow")}
@@ -795,7 +808,7 @@ export default function NewSale({
       {header(t("sale.title"))}
 
       {services.length === 0 && (
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
           {t(desktop ? "desktop.noProducts" : "sale.noProducts")}
         </p>
       )}
@@ -859,7 +872,7 @@ export default function NewSale({
           const heading = (text: string) => (
             <p
               key={text}
-              className="pt-1 text-xs font-medium uppercase tracking-wide text-neutral-500"
+              className="pt-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400"
             >
               {text}
             </p>
@@ -918,7 +931,7 @@ export default function NewSale({
       </div>
 
       <div className="flex items-center justify-between rounded-lg bg-neutral-100 px-4 py-3 dark:bg-neutral-900">
-        <span className="text-sm text-neutral-500">{t("common.total")}</span>
+        <span className="text-sm text-neutral-600 dark:text-neutral-400">{t("common.total")}</span>
         <span className="text-2xl font-semibold tabular-nums">
           {formatCents(totalCents)}
         </span>
@@ -935,7 +948,7 @@ export default function NewSale({
       {flowOrder === "client-first" && !prefill && (
         <button
           type="button"
-          className="min-h-11 w-full text-sm text-neutral-500 hover:underline"
+          className="min-h-11 w-full text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
           onClick={() => setStep("client")}
         >
           {t("sale.backToClient")}

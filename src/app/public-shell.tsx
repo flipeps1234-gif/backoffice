@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { trackEvent } from "./analytics";
 import LocalePicker from "./locale-picker";
 import Mark from "./mark";
+import SkipLink from "./skip-link";
 import { useLocale } from "./use-locale";
 import type { MessageKey } from "@/lib/i18n";
 import { localeTag } from "@/lib/i18n";
@@ -201,7 +202,7 @@ function FooterColumn({
   const { t } = useLocale();
   return (
     <div className="space-y-2">
-      <p className="text-xs uppercase tracking-wide text-neutral-500">
+      <p className="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
         {t(title)}
       </p>
       <ul className="space-y-1.5 text-sm">
@@ -227,7 +228,7 @@ export function PublicFooter() {
         <FooterColumn title="site.footerCompany" links={COMPANY_LINKS} />
         <FooterColumn title="site.footerLegal" links={LEGAL_LINKS} />
       </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-neutral-500">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-neutral-600 dark:text-neutral-400">
         <span>{t("landing.trustTitle")}</span>
         <TextUs />
         <EmailUs />
@@ -238,6 +239,36 @@ export function PublicFooter() {
           {t("site.copyright", { year: YEAR })}
         </span>
       </div>
+      {/* Under the ©: the channel names in our URLs, titles and share card
+          are nominative use, and this says so on every public page. */}
+      <p className="text-xs text-neutral-600 dark:text-neutral-400">
+        {t("site.trademarks")}
+      </p>
     </footer>
+  );
+}
+
+/**
+ * Every public page's frame: "Skip to content" first (WCAG 2.4.1), the
+ * banner, the page's own content as the one <main> — the target the skip
+ * link jumps to — and the footer outside it, so the main landmark holds
+ * only what is unique to the page. `className` is the page column.
+ */
+export function PublicPage({
+  className,
+  children,
+}: {
+  className: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className={className}>
+      <SkipLink />
+      <PublicHeader />
+      <main id="content" tabIndex={-1} className="outline-none">
+        {children}
+      </main>
+      <PublicFooter />
+    </div>
   );
 }

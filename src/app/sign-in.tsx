@@ -313,7 +313,7 @@ export default function SignIn({
       <div className="mx-auto w-full max-w-sm space-y-4 pt-4 text-center lg:pt-10">
         <div>
           <h2 className="text-sm font-semibold">{t("signin.checkEmail")}</h2>
-          <p className="mt-1 text-sm text-neutral-500">
+          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
             {t("signin.sentTo", { email: email.trim() })}{" "}
             <strong className="font-medium text-foreground">
               {t("signin.onThisDevice")}
@@ -334,13 +334,13 @@ export default function SignIn({
           </p>
         )}
 
-        <p className="text-sm text-neutral-500">
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
           {t("signin.nothingYet")}
         </p>
 
         {/* Two exit links side by side: each is a real min-h-11 target
             (design-tokens.md), not a 20px line of text. */}
-        <div className="flex items-center justify-center gap-6 text-sm text-neutral-500">
+        <div className="flex items-center justify-center gap-6 text-sm text-neutral-600 dark:text-neutral-400">
           <button
             type="button"
             className="min-h-11 px-2 hover:underline"
@@ -394,7 +394,7 @@ export default function SignIn({
             <GoogleMark />
             {t("signin.google")}
           </button>
-          <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-neutral-500">
+          <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
             <span className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" aria-hidden="true" />
             {t("signin.or")}
             <span className="h-px flex-1 bg-neutral-200 dark:bg-neutral-800" aria-hidden="true" />
@@ -403,7 +403,7 @@ export default function SignIn({
       )}
       <div>
         <label
-          className="mb-1 block text-xs font-medium text-neutral-500"
+          className="mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-400"
           htmlFor="email"
         >
           {t("signin.emailLabel")}
@@ -416,7 +416,7 @@ export default function SignIn({
           inputMode="email"
           required
           autoComplete="email"
-          className="w-full rounded-md border border-neutral-300 bg-white px-3 py-3 text-center text-base text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none"
+          className="w-full rounded-md border border-neutral-500 bg-white px-3 py-3 text-center text-base text-neutral-900 placeholder:text-neutral-500 focus:border-neutral-900 focus:outline-none"
           placeholder={t("signin.emailPlaceholder")}
           value={email}
           onChange={(event) => setEmail(event.target.value)}

@@ -42,7 +42,7 @@ export default function KeywordSection({
               <li key={key}>{t(key)}</li>
             ))}
           </ul>
-          <p className="text-sm text-neutral-500">{t("site.tradeLang")}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("site.tradeLang")}</p>
         </section>
       </div>
 
@@ -58,7 +58,7 @@ export default function KeywordSection({
         </dl>
       </section>
 
-      <p className="mt-10 text-sm text-neutral-500">
+      <p className="mt-10 text-sm text-neutral-600 dark:text-neutral-400">
         {t("site.tradeOthers")}{" "}
         {others.map((other, index) => (
           <span key={other.href}>

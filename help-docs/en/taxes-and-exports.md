@@ -11,5 +11,5 @@ contado keeps a record your tax preparer can work from. It does not give tax adv
 ## When it's time
 
 - **CSV for your tax preparer**: actual business income and expenses, oldest first, with categories. Your preparer opens it directly.
-- **Proof of income**: a printable statement of what you logged — print it or save it as a PDF.
-- **Export everything**: every payment, sale, client and repeat arrangement you've logged, in one file. Yours, free, always.
+- **Proof of income**: a printable summary of what you logged — print it or save it as a PDF. It comes from your own records; it is not a verified statement.
+- **Export every row**: every payment, sale, client, product and repeat arrangement you've logged, in one file — photos attached to sales aren't included. Yours, free, always.

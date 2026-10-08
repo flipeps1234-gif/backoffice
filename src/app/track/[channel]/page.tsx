@@ -25,7 +25,7 @@ const META: Record<
   venmo: {
     title: "Venmo bookkeeping",
     description:
-      "No Venmo login, no bank connection: turn Venmo screenshots into real books — business sorted from personal, duplicates caught, a Schedule-C-ready CSV. Free.",
+      "No Venmo login, no bank connection: turn Venmo screenshots into real books — business sorted from personal, every row confirmed by you, a CSV for your tax preparer. Free.",
     keywords: [
       "Venmo bookkeeping",
       "track Venmo payments for business",
@@ -38,7 +38,7 @@ const META: Record<
   "cash-app": {
     title: "Cash App bookkeeping",
     description:
-      "Screenshot Cash App activity at close and the day is booked in two minutes — business sorted from personal, cash logged beside it, Schedule-C-ready. Free.",
+      "Screenshot Cash App activity at close and book the day in a few minutes — business sorted from personal, cash logged beside it, Schedule C totals for your preparer. Free.",
     keywords: [
       "Cash App bookkeeping",
       "track Cash App payments for business",
@@ -51,7 +51,7 @@ const META: Record<
   zelle: {
     title: "Zelle payment tracking",
     description:
-      "Zelle exports nothing from your bank app. Screenshot your Zelle activity and contado builds the ledger — business sorted from personal, tax-ready. Free.",
+      "Zelle has no export of its own. Screenshot your Zelle activity and contado builds the ledger — business sorted from personal, totals ready for your preparer. Free.",
     keywords: [
       "Zelle payment tracking",
       "track Zelle payments for business",
@@ -64,7 +64,7 @@ const META: Record<
   cash: {
     title: "Cash income tracking",
     description:
-      "Track cash income when you're self-employed: log a job in a few taps, keep cash beside Venmo and Cash App income, print proof of income, export a CSV. Free.",
+      "Track cash income when you're self-employed: log a job in a few taps, keep cash beside Venmo and Cash App income, print an income summary from your own records, export a CSV. Free.",
     keywords: [
       "cash income tracker",
       "how to track cash income self-employed",

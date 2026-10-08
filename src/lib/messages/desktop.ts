@@ -284,9 +284,9 @@ export const messages = {
     pt: "Enviar capturas",
   },
   "desktop.uploadSub": {
-    en: "Venmo, Cash App or Zelle activity, or a receipt. We read every payment, you check them, then sort each one.",
-    es: "Actividad de Venmo, Cash App o Zelle, o un recibo. Leemos cada pago, tú los revisas y luego clasificas cada uno.",
-    pt: "Atividade do Venmo, Cash App ou Zelle, ou um recibo. Lemos cada pagamento, você confere e depois classifica cada um.",
+    en: "Venmo, Cash App or Zelle activity, or a receipt. We read the payments your screenshot shows, you check them, then sort each one.",
+    es: "Actividad de Venmo, Cash App o Zelle, o un recibo. Leemos los pagos que muestra tu captura, tú los revisas y luego clasificas cada uno.",
+    pt: "Atividade do Venmo, Cash App ou Zelle, ou um recibo. Lemos os pagamentos que aparecem na sua captura, você confere e depois classifica cada um.",
   },
   "desktop.saleSub": {
     en: "A job you did, whether they’ve paid yet or not.",

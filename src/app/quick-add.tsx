@@ -55,13 +55,13 @@ const segment = (on: boolean, onClass: string): string =>
   `flex-1 rounded-lg px-4 py-3 text-sm font-semibold transition-colors ${
     on
       ? onClass
-      : "border border-neutral-300 bg-white text-neutral-500 hover:bg-neutral-50"
+      : "border border-neutral-300 bg-white text-neutral-600 hover:bg-neutral-50"
   }`;
 
-const labelClass = "mb-1 block text-xs font-medium text-neutral-500";
+const labelClass = "mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-400";
 const fieldClass =
-  "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 " +
-  "placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none";
+  "w-full rounded-md border border-neutral-500 bg-white px-3 py-2 text-sm text-neutral-900 " +
+  "placeholder:text-neutral-500 focus:border-neutral-900 focus:outline-none";
 
 type PricingChoice = "flat" | RateUnit;
 
@@ -179,31 +179,35 @@ export default function QuickAdd({
   const [promptRate, setPromptRate] = useState("");
   const [promptCost, setPromptCost] = useState("");
 
-  // Desktop: type amounts on the physical keyboard. Ignored while focus is
-  // in a text field, and while the save-as-service prompt is up.
-  const pressRef = useRef<(key: string) => void>(() => {});
-  const promptOpenRef = useRef(false);
-  const activeRef = useRef(active);
+  // Desktop: type amounts on the physical keyboard — only while focus is
+  // inside the keypad (its container, which a click anywhere on it also
+  // focuses). The listener used to sit on the window, so a digit typed on
+  // the sidebar, any button or under a screen reader's keys changed the
+  // amount; scoped to the component it is "active only on focus" (WCAG
+  // 2.1.4). Never in a text field; the save-as-service prompt is its own
+  // screen, outside this container.
+  function typeOnKeypad(event: React.KeyboardEvent<HTMLDivElement>) {
+    const target = event.target as HTMLElement;
+    const tag = target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target.isContentEditable) return;
+    if (!active) return;
+    // A chord is a browser command, not a digit. Cmd+0 resets zoom — and
+    // without this it also turned $60.00 into $600.00 and saved it.
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (/^[0-9]$/.test(event.key)) press(event.key);
+    else if (event.key === "Backspace") press("⌫");
+  }
+
+  // Focus follows the screen (as in the setup wizard): on mount — the
+  // button that opened the keypad has just unmounted — and between the
+  // keypad and the save-as-service prompt, the heading now showing takes
+  // focus instead of <body>. It sits inside the keypad's container, so
+  // typed digits land at once.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const prompting = pending !== null;
   useEffect(() => {
-    pressRef.current = press;
-    promptOpenRef.current = pending !== null;
-    activeRef.current = active;
-  });
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-      if (promptOpenRef.current || !activeRef.current) return;
-      // A chord is a browser command, not a digit. Cmd+0 resets zoom — and
-      // without this it also turned $60.00 into $600.00 and saved it.
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (/^[0-9]$/.test(event.key)) pressRef.current(event.key);
-      else if (event.key === "Backspace") pressRef.current("⌫");
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
+    headingRef.current?.focus();
+  }, [prompting]);
 
   function press(key: string) {
     // Typing overrides the mini-calc but keeps the service link — a custom
@@ -411,12 +415,12 @@ export default function QuickAdd({
     const rateChosen = promptPricing !== "flat";
     return (
       <div className="space-y-4">
-        <p aria-live="polite" className="text-sm text-emerald-600">
+        <p aria-live="polite" className="text-sm text-emerald-700 dark:text-emerald-400">
           {t("quickadd.amountLogged", {
             amount: formatCents(pending.amountCents),
           })}
         </p>
-        <h2 className="text-sm font-semibold">
+        <h2 ref={headingRef} tabIndex={-1} className="text-sm font-semibold focus:outline-none">
           {t("quickadd.savePromptTitle")}
         </h2>
 
@@ -522,14 +526,14 @@ export default function QuickAdd({
 
   // ---- The numpad. ----
   return (
-    <div className="space-y-4">
+    <div tabIndex={-1} onKeyDown={typeOnKeypad} className="space-y-4 outline-none">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">
+        <h2 ref={headingRef} tabIndex={-1} className="text-sm font-semibold focus:outline-none">
           {spending ? t("quickadd.titleSpent") : t("quickadd.titlePaid")}
         </h2>
         <button
           type="button"
-          className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+          className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
           onClick={onClose}
         >
           {t("common.close")}
@@ -615,7 +619,7 @@ export default function QuickAdd({
               aria-pressed={selected?.id === service.id}
               className={`min-h-10 rounded-full px-3 text-sm font-medium ${
                 selected?.id === service.id
-                  ? "bg-emerald-600 text-white"
+                  ? "bg-emerald-700 text-white"
                   : "border border-neutral-300 bg-white text-neutral-900 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100"
               }`}
               onClick={() => tapChip(service)}
@@ -666,7 +670,7 @@ export default function QuickAdd({
 
       {!spending && selected?.pricing.type === "rate" && (
         <div className="mx-auto flex w-56 items-center gap-2">
-          <label className="text-sm text-neutral-500" htmlFor="qty">
+          <label className="text-sm text-neutral-600 dark:text-neutral-400" htmlFor="qty">
             {t(UNIT_QUESTION[selected.pricing.unit])}
           </label>
           <input
@@ -681,13 +685,13 @@ export default function QuickAdd({
       )}
 
       {usualHint && (
-        <p aria-live="polite" className="text-center text-xs text-emerald-600">
+        <p aria-live="polite" className="text-center text-xs text-emerald-700 dark:text-emerald-400">
           {usualHint}
         </p>
       )}
 
       {justSaved && (
-        <p aria-live="polite" className="text-center text-sm text-emerald-600">
+        <p aria-live="polite" className="text-center text-sm text-emerald-700 dark:text-emerald-400">
           {justSaved}
         </p>
       )}
@@ -771,19 +775,24 @@ export default function QuickAdd({
         </div>
       </div>
 
+      {/* aria-disabled, not disabled (save() returns at $0 anyway): "Save &
+          add another" zeroes the amount, and a button that disables itself
+          under focus drops focus to <body> — outside this container, so the
+          next amount typed on the keyboard went nowhere. Same for
+          Backspacing to $0 with a Save button focused. */}
       <div className="flex gap-2">
         <button
           type="button"
-          className="flex-1 rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90 disabled:opacity-40"
-          disabled={cents === 0}
+          className="flex-1 rounded-lg bg-foreground px-4 py-4 text-base font-medium text-background hover:opacity-90 aria-disabled:opacity-40"
+          aria-disabled={cents === 0}
           onClick={() => save(false)}
         >
           {t("common.save")}
         </button>
         <button
           type="button"
-          className="flex-1 rounded-lg border border-neutral-400 px-4 py-4 text-base font-medium text-foreground hover:opacity-80 disabled:opacity-40"
-          disabled={cents === 0}
+          className="flex-1 rounded-lg border border-neutral-400 px-4 py-4 text-base font-medium text-foreground hover:opacity-80 aria-disabled:opacity-40"
+          aria-disabled={cents === 0}
           onClick={() => save(true)}
         >
           {t("quickadd.saveAndAdd")}

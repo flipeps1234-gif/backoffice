@@ -1,14 +1,15 @@
 import { ImageResponse } from "next/og";
+import { OG_IMAGE_ALT, OG_IMAGE_TEXT } from "@/lib/seo";
 
 /**
  * The share card, drawn from design-tokens.md and nothing else: the
  * dark background pair (#0a0a0a / #ededed), the two-cards mark, the
  * wordmark, and the hero line. No gradients, no glow — the card is a
- * well-made receipt, same as the pages it fronts.
+ * well-made receipt, same as the pages it fronts. The words live in
+ * lib/seo.ts (OG_IMAGE_TEXT) so the alt text always carries them.
  */
 
-export const alt =
-  "contado — your payments, turned into books";
+export const alt = OG_IMAGE_ALT;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -64,8 +65,7 @@ export default function OpenGraphImage() {
             maxWidth: "980px",
           }}
         >
-          Your Venmo, Cash App, Zelle and cash — turned into real books,
-          automatically.
+          {OG_IMAGE_TEXT.headline}
         </div>
         <div
           style={{
@@ -74,7 +74,7 @@ export default function OpenGraphImage() {
             color: "#a3a3a3",
           }}
         >
-          Built for cleaners, landscapers, barbers. Free.
+          {OG_IMAGE_TEXT.sub}
         </div>
       </div>
     ),

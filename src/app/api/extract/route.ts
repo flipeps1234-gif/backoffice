@@ -221,8 +221,18 @@ export async function POST(request: Request) {
       try {
         const reservation = await reserveExtraction(verified.accountId, inputs.length);
         if (!reservation.allowed) {
+          // A CODE, not just prose: the server doesn't know the device's
+          // language or zone, so the web client keys its own text off
+          // `code` and turns `retryAfter` (seconds — to the RPC's UTC day
+          // or month boundary, or a 120 s concurrency lease) into "resumes
+          // today at 7:00 PM". `error` stays for clients that read only it
+          // (the iPhone build).
           return Response.json(
-            { error: "Upload limit reached. Please try again later." },
+            {
+              error: "Upload limit reached. Please try again later.",
+              code: "usage_limit",
+              retryAfter: reservation.retry_after,
+            },
             { status: 429, headers: { "Retry-After": String(reservation.retry_after) } },
           );
         }

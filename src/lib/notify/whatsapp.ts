@@ -26,9 +26,9 @@ export const whatsappEnabled = (): boolean =>
 /**
  * One template send. `variables` fill {{1}}..{{n}} in order; `lang` is
  * the template's language code (en/es/pt_BR as registered with Meta).
- * Free-form text sends are deliberately NOT implemented — outside a
- * 24-hour customer-service window only approved templates deliver, and
- * this product only ever speaks in templates.
+ * Outside a 24-hour customer-service window only approved templates
+ * deliver, so every alert is a template. The one free-form send is
+ * sendWhatsAppReply below — an answer to a message the person JUST sent.
  */
 export const sendWhatsAppTemplate = async (
   toNumber: string,
@@ -38,6 +38,49 @@ export const sendWhatsAppTemplate = async (
 ): Promise<SendResult> => {
   if (!whatsappEnabled()) return { ok: false, skipped: true };
 
+  return postMessage({
+    messaging_product: "whatsapp",
+    to: toNumber,
+    type: "template",
+    template: {
+      name: template,
+      language: { code: lang },
+      components:
+        variables.length > 0
+          ? [
+              {
+                type: "body",
+                parameters: variables.map((text) => ({
+                  type: "text",
+                  text,
+                })),
+              },
+            ]
+          : [],
+    },
+  });
+};
+
+/**
+ * A plain-text answer to an inbound message — the HELP reply and the STOP
+ * confirmation (keywords.ts). Free-form text is allowed here only because
+ * the person's own message opened the 24-hour window a moment ago; nothing
+ * else may call this. Same dark switch as the templates.
+ */
+export const sendWhatsAppReply = async (
+  toNumber: string,
+  text: string,
+): Promise<SendResult> => {
+  if (!whatsappEnabled()) return { ok: false, skipped: true };
+  return postMessage({
+    messaging_product: "whatsapp",
+    to: toNumber,
+    type: "text",
+    text: { body: text },
+  });
+};
+
+const postMessage = async (payload: object): Promise<SendResult> => {
   const response = await fetch(
     `${GRAPH}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
     {
@@ -50,27 +93,7 @@ export const sendWhatsAppTemplate = async (
         Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        messaging_product: "whatsapp",
-        to: toNumber,
-        type: "template",
-        template: {
-          name: template,
-          language: { code: lang },
-          components:
-            variables.length > 0
-              ? [
-                  {
-                    type: "body",
-                    parameters: variables.map((text) => ({
-                      type: "text",
-                      text,
-                    })),
-                  },
-                ]
-              : [],
-        },
-      }),
+      body: JSON.stringify(payload),
     },
   );
 
@@ -86,10 +109,4 @@ export const sendWhatsAppTemplate = async (
     };
   }
   return { ok: true, providerMessageId: body.messages[0].id };
-};
-
-/** "stop", "parar", "alto", with punctuation/case noise — an opt-out. */
-export const isStopMessage = (text: string): boolean => {
-  const bare = text.trim().toLowerCase().replace(/[!.\s]+$/g, "");
-  return ["stop", "parar", "pare", "alto", "baja", "cancelar"].includes(bare);
 };

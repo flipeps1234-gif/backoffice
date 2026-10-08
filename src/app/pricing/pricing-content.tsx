@@ -1,7 +1,7 @@
 "use client";
 
 import Cta from "../founding-cta";
-import { PublicFooter, PublicHeader } from "../public-shell";
+import { PublicPage } from "../public-shell";
 import { useLocale } from "../use-locale";
 
 /**
@@ -13,18 +13,16 @@ import { useLocale } from "../use-locale";
 export default function PricingContent() {
   const { t } = useLocale();
   return (
-    <main className="mx-auto w-full max-w-[40rem] px-4 py-8 lg:max-w-5xl">
-      <PublicHeader />
-
+    <PublicPage className="mx-auto w-full max-w-[40rem] px-4 py-8 lg:max-w-5xl">
       <h1 className="text-4xl font-semibold tracking-tight">{t("site.pricingTitle")}</h1>
-      <p className="mt-3 max-w-3xl text-sm leading-relaxed text-neutral-500">{t("site.pricingIntro")}</p>
+      <p className="mt-3 max-w-3xl text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{t("site.pricingIntro")}</p>
 
       {/* Desktop: a 2×2 — free-forever beside the founding CTA, the
           future modules beside the rule we charge by. Mobile keeps the
           original stacked order and rhythm (each cell's own mt). */}
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-12">
         <section className="mt-10 space-y-3">
-          <h2 className="text-xs uppercase tracking-wide text-neutral-500">{t("site.freeForever")}</h2>
+          <h2 className="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400">{t("site.freeForever")}</h2>
           <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
             <li>{t("site.free1")}</li>
             <li>{t("site.free2")}</li>
@@ -39,7 +37,7 @@ export default function PricingContent() {
         </div>
 
         <section className="mt-14 space-y-3 lg:mt-12">
-          <h2 className="text-xs uppercase tracking-wide text-neutral-500">{t("site.laterTitle")}</h2>
+          <h2 className="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400">{t("site.laterTitle")}</h2>
           <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{t("site.laterIntro")}</p>
           <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
             <li>{t("site.modAutopilot")}</li>
@@ -47,7 +45,7 @@ export default function PricingContent() {
             <li>{t("site.modInsights")}</li>
             <li>{t("site.modTime")}</li>
           </ul>
-          <p className="text-sm leading-relaxed text-neutral-500">{t("site.laterNote")}</p>
+          <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{t("site.laterNote")}</p>
         </section>
 
         <section className="mt-14 space-y-2 lg:mt-12">
@@ -55,8 +53,6 @@ export default function PricingContent() {
           <p className="text-sm leading-relaxed text-neutral-600 dark:text-neutral-400">{t("site.filterBody")}</p>
         </section>
       </div>
-
-      <PublicFooter />
-    </main>
+    </PublicPage>
   );
 }

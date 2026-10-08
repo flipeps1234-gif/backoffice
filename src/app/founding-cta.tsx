@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
+import Link from "next/link";
 import { trackEvent } from "./analytics";
 import { useLocale } from "./use-locale";
 
@@ -9,9 +10,15 @@ import { useLocale } from "./use-locale";
  * capture. Shared by the landing, pricing, the trade pages and contact
  * so the offer reads identically everywhere. Posts to /api/founding
  * (rate-limited; duplicates return ok — no enumeration).
+ *
+ * The notice under the field says what the address is for and links the
+ * privacy page, which spells out how the list is kept and how to leave
+ * it — so the disclosure sits where the email is asked for, not only on
+ * /privacy.
  */
 export function FoundingForm() {
   const { t } = useLocale();
+  const noticeId = useId();
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "busy" | "done" | "invalid" | "error" | "slow">("idle");
 
@@ -47,7 +54,7 @@ export function FoundingForm() {
 
   if (state === "done") {
     return (
-      <p className="rounded-lg border border-emerald-600 bg-emerald-600/10 px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-400">
+      <p className="rounded-lg border border-emerald-600 bg-emerald-600/10 px-4 py-3 text-sm font-medium text-emerald-800 dark:text-emerald-400">
         {t("landing.ctaDone")}
       </p>
     );
@@ -67,29 +74,30 @@ export function FoundingForm() {
           value={email}
           placeholder={t("landing.ctaPlaceholder")}
           aria-label={t("landing.ctaPlaceholder")}
+          aria-describedby={noticeId}
           maxLength={320}
           onChange={(event) => {
             setEmail(event.target.value);
             if (state !== "busy") setState("idle");
           }}
-          className="h-11 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none"
+          className="h-11 w-full rounded-md border border-neutral-500 bg-white px-3 py-2 text-sm text-neutral-900 placeholder:text-neutral-500 focus:border-neutral-900 focus:outline-none"
         />
         <button
           type="submit"
           disabled={state === "busy"}
-          className="h-11 shrink-0 rounded-lg bg-emerald-600 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+          className="h-11 shrink-0 rounded-lg bg-emerald-700 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-800 disabled:opacity-50"
         >
           {t("landing.ctaButton")}
         </button>
       </div>
       {state === "invalid" && (
-        <p className="text-sm text-amber-700 dark:text-amber-400">{t("landing.ctaInvalid")}</p>
+        <p className="text-sm text-amber-800 dark:text-amber-400">{t("landing.ctaInvalid")}</p>
       )}
       {state === "error" && (
         <p className="text-sm text-red-700 dark:text-red-400">{t("landing.ctaError")}</p>
       )}
       {state === "slow" && (
-        <p className="text-sm text-amber-700 dark:text-amber-400">{t("landing.ctaSlow")}</p>
+        <p className="text-sm text-amber-800 dark:text-amber-400">{t("landing.ctaSlow")}</p>
       )}
       {/* Without JS (or with hydration killed by a content filter), the
           submit is HTML's default GET-to-self: the page reloads with the
@@ -97,10 +105,16 @@ export function FoundingForm() {
           noscript names a path that works. Prerendered English, like the
           rest of the no-JS page. */}
       <noscript>
-        <p className="text-sm text-amber-700 dark:text-amber-400">
+        <p className="text-sm text-amber-800 dark:text-amber-400">
           {t("landing.ctaNoScript")}
         </p>
       </noscript>
+      <p id={noticeId} className="text-xs text-neutral-600 dark:text-neutral-400">
+        {t("landing.ctaFinePrint")}{" "}
+        <Link href="/privacy" className="underline">
+          {t("landing.footerPrivacy")}
+        </Link>
+      </p>
     </form>
   );
 }
@@ -110,7 +124,7 @@ export default function Cta() {
   return (
     <section className="space-y-3 rounded-xl border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
       <h2 className="text-base font-semibold">{t("landing.ctaTitle")}</h2>
-      <p className="text-sm text-neutral-500">{t("landing.ctaBody")}</p>
+      <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("landing.ctaBody")}</p>
       <FoundingForm />
     </section>
   );

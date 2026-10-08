@@ -8,8 +8,10 @@ import type { NotificationEvent } from "./types";
  * MINIMAL-data rule as WhatsApp: first names and amounts only.
  *
  * {n} placeholders are positional, same order as the WhatsApp drafts.
- * Every variant ends with the STOP notice — US compliance wants it and
- * decency agrees.
+ * Every variant opens with "contado: " — a text from an unknown number
+ * must say who it is from, and carriers' 10DLC review looks for the
+ * brand in every message — and ends with the STOP notice: US compliance
+ * wants both, and decency agrees.
  */
 
 const TEMPLATES: Record<
@@ -17,19 +19,19 @@ const TEMPLATES: Record<
   Record<"en" | "es" | "pt", string>
 > = {
   owed_aging: {
-    en: "{1}: {2} is still open for {3}'s job of {4}. Reply STOP to opt out.",
-    es: "{1}: {2} sigue pendiente por el trabajo de {3} del {4}. Responde STOP para salir.",
-    pt: "{1}: {2} ainda em aberto pelo serviço de {3} de {4}. Responda STOP para sair.",
+    en: "contado: {1}, {2} is still open for {3}'s job of {4}. Reply STOP to opt out.",
+    es: "contado: {1}, {2} sigue pendiente por el trabajo de {3} del {4}. Responde STOP para salir.",
+    pt: "contado: {1}, {2} ainda em aberto pelo serviço de {3} de {4}. Responda STOP para sair.",
   },
   payment_matched: {
-    en: "{1}: {2} from {3} matched to their job. Books updated. Reply STOP to opt out.",
-    es: "{1}: {2} de {3} se vinculó a su trabajo. Cuentas al día. Responde STOP para salir.",
-    pt: "{1}: {2} de {3} vinculado ao serviço. Contas em dia. Responda STOP para sair.",
+    en: "contado: {1}, {2} from {3} matched to their job. Books updated. Reply STOP to opt out.",
+    es: "contado: {1}, {2} de {3} se vinculó a su trabajo. Cuentas al día. Responde STOP para salir.",
+    pt: "contado: {1}, {2} de {3} vinculado ao serviço. Contas em dia. Responda STOP para sair.",
   },
   monthly_recap: {
-    en: "{1} recap: {2} in, {3} out, {4} kept. Details in the app. Reply STOP to opt out.",
-    es: "Resumen {1}: entró {2}, salió {3}, quedó {4}. Detalles en la app. Responde STOP para salir.",
-    pt: "Resumo {1}: entrou {2}, saiu {3}, sobrou {4}. Detalhes no app. Responda STOP para sair.",
+    en: "contado: {1} recap. {2} in, {3} out, {4} kept. Details in the app. Reply STOP to opt out.",
+    es: "contado: resumen de {1}. Entró {2}, salió {3}, quedó {4}. Detalles en la app. Responde STOP para salir.",
+    pt: "contado: resumo de {1}. Entrou {2}, saiu {3}, sobrou {4}. Detalhes no app. Responda STOP para sair.",
   },
 };
 

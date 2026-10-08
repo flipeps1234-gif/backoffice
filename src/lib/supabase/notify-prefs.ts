@@ -2,6 +2,7 @@ import { getSupabase } from "./client";
 import { clampBytes, TEXT_BYTES } from "@/lib/text";
 import {
   EMPTY_NOTIFICATION_PREFS,
+  storablePhone,
   type NotificationPrefs,
   type NotifyChannel,
 } from "@/lib/notify/types";
@@ -48,7 +49,9 @@ export const saveNotificationPrefs = async (
   const { error } = await supabase.from("notification_prefs").upsert({
     account_id: accountId,
     channel: prefs.channel,
-    phone: clampBytes(prefs.phone, TEXT_BYTES.phone),
+    // "" unless the active channel's box is ticked and the number is
+    // well-formed (storablePhone) — whatever the caller passed.
+    phone: clampBytes(storablePhone(prefs), TEXT_BYTES.phone),
     whatsapp_consent_at: prefs.whatsappConsentAt,
     sms_consent_at: prefs.smsConsentAt,
     // opted_out_at is the webhooks' column (a STOP text): never written

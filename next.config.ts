@@ -27,7 +27,10 @@ const csp = [
   `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com${
     isDev ? " 'unsafe-eval'" : ""
   }`,
-  // Supabase (data + realtime) and GA4's collection endpoints.
+  // Supabase (data + realtime) and GA4's collection endpoints. No
+  // doubleclick host: analytics.tsx turns Google Signals and ad
+  // personalization off, so GA has no reason to reach Google's ad network
+  // — and if it ever tried, the CSP refuses it.
   [
     "connect-src 'self'",
     ...(supabaseOrigin ? [supabaseOrigin] : []),
@@ -35,11 +38,10 @@ const csp = [
     "https://www.googletagmanager.com",
     "https://*.google-analytics.com",
     "https://*.analytics.google.com",
-    "https://*.g.doubleclick.net",
   ].join(" "),
   // data: for sale photos stored as data URLs, blob: for the CSV
   // download link; GA4 pixel hosts for its image-beacon fallback.
-  "img-src 'self' data: blob: https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://*.g.doubleclick.net",
+  "img-src 'self' data: blob: https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com",
   // 'unsafe-inline' covers Tailwind/Next's injected style tags — no
   // external stylesheet is loaded (next/font self-hosts).
   "style-src 'self' 'unsafe-inline'",

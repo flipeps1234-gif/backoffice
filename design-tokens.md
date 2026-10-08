@@ -37,28 +37,54 @@ Inside the banner the theme pair is pinned to the dark one (`--background`
 and outlined controls use `border-neutral-600` / `hover:bg-neutral-900`
 in both themes. `/app` keeps the white / `#0a0a0a` ground above.
 
+Contrast (WCAG 2.2 AA, re-audited 2026-10-08 against the Tailwind v4
+palette; ratios are the worse of the gamut-clipped and unclipped readings).
+Every text pair below clears 4.5:1 (3:1 for text-2xl and up), every field
+edge and focus ring 3:1. The grey page (`#e5e5e5`: public pages and the
+/app workspace) is darker than white, so colored text there steps one
+shade darker than on a white card.
+
 Neutrals — Tailwind `neutral` scale only (no gray/slate/zinc):
-- `text-neutral-500` secondary text, labels, kickers (everywhere)
-- `text-neutral-400` placeholders, disabled-ish (`placeholder:text-neutral-400`)
+- `text-neutral-600 dark:text-neutral-400` secondary text, labels, kickers
+  (everywhere): 7.80 on white, 6.19 on the grey page, 7.15 on
+  `neutral-100`; 7.63 on `#0a0a0a`, 6.91 on `neutral-900`. Inside the few
+  surfaces that stay white in BOTH themes (the swipe card, the
+  confirmation sheet's rows, Insights, the history and margin lists, the
+  proof of income) it is `text-neutral-600` alone — a dark-mode
+  `neutral-400` there would read 2.58 on white. `text-neutral-500` fails
+  as text (3.76 on the grey page, 4.18/3.78 in dark mode).
+- `text-neutral-400` only as the dark half of the pair above, on the black
+  banner and sidebar, and for aria-hidden decoration (chevrons). Never a
+  sentence in light mode: 2.58 on white.
+- `placeholder:text-neutral-500` — fields are white in both themes (4.73).
 - `border-neutral-200` / dark `border-neutral-800` — list borders, dividers (owed-tab)
-- `border-neutral-300` / dark `border-neutral-600|700` — card + input + button borders (product-card, sheet)
+- `border-neutral-300` / dark `border-neutral-600|700` — card + button borders (product-card, sheet)
+- `border-neutral-500` — input borders (4.73 against the white field, 3.76
+  on the grey page; WCAG 1.4.11 wants 3:1 for a field's edge)
 - `bg-white` / dark `bg-neutral-900` — card surfaces (product-card, owed list)
 - `bg-neutral-100` / dark `bg-neutral-900` — hover fills (locale-picker)
 
 Ledger green (business money, success, selection) — `emerald`:
-- `text-emerald-600` the business total (running-totals)
-- `text-emerald-700 dark:text-emerald-400` positive net (product-card)
+- `text-emerald-600` the business total (running-totals) — large text only
+  (`text-2xl`, 3.65 ≥ 3:1)
+- `text-emerald-700 dark:text-emerald-400` positive net and any small green
+  text (product-card, quick-add): 5.36 on white, 10.12 on `#0a0a0a`;
+  `text-emerald-800` on the grey page (6.04)
 - chips: `bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200` (sheet "money in")
 - selected card: `border-emerald-600 bg-emerald-600/10` (product-card)
-- solid CTA equivalent: `bg-emerald-600 text-white` (sale flow's Yes button)
+- solid CTA equivalent: `bg-emerald-700 text-white`, hover `bg-emerald-800`
+  (sale flow's Yes button, founding Join): 5.36 / 7.61
 
 Warning amber (flags, owed-age, attention) — `amber`:
 - flagged input: `border-amber-500 ring-2 ring-amber-200` (sheet)
 - notice box: `bg-amber-50 border-amber-200 text-amber-900` (sheet)
-- owed line: `text-amber-700 dark:text-amber-400` (running-totals)
+- owed line: `text-amber-700 dark:text-amber-400` (running-totals) — 5.03 on
+  white; `text-amber-800` on the grey page (5.63)
 
 Danger red (money out, destructive) — `red`:
-- `text-red-500` money-out amounts, `text-red-700 dark:text-red-400` negative net
+- `text-red-600 dark:text-red-400` money-out amounts and error lines (4.77 /
+  6.85), `text-red-700 dark:text-red-400` negative net and red text on the
+  grey page (5.10); `text-red-500` only at large sizes (the keypad amount)
 - chips: `bg-red-50 text-red-700 ring-1 ring-red-200` (sheet "money out")
 
 That is the whole palette: background/foreground, neutral, emerald,
@@ -73,10 +99,11 @@ no gradients anywhere.
   same body rule and add nothing.
 - Wordmark/header: `text-lg font-semibold tracking-tight` + the
   two-cards `<Mark />` SVG in `currentColor` (page.tsx).
-- Section kicker: `text-xs uppercase tracking-wide text-neutral-500`
-  (running-totals "BUSINESS", dashboard section heads).
-- Form label: `text-xs font-medium text-neutral-500` (sheet).
-- Body copy: `text-sm`; secondary `text-sm text-neutral-500`.
+- Section kicker: `text-xs uppercase tracking-wide text-neutral-600
+  dark:text-neutral-400` (running-totals "BUSINESS", dashboard section heads).
+- Form label: `text-xs font-medium text-neutral-600 dark:text-neutral-400`
+  (`text-neutral-600` alone in the sheet's white rows).
+- Body copy: `text-sm`; secondary `text-sm text-neutral-600 dark:text-neutral-400`.
 - Card title: `text-base font-semibold` (product-card).
 - Money: ALWAYS `tabular-nums`; en-US `$` via `formatCents` — never
   localized (i18n.ts).
@@ -128,14 +155,24 @@ Tailwind default scale, used narrowly:
 - **Chip**: `rounded-full px-2 py-0.5 text-xs font-medium` + tinted
   bg + `ring-1` (emerald in / red out / neutral).
 - **Primary button**: the sale flow's solid button —
-  `rounded-lg bg-emerald-600 px-4 h-11 text-white font-medium`
-  (hover darkens). Secondary: `rounded-lg border border-neutral-300
+  `rounded-lg bg-emerald-700 px-4 h-11 text-white font-medium`, hover
+  `bg-emerald-800`. Secondary: `rounded-lg border border-neutral-300
   h-11 px-4` with dark `border-neutral-600`.
 - **Amber notice**: `rounded-md bg-amber-50 border border-amber-200
   px-3 py-2 text-sm text-amber-900`.
 - **Input**: `w-full rounded-md border bg-white px-3 py-2 text-sm
-  text-neutral-900 placeholder:text-neutral-400 focus:outline-none
-  focus:border-neutral-900`, border `neutral-300`.
+  text-neutral-900 placeholder:text-neutral-500 focus:outline-none
+  focus:border-neutral-900`, border `neutral-500`.
+- **Focus**: the browser's own ring stays wherever it shows. Where a
+  control hides it, the replacement is `ring-2 ring-neutral-900
+  dark:ring-neutral-100` (17.9 / 18.2): on the label of an sr-only file
+  input as `has-[:focus-visible]:ring-2` (drop-zone, "Snap a receipt",
+  the sale photo), and with `ring-offset-2` on the swipe card. Headings
+  that take focus on a screen change use `tabIndex={-1}` with
+  `focus:outline-none`.
+- **Skip link**: "Skip to content", first in every public page and in /app
+  (skip-link.tsx): `sr-only` until focused, then `bg-foreground
+  text-background rounded-lg` at the top left, above the banner.
 - **Real app components available to public pages** (with demo
   props only — Maria, $120.00, limpeza): `ConfirmationSheet`,
   `OwedTab`'s aged list styling, `ProductCard`. Wrap in a plain

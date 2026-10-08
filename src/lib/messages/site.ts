@@ -25,15 +25,22 @@ export const messages = {
   "site.footerLegal": { en: "Legal", es: "Legal", pt: "Jurídico" },
   "site.emailUs": { en: "Email us", es: "Escríbenos un correo", pt: "Mande um e-mail" },
   "site.copyright": { en: "© {year} contado", es: "© {year} contado", pt: "© {year} contado" },
+  // Under the copyright on every public page: the channel names in URLs,
+  // titles and the share card are nominative, and this says so.
+  "site.trademarks": {
+    en: "Venmo, Cash App and Zelle are trademarks of their owners. contado is independent and not affiliated with or endorsed by them.",
+    es: "Venmo, Cash App y Zelle son marcas de sus respectivos dueños. contado es independiente y no está afiliado ni respaldado por ellos.",
+    pt: "Venmo, Cash App e Zelle são marcas de seus respectivos donos. O contado é independente e não é afiliado nem endossado por eles.",
+  },
   "site.siteNav": { en: "Site", es: "Sitio", pt: "Site" },
   "site.commonQuestions": { en: "Common questions", es: "Preguntas comunes", pt: "Perguntas comuns" },
 
   // ---- shared: what contado is not ----
   "site.whatNot": { en: "What contado is not", es: "Lo que contado no es", pt: "O que o contado não é" },
   "site.not1": {
-    en: "Not an invoicing app — it tracks who owes you and clears it when the payment shows up.",
-    es: "No es una app de facturas — registra quién te debe y lo marca pagado cuando aparece el pago.",
-    pt: "Não é um app de faturas — ele registra quem te deve e dá baixa quando o pagamento aparece.",
+    en: "Not an invoicing app — it tracks who owes you and clears it when you're paid.",
+    es: "No es una app de facturas — registra quién te debe y lo marca pagado cuando te pagan.",
+    pt: "Não é um app de faturas — ele registra quem te deve e dá baixa quando você recebe.",
   },
   "site.not2": {
     en: "Not a bank connection — you upload your own screenshots, and screenshots will always be the default. There is no bank login in contado today.",
@@ -41,9 +48,9 @@ export const messages = {
     pt: "Não se conecta ao seu banco — você envia suas próprias capturas, e as capturas sempre serão o padrão. Hoje não existe login bancário no contado.",
   },
   "site.not3": {
-    en: "Not a tax filer — it gets you ready: categories, mileage, proof of income, a CSV your preparer opens.",
-    es: "No presenta tus impuestos — te deja listo: categorías, millaje, comprobante de ingresos y un CSV que tu contador abre.",
-    pt: "Não declara seus impostos — ele te deixa pronto: categorias, quilometragem, comprovante de renda e um CSV que seu contador abre.",
+    en: "Not a tax filer — it gets you ready: categories, mileage, an income summary from your own records, a CSV your preparer opens.",
+    es: "No presenta tus impuestos — te deja listo: categorías, millaje, un resumen de ingresos de tus propios registros y un CSV que tu contador abre.",
+    pt: "Não declara seus impostos — ele te deixa pronto: categorias, quilometragem, um resumo de renda dos seus próprios registros e um CSV que seu contador abre.",
   },
   "site.not4": {
     en: "Not a scheduler, not ads, not selling your data.",
@@ -59,9 +66,9 @@ export const messages = {
     pt: "Quatro telas, sem configuração. Você tira print, confirma, desliza — e seu livro-caixa existe.",
   },
   "site.how1Detail": {
-    en: "Open Venmo, Cash App or Zelle, screenshot the Transactions list — not the social feed, which hides amounts — and add as many as you like. They're sent to OpenAI to be read: we keep the rows it returns, not the image itself, though OpenAI may hold the image for up to 30 days to watch for abuse.",
-    es: "Abre Venmo, Cash App o Zelle, toma captura de la lista de Transacciones — no del feed social, que oculta los montos — y agrega todas las que quieras. Se envían a OpenAI para leerlas: guardamos las filas que devuelve, no la imagen en sí, aunque OpenAI puede conservarla hasta 30 días para vigilar abusos.",
-    pt: "Abra o Venmo, Cash App ou Zelle, tire print da lista de Transações — não do feed social, que esconde os valores — e adicione quantas quiser. Elas são enviadas à OpenAI para leitura: guardamos as linhas que ela devolve, não a imagem em si, embora a OpenAI possa retê-la por até 30 dias para monitorar abusos.",
+    en: "Open Venmo, Cash App or Zelle, screenshot the Transactions list — not the social feed, which hides amounts — and add several at a time. They're sent to OpenAI to be read: we keep the rows it returns, not the image itself, though OpenAI may hold the image for up to 30 days to watch for abuse.",
+    es: "Abre Venmo, Cash App o Zelle, toma captura de la lista de Transacciones — no del feed social, que oculta los montos — y agrega varias a la vez. Se envían a OpenAI para leerlas: guardamos las filas que devuelve, no la imagen en sí, aunque OpenAI puede conservarla hasta 30 días para vigilar abusos.",
+    pt: "Abra o Venmo, Cash App ou Zelle, tire print da lista de Transações — não do feed social, que esconde os valores — e adicione várias de uma vez. Elas são enviadas à OpenAI para leitura: guardamos as linhas que ela devolve, não a imagem em si, embora a OpenAI possa retê-la por até 30 dias para monitorar abusos.",
   },
   "site.how2Title": { en: "Check every row", es: "Revisa cada fila", pt: "Confira cada linha" },
   "site.how2Detail": {
@@ -81,17 +88,17 @@ export const messages = {
     pt: "Dinheiro que entra, que sai, o que sobrou — por mês, por serviço. Cada registro é salvo na sua conta na hora, em qualquer aparelho em que você entrar.",
   },
   "site.how5Detail": {
-    en: "Log a job before the money arrives and it waits in Owed, grouped by client, aged. Tap once when the cash comes — or a payment in your next screenshots clears it on its own.",
-    es: "Registra un trabajo antes de que llegue el dinero y queda en la pestaña Por cobrar, por cliente, con los días. Un toque cuando llega el efectivo — o un pago en tus próximas capturas lo cierra solo.",
-    pt: "Registre um serviço antes de o dinheiro chegar e ele espera na aba A receber, por cliente, com os dias. Um toque quando o dinheiro chega — ou um pagamento nos próximos prints dá baixa sozinho.",
+    en: "Log a job before the money arrives and it waits in Owed, grouped by client, aged. Tap once when the cash comes — or a payment in your next screenshots, dated within 10 days of the job, clears it when the amount and name match one sale; if more than one could match, it asks you which. For a different amount or a later payment, tap “Find the payment…” under the sale.",
+    es: "Registra un trabajo antes de que llegue el dinero y queda en la pestaña Por cobrar, por cliente, con los días. Un toque cuando llega el efectivo — o un pago en tus próximas capturas, con fecha dentro de los 10 días del trabajo, lo cierra cuando el monto y el nombre coinciden con una sola venta; si más de una puede coincidir, te pregunta cuál. Si pagaron otro monto o más tarde, toca “Buscar el pago…” debajo de la venta.",
+    pt: "Registre um serviço antes de o dinheiro chegar e ele espera na aba A receber, por cliente, com os dias. Um toque quando o dinheiro chega — ou um pagamento nos próximos prints, com data até 10 dias do serviço, dá baixa quando o valor e o nome batem com uma venda só; se mais de uma puder bater, ele pergunta qual. Se pagaram outro valor ou mais tarde, toque em “Encontrar o pagamento…” embaixo da venda.",
   },
 
   // ---- pricing ----
   "site.pricingTitle": { en: "Free while we build.", es: "Gratis mientras lo construimos.", pt: "Grátis enquanto construímos." },
   "site.pricingIntro": {
-    en: "contado is free today, with no limits and nothing gated. When paid modules arrive, the core stays free forever — and the founding hundred lock in one price for all of it.",
-    es: "contado es gratis hoy, sin límites y sin nada bloqueado. Cuando lleguen los módulos de pago, lo esencial seguirá siendo gratis para siempre — y los cien fundadores aseguran un solo precio por todo.",
-    pt: "O contado é grátis hoje, sem limites e sem nada bloqueado. Quando os módulos pagos chegarem, o essencial continua grátis para sempre — e os cem fundadores garantem um preço único por tudo.",
+    en: "contado is free today, with nothing behind a paywall; reading screenshots has fair-use limits. When paid modules arrive, the core stays free forever — and the founding hundred lock in one price for all of it.",
+    es: "contado es gratis hoy, sin nada bloqueado detrás de un pago; la lectura de capturas tiene límites de uso justo. Cuando lleguen los módulos de pago, lo esencial seguirá siendo gratis para siempre — y los cien fundadores aseguran un solo precio por todo.",
+    pt: "O contado é grátis hoje, sem nada bloqueado atrás de pagamento; a leitura de prints tem limites de uso justo. Quando os módulos pagos chegarem, o essencial continua grátis para sempre — e os cem fundadores garantem um preço único por tudo.",
   },
   "site.freeForever": { en: "Free forever", es: "Gratis para siempre", pt: "Grátis para sempre" },
   "site.free1": {
@@ -110,9 +117,9 @@ export const messages = {
     pt: "Todo o seu histórico, de qualquer data. Nunca limitado, nunca bloqueado.",
   },
   "site.free4": {
-    en: "Export everything, any time. Your data is yours.",
-    es: "Exporta todo, cuando quieras. Tus datos son tuyos.",
-    pt: "Exporte tudo, quando quiser. Seus dados são seus.",
+    en: "Export every row, any time. Your data is yours.",
+    es: "Exporta cada fila, cuando quieras. Tus datos son tuyos.",
+    pt: "Exporte cada linha, quando quiser. Seus dados são seus.",
   },
   "site.free5": {
     en: "English, Spanish and Portuguese. We never charge for language.",
@@ -184,9 +191,9 @@ export const messages = {
     pt: "Contabilidade para faxineiras que recebem por Venmo, Cash App, Zelle e dinheiro.",
   },
   "site.cleanersSub": {
-    en: "Every house, every payment, every client who still owes you — in one place, in ten seconds, from the driveway.",
-    es: "Cada casa, cada pago, cada clienta que todavía te debe — en un solo lugar, en diez segundos, desde la entrada.",
-    pt: "Cada casa, cada pagamento, cada cliente que ainda te deve — em um só lugar, em dez segundos, da calçada.",
+    en: "Every house, every payment, every client who still owes you — in one place, from the driveway.",
+    es: "Cada casa, cada pago, cada clienta que todavía te debe — en un solo lugar, desde la entrada.",
+    pt: "Cada casa, cada pagamento, cada cliente que ainda te deve — em um só lugar, da calçada.",
   },
   "site.cleanersPain1": {
     en: "Payments land in three apps and a pocket of cash.",
@@ -204,14 +211,14 @@ export const messages = {
     pt: "Em janeiro alguém pede seus números e você tem um celular cheio de prints.",
   },
   "site.cleanersDoes1": {
-    en: "Screenshot your Venmo, Cash App and Zelle — contado reads every payment and sorts business from personal with a swipe.",
-    es: "Toma captura de tu Venmo, Cash App y Zelle — contado lee cada pago y separa negocio de personal con un deslizamiento.",
-    pt: "Tire print do seu Venmo, Cash App e Zelle — o contado lê cada pagamento e separa negócio de pessoal com um deslize.",
+    en: "Screenshot your Venmo, Cash App and Zelle — contado reads the payments your screenshots show, and you sort business from personal with a swipe.",
+    es: "Toma captura de tu Venmo, Cash App y Zelle — contado lee los pagos que muestran tus capturas, y tú separas negocio de personal con un deslizamiento.",
+    pt: "Tire print do seu Venmo, Cash App e Zelle — o contado lê os pagamentos que aparecem nos seus prints, e você separa negócio de pessoal com um deslize.",
   },
   "site.cleanersDoes2": {
-    en: "Log the clean before the money arrives; it waits in Owed under Sarah's name until her payment shows up — then clears itself.",
-    es: "Registra la limpieza antes de que llegue el dinero; queda en la pestaña Por cobrar bajo el nombre de Sarah hasta que aparece su pago — y se cierra solo.",
-    pt: "Registre a limpeza antes de o dinheiro chegar; ela espera na aba A receber no nome da Sarah até o pagamento aparecer — e dá baixa sozinha.",
+    en: "Log the clean before the money arrives; it waits in Owed under Sarah's name until her payment shows up — then it clears when the amount, name and date match, and asks you which if more than one clean could.",
+    es: "Registra la limpieza antes de que llegue el dinero; queda en la pestaña Por cobrar bajo el nombre de Sarah hasta que aparece su pago — y se cierra cuando el monto, el nombre y la fecha coinciden; si más de una limpieza puede coincidir, te pregunta cuál.",
+    pt: "Registre a limpeza antes de o dinheiro chegar; ela espera na aba A receber no nome da Sarah até o pagamento aparecer — e dá baixa quando o valor, o nome e a data batem; se mais de uma limpeza puder bater, ele pergunta qual.",
   },
   "site.cleanersDoes3": {
     en: "Supplies go in with a photo of the receipt, tagged for Schedule C. Mileage is estimated from each client's distance — no GPS.",
@@ -266,9 +273,9 @@ export const messages = {
     pt: "Gasolina, lâminas, adubo — recibos no porta-luvas até a hora do imposto.",
   },
   "site.landscapersDoes1": {
-    en: "Screenshot the payment apps after the route; contado reads every payment and you swipe business from personal.",
-    es: "Toma captura de las apps de pago al terminar la ruta; contado lee cada pago y tú deslizas negocio o personal.",
-    pt: "Tire print dos apps de pagamento depois da rota; o contado lê cada pagamento e você desliza negócio ou pessoal.",
+    en: "Screenshot the payment apps after the route; contado reads the payments your screenshots show and you swipe business from personal.",
+    es: "Toma captura de las apps de pago al terminar la ruta; contado lee los pagos que muestran tus capturas y tú deslizas negocio o personal.",
+    pt: "Tire print dos apps de pagamento depois da rota; o contado lê os pagamentos que aparecem nos seus prints e você desliza negócio ou pessoal.",
   },
   "site.landscapersDoes2": {
     en: "Make the monthly account a recurring job: it expects the money on the day, waits in Owed if it's late, and flags after three misses.",
@@ -324,14 +331,14 @@ export const messages = {
     pt: "Máquinas, produtos, a cadeira — quanto o ano custou de verdade?",
   },
   "site.barbersDoes1": {
-    en: "End of day: screenshot Cash App, tap in the cash. Two minutes, one hand, and the day is booked.",
-    es: "Al cierre: captura de Cash App, el efectivo a mano. Dos minutos, una mano, y el día queda registrado.",
-    pt: "Fim do dia: print do Cash App, o dinheiro digitado. Dois minutos, uma mão, e o dia está lançado.",
+    en: "End of day: screenshot Cash App, tap in the cash. A few minutes, one hand, and the day is booked.",
+    es: "Al cierre: captura de Cash App, el efectivo a mano. Unos minutos, una mano, y el día queda registrado.",
+    pt: "Fim do dia: print do Cash App, o dinheiro digitado. Poucos minutos, uma mão, e o dia está lançado.",
   },
   "site.barbersDoes2": {
-    en: "Log the cut when the regular says “next week” — it waits in Owed under his name, and clears when he pays.",
-    es: "Registra el corte cuando el cliente dice “la próxima” — queda en la pestaña Por cobrar a su nombre y se cierra cuando paga.",
-    pt: "Registre o corte quando o cliente diz “semana que vem” — fica na aba A receber no nome dele e dá baixa quando ele pagar.",
+    en: "Log the cut when the regular says “next week” — it waits in Owed under his name until he pays.",
+    es: "Registra el corte cuando el cliente dice “la próxima” — queda en la pestaña Por cobrar a su nombre hasta que paga.",
+    pt: "Registre o corte quando o cliente diz “semana que vem” — fica na aba A receber no nome dele até ele pagar.",
   },
   "site.barbersDoes3": {
     en: "Photograph the supply receipt, tag it. Chair rent, product, tools — categorized for Schedule C before January.",
@@ -358,9 +365,9 @@ export const messages = {
   // ---- about ----
   "site.aboutTitle": { en: "Why contado exists", es: "Por qué existe contado", pt: "Por que o contado existe" },
   "site.aboutIntro": {
-    en: "Millions of people clean, mow and cut for a living and get paid through apps and cash. Almost none of them have books. Not because they don't care — because every tool assumes a desk, a bank feed and an hour. They have a phone, a driveway and ten seconds.",
-    es: "Millones de personas limpian, cortan pasto y cortan cabello para vivir, y cobran por apps y en efectivo. Casi ninguna tiene libros. No porque no les importe — porque cada herramienta supone un escritorio, una conexión bancaria y una hora. Ellas tienen un teléfono, una entrada y diez segundos.",
-    pt: "Milhões de pessoas limpam, cortam grama e cortam cabelo para viver, e recebem por apps e em dinheiro. Quase nenhuma tem livro-caixa. Não por descuido — porque toda ferramenta pressupõe uma mesa, uma conexão bancária e uma hora. Elas têm um celular, uma calçada e dez segundos.",
+    en: "Millions of people clean, mow and cut for a living and get paid through apps and cash. Many of them don't keep books. Not because they don't care — because every tool assumes a desk, a bank feed and an hour. They have a phone, a driveway and ten seconds.",
+    es: "Millones de personas limpian, cortan pasto y cortan cabello para vivir, y cobran por apps y en efectivo. Muchas no llevan libros. No porque no les importe — porque cada herramienta supone un escritorio, una conexión bancaria y una hora. Ellas tienen un teléfono, una entrada y diez segundos.",
+    pt: "Milhões de pessoas limpam, cortam grama e cortam cabelo para viver, e recebem por apps e em dinheiro. Muitas não têm livro-caixa. Não por descuido — porque toda ferramenta pressupõe uma mesa, uma conexão bancária e uma hora. Elas têm um celular, uma calçada e dez segundos.",
   },
   "site.aboutWhat": {
     en: "contado turns the screenshots you already take into real books — and stops there. No bank login, no invoicing, no ads.",
@@ -369,14 +376,14 @@ export const messages = {
   },
   "site.aboutBeliefs": { en: "What we hold to", es: "En qué creemos", pt: "No que acreditamos" },
   "site.belief3": {
-    en: "Every log saved instantly, forever, free.",
-    es: "Cada registro guardado al instante, para siempre, gratis.",
-    pt: "Cada registro salvo na hora, para sempre, grátis.",
+    en: "Saved to your account as you go, free.",
+    es: "Guardado en tu cuenta al momento, gratis.",
+    pt: "Salvo na sua conta na hora, grátis.",
   },
   "site.belief4": {
-    en: "One payment, one sale. Nothing is ever counted twice.",
-    es: "Un pago, una venta. Nada se cuenta dos veces.",
-    pt: "Um pagamento, uma venda. Nada é contado duas vezes.",
+    en: "One payment, one sale — built so a payment counts once.",
+    es: "Un pago, una venta — hecho para que un pago cuente una sola vez.",
+    pt: "Um pagamento, uma venda — feito para que um pagamento conte uma vez só.",
   },
   "site.belief5": {
     en: "Three languages, one price: none. We never charge for language.",
@@ -439,27 +446,27 @@ export const messages = {
   },
   "site.faq5Q": { en: "Does it do invoices or estimates?", es: "¿Hace facturas o presupuestos?", pt: "Faz faturas ou orçamentos?" },
   "site.faq5A": {
-    en: "No. contado is a ledger, not an invoicing app: it tracks who owes you and clears it when the payment shows up. Quotes and invoices are a different tool.",
-    es: "No. contado es un libro, no una app de facturas: registra quién te debe y lo cierra cuando aparece el pago. Presupuestos y facturas son otra herramienta.",
-    pt: "Não. O contado é um livro-caixa, não um app de faturas: ele registra quem te deve e dá baixa quando o pagamento aparece. Orçamentos e faturas são outra ferramenta.",
+    en: "No. contado is a ledger, not an invoicing app: it tracks who owes you and clears it when you're paid. Quotes and invoices are a different tool.",
+    es: "No. contado es un libro, no una app de facturas: registra quién te debe y lo cierra cuando te pagan. Presupuestos y facturas son otra herramienta.",
+    pt: "Não. O contado é um livro-caixa, não um app de faturas: ele registra quem te deve e dá baixa quando você recebe. Orçamentos e faturas são outra ferramenta.",
   },
   "site.faq6Q": { en: "Does it file my taxes?", es: "¿Presenta mis impuestos?", pt: "Ele declara meus impostos?" },
   "site.faq6A": {
-    en: "No — it gets you ready. Schedule-C categories on expenses, a mileage estimate, proof of income, and a CSV your preparer opens directly. Estimates never mix with actuals.",
-    es: "No — te deja listo. Categorías del Schedule C en los gastos, una estimación de millaje, comprobante de ingresos y un CSV que tu contador abre directo. Las estimaciones nunca se mezclan con lo real.",
-    pt: "Não — ele te deixa pronto. Categorias do Schedule C nas despesas, uma estimativa de quilometragem, comprovante de renda e um CSV que seu contador abre direto. Estimativas nunca se misturam com o real.",
+    en: "No — it gets you ready. Schedule-C categories on expenses, a mileage estimate, an income summary from your own records (not a verified statement), and a CSV your preparer opens directly. Estimates never mix with actuals.",
+    es: "No — te deja listo. Categorías del Schedule C en los gastos, una estimación de millaje, un resumen de ingresos de tus propios registros (no es un estado verificado) y un CSV que tu contador abre directo. Las estimaciones nunca se mezclan con lo real.",
+    pt: "Não — ele te deixa pronto. Categorias do Schedule C nas despesas, uma estimativa de quilometragem, um resumo de renda dos seus próprios registros (não é um demonstrativo verificado) e um CSV que seu contador abre direto. Estimativas nunca se misturam com o real.",
   },
   "site.faq7Q": { en: "Does it work on my phone?", es: "¿Funciona en mi teléfono?", pt: "Funciona no meu celular?" },
   "site.faq7A": {
-    en: "Yes, on any recent phone — an iPhone on iOS 16.4 or newer, or Android with a current Chrome — as a website, with no install. Every flow is built to survive ten seconds, one hand, in a driveway.",
-    es: "Sí, en cualquier teléfono reciente — un iPhone con iOS 16.4 o más nuevo, o Android con un Chrome actual — como sitio web, sin instalar nada. Cada flujo está hecho para sobrevivir diez segundos, con una mano, en la entrada de una casa.",
-    pt: "Sim, em qualquer celular recente — um iPhone com iOS 16.4 ou mais novo, ou Android com um Chrome atual — como site, sem instalar nada. Cada fluxo foi feito para sobreviver dez segundos, com uma mão, na calçada.",
+    en: "Yes, on any recent phone — an iPhone on iOS 16.4 or newer, or Android with a current Chrome — as a website, with no install. Every flow is designed for ten seconds, one hand, in a driveway.",
+    es: "Sí, en cualquier teléfono reciente — un iPhone con iOS 16.4 o más nuevo, o Android con un Chrome actual — como sitio web, sin instalar nada. Cada flujo está pensado para diez segundos, con una mano, en la entrada de una casa.",
+    pt: "Sim, em qualquer celular recente — um iPhone com iOS 16.4 ou mais novo, ou Android com um Chrome atual — como site, sem instalar nada. Cada fluxo foi pensado para dez segundos, com uma mão, na calçada.",
   },
   "site.faq8Q": { en: "Can I export or delete my data?", es: "¿Puedo exportar o borrar mis datos?", pt: "Posso exportar ou apagar meus dados?" },
   "site.faq8A": {
-    en: "Always. Export everything as CSV any time, free. Delete your account in Settings and everything is erased for good seven days later — you can change your mind inside those seven days.",
-    es: "Siempre. Exporta todo en CSV cuando quieras, gratis. Borra tu cuenta en Ajustes y todo se elimina para siempre siete días después — puedes arrepentirte dentro de esos siete días.",
-    pt: "Sempre. Exporte tudo em CSV quando quiser, grátis. Apague sua conta em Configurações e tudo é removido para sempre sete dias depois — você pode mudar de ideia dentro desses sete dias.",
+    en: "Always. Export every row as CSV any time, free. Delete your account in Settings and your ledger is erased for good seven days later — you can change your mind inside those seven days. A founding-list email is kept until you ask us to remove it, OpenAI may keep an uploaded screenshot for up to 30 days, and copies in our providers' logs and backups can take longer to expire.",
+    es: "Siempre. Exporta cada fila en CSV cuando quieras, gratis. Borra tu cuenta en Ajustes y tu libro se elimina para siempre siete días después — puedes arrepentirte dentro de esos siete días. Un correo de la lista de fundadores se guarda hasta que pidas borrarlo, OpenAI puede conservar una captura subida hasta 30 días, y las copias en los registros y respaldos de nuestros proveedores pueden tardar más en borrarse.",
+    pt: "Sempre. Exporte cada linha em CSV quando quiser, grátis. Apague sua conta em Configurações e seu livro-caixa é removido para sempre sete dias depois — você pode mudar de ideia dentro desses sete dias. Um e-mail da lista de fundadores fica guardado até você pedir para remover, a OpenAI pode reter um print enviado por até 30 dias, e cópias nos registros e backups dos nossos provedores podem levar mais tempo para serem apagadas.",
   },
   "site.faq10Q": { en: "Who is contado for?", es: "¿Para quién es contado?", pt: "Para quem é o contado?" },
   "site.faq10A": {
@@ -468,11 +475,12 @@ export const messages = {
     pt: "Negócios de serviço bem pequenos que recebem por apps e em dinheiro — faxineiras, jardineiros, barbeiros e quem mais trabalha assim. Um dono, um celular.",
   },
 
-  // ---- privacy: the website's analytics, disclosed ----
+  // ---- privacy: the website's analytics, disclosed — always on, its two
+  // cookies named, DNT and GPC honored, Signals/ads off (analytics.tsx) ----
   "site.privacyAnalytics": {
-    en: "The public website (these pages, not the app) may use Google Analytics to count visits. The app itself never sends analytics, and a browser that sends Do Not Track gets none at all.",
-    es: "El sitio público (estas páginas, no la app) puede usar Google Analytics para contar visitas. La app nunca envía datos de análisis, y un navegador que envía Do Not Track no recibe ninguno.",
-    pt: "O site público (estas páginas, não o app) pode usar o Google Analytics para contar visitas. O app em si nunca envia dados de análise, e um navegador que envia Do Not Track não recebe nenhum.",
+    en: "The public website (these pages, not the app) uses Google Analytics to count visits. It sets two cookies, _ga and _ga_JEM7B09P0L, which last about two years. Google Signals and ad personalization are turned off, and the app itself never sends analytics. To opt out, have your browser send Do Not Track or Global Privacy Control — it then gets no analytics at all — or install Google's Analytics opt-out browser add-on.",
+    es: "El sitio público (estas páginas, no la app) usa Google Analytics para contar visitas. Guarda dos cookies, _ga y _ga_JEM7B09P0L, que duran unos dos años. Google Signals y la personalización de anuncios están desactivados, y la app nunca envía datos de análisis. Para no participar, haz que tu navegador envíe Do Not Track o Global Privacy Control — así no recibe ningún análisis — o instala el complemento de inhabilitación de Google Analytics para navegadores.",
+    pt: "O site público (estas páginas, não o app) usa o Google Analytics para contar visitas. Ele grava dois cookies, _ga e _ga_JEM7B09P0L, que duram cerca de dois anos. O Google Signals e a personalização de anúncios estão desativados, e o app em si nunca envia dados de análise. Para ficar de fora, faça seu navegador enviar Do Not Track ou Global Privacy Control — aí ele não recebe nenhuma análise — ou instale o complemento de desativação do Google Analytics para navegadores.",
   },
   "site.privacyFounding": {
     en: "The founding-hundred form stores your email address for one purpose: telling you when the founding price goes live. It is never sold or shared. To come off the list, send us a message from the contact page and we delete the address.",
@@ -512,9 +520,9 @@ export const messages = {
     pt: "Quem processa isso",
   },
   "site.privacyProcessorsBody": {
-    en: "Supabase runs our database and sends the sign-in emails, on servers in the United States. Vercel hosts the app and keeps short-lived request logs. If you sign in with Google, Google confirms who you are and gives us your name, email address and profile picture — nothing else — and Google knows you signed in. contado's operator can see each account's email address, sign-in dates and the totals it has logged, to run the service — never the payer names, notes, client details or photos inside it.",
-    es: "Supabase administra nuestra base de datos y envía los correos de inicio de sesión, en servidores en Estados Unidos. Vercel aloja la app y guarda registros de solicitudes de corta duración. Si entras con Google, Google confirma quién eres y nos da tu nombre, tu correo y tu foto de perfil — nada más — y Google sabe que iniciaste sesión. El operador de contado puede ver el correo de cada cuenta, sus fechas de acceso y los totales registrados, para operar el servicio — nunca los nombres de quien paga, las notas, los datos de clientes ni las fotos.",
-    pt: "A Supabase administra nosso banco de dados e envia os e-mails de login, em servidores nos Estados Unidos. A Vercel hospeda o app e mantém registros de requisições de curta duração. Se você entrar com o Google, o Google confirma quem você é e nos passa seu nome, seu e-mail e sua foto de perfil — nada mais — e o Google sabe que você fez login. O operador do contado pode ver o e-mail de cada conta, as datas de acesso e os totais registrados, para operar o serviço — nunca os nomes de quem paga, as notas, os dados de clientes nem as fotos.",
+    en: "Supabase runs our database and generates the sign-in emails, on servers in the United States. Vercel hosts the app and keeps short-lived request logs. If you sign in with Google, Google confirms who you are and gives us your name, email address and profile picture — nothing else — and Google knows you signed in. To run the service, our admin screen shows only each account's email address, sign-in dates and the totals it has logged — not the payer names, notes, client details or photos inside it. We don't open your entries except to fix a problem you report.",
+    es: "Supabase administra nuestra base de datos y genera los correos de inicio de sesión, en servidores en Estados Unidos. Vercel aloja la app y guarda registros de solicitudes de corta duración. Si entras con Google, Google confirma quién eres y nos da tu nombre, tu correo y tu foto de perfil — nada más — y Google sabe que iniciaste sesión. Para operar el servicio, nuestra pantalla de administración muestra solo el correo de cada cuenta, sus fechas de acceso y los totales registrados — no los nombres de quien paga, las notas, los datos de clientes ni las fotos. No abrimos tus registros salvo para arreglar un problema que nos reportes.",
+    pt: "A Supabase administra nosso banco de dados e gera os e-mails de login, em servidores nos Estados Unidos. A Vercel hospeda o app e mantém registros de requisições de curta duração. Se você entrar com o Google, o Google confirma quem você é e nos passa seu nome, seu e-mail e sua foto de perfil — nada mais — e o Google sabe que você fez login. Para operar o serviço, nossa tela de administração mostra só o e-mail de cada conta, as datas de acesso e os totais registrados — não os nomes de quem paga, as notas, os dados de clientes nem as fotos. Não abrimos seus lançamentos, a não ser para resolver um problema que você relatar.",
   },
   "site.privacyProcessorsBody2": {
     en: "OpenAI reads your screenshots to extract the payment rows. OpenAI may keep the images it receives for up to 30 days to monitor for abuse and does not train its models on them; contado itself does not store the images it sends.",
@@ -522,9 +530,9 @@ export const messages = {
     pt: "A OpenAI lê seus prints para extrair as linhas de pagamento. A OpenAI pode reter as imagens recebidas por até 30 dias para monitorar abusos e não treina seus modelos com elas; o contado em si não guarda as imagens que envia.",
   },
   "site.privacyProcessorsBody3": {
-    en: "Google's Workspace mail sends the sign-in emails, and Google Analytics runs on the public pages only — never inside the app — honoring Do Not Track. Twilio and Meta process your phone number only if you turn on SMS or WhatsApp reminders.",
-    es: "El correo de Google Workspace envía los correos de inicio de sesión, y Google Analytics funciona solo en las páginas públicas — nunca dentro de la app — respetando Do Not Track. Twilio y Meta procesan tu número de teléfono solo si activas recordatorios por SMS o WhatsApp.",
-    pt: "O e-mail do Google Workspace envia os e-mails de login, e o Google Analytics funciona só nas páginas públicas — nunca dentro do app — respeitando o Do Not Track. Twilio e Meta processam seu número de telefone só se você ativar lembretes por SMS ou WhatsApp.",
+    en: "Google Workspace delivers the sign-in emails, and Google Analytics runs on the public pages only — never inside the app — honoring Do Not Track and Global Privacy Control. Twilio and Meta process your phone number only if you turn on SMS or WhatsApp reminders.",
+    es: "Google Workspace entrega los correos de inicio de sesión, y Google Analytics funciona solo en las páginas públicas — nunca dentro de la app — respetando Do Not Track y Global Privacy Control. Twilio y Meta procesan tu número de teléfono solo si activas recordatorios por SMS o WhatsApp.",
+    pt: "O Google Workspace entrega os e-mails de login, e o Google Analytics funciona só nas páginas públicas — nunca dentro do app — respeitando o Do Not Track e o Global Privacy Control. Twilio e Meta processam seu número de telefone só se você ativar lembretes por SMS ou WhatsApp.",
   },
   "site.privacyRetentionTitle": {
     en: "How long we keep it",
@@ -532,9 +540,9 @@ export const messages = {
     pt: "Por quanto tempo guardamos",
   },
   "site.privacyRetentionBody": {
-    en: "We keep everything until you delete your account. Deletion has a 7-day cooling-off period during which you can change your mind, and then a nightly job permanently removes every row — including your sign-in record.",
-    es: "Guardamos todo hasta que borras tu cuenta. Borrarla tiene un período de gracia de 7 días durante el cual puedes arrepentirte, y después un proceso nocturno elimina para siempre cada registro — incluido el de tu inicio de sesión.",
-    pt: "Guardamos tudo até você apagar sua conta. Apagar a conta tem um período de carência de 7 dias durante o qual você pode mudar de ideia, e depois um processo noturno remove definitivamente cada registro — incluindo o do seu login.",
+    en: "We keep your data until you delete your account. Deletion has a 7-day cooling-off period during which you can change your mind, and then a nightly job permanently removes your ledger — including your sign-in record. Upload counts can stay for up to about 36 days without your account attached (see above), OpenAI may hold a screenshot for up to 30 days, and copies in our providers' logs and backups can take longer to expire.",
+    es: "Guardamos tus datos hasta que borras tu cuenta. Borrarla tiene un período de gracia de 7 días durante el cual puedes arrepentirte, y después un proceso nocturno elimina para siempre tu libro — incluido el registro de tu inicio de sesión. Las cantidades de cargas pueden quedar hasta unos 36 días sin tu cuenta asociada (ver arriba), OpenAI puede conservar una captura hasta 30 días, y las copias en los registros y respaldos de nuestros proveedores pueden tardar más en borrarse.",
+    pt: "Guardamos seus dados até você apagar sua conta. Apagar a conta tem um período de carência de 7 dias durante o qual você pode mudar de ideia, e depois um processo noturno remove definitivamente seu livro-caixa — incluindo o registro do seu login. As quantidades de envios podem ficar até cerca de 36 dias sem sua conta associada (veja acima), a OpenAI pode reter um print por até 30 dias, e cópias nos registros e backups dos nossos provedores podem levar mais tempo para serem apagadas.",
   },
   "site.privacyRetentionBody2": {
     en: "The founding-hundred email is kept separately and survives account deletion on purpose — we hold it until you ask us to remove it.",
@@ -547,9 +555,9 @@ export const messages = {
     pt: "Seus direitos",
   },
   "site.privacyRightsBody": {
-    en: "Export everything from Settings whenever you like, and delete your account from Settings too. For an LGPD (Brazil) or CCPA (California) request — access, correction, deletion or portability — email mail@getcontado.com.",
-    es: "Exporta todo desde Ajustes cuando quieras, y borra tu cuenta también desde Ajustes. Para una solicitud bajo LGPD (Brasil) o CCPA (California) — acceso, corrección, eliminación o portabilidad — escribe a mail@getcontado.com.",
-    pt: "Exporte tudo em Configurações quando quiser, e apague sua conta também em Configurações. Para uma solicitação sob a LGPD (Brasil) ou a CCPA (Califórnia) — acesso, correção, eliminação ou portabilidade — escreva para mail@getcontado.com.",
+    en: "Export every row from Settings whenever you like, and delete your account from Settings too. For an LGPD (Brazil) or CCPA (California) request — access, correction, deletion or portability — email mail@getcontado.com.",
+    es: "Exporta cada fila desde Ajustes cuando quieras, y borra tu cuenta también desde Ajustes. Para una solicitud bajo LGPD (Brasil) o CCPA (California) — acceso, corrección, eliminación o portabilidad — escribe a mail@getcontado.com.",
+    pt: "Exporte cada linha em Configurações quando quiser, e apague sua conta também em Configurações. Para uma solicitação sob a LGPD (Brasil) ou a CCPA (Califórnia) — acesso, correção, eliminação ou portabilidade — escreva para mail@getcontado.com.",
   },
   "site.privacyRightsBody2": {
     en: "We don't sell or share your personal information. If you're outside the United States, know that your data is processed here.",
@@ -559,21 +567,21 @@ export const messages = {
 
   // ---- footer: track-payments column ----
   "site.footerTrack": { en: "Track payments", es: "Registrar pagos", pt: "Registrar pagamentos" },
-  "site.trackVenmo": { en: "Venmo bookkeeping", es: "Contabilidad de Venmo", pt: "Contabilidade do Venmo" },
-  "site.trackCashApp": { en: "Cash App bookkeeping", es: "Contabilidad de Cash App", pt: "Contabilidade do Cash App" },
-  "site.trackZelle": { en: "Zelle tracking", es: "Registro de Zelle", pt: "Controle do Zelle" },
+  "site.trackVenmo": { en: "Venmo bookkeeping", es: "Contabilidad para pagos de Venmo", pt: "Contabilidade para pagamentos do Venmo" },
+  "site.trackCashApp": { en: "Cash App bookkeeping", es: "Contabilidad para pagos de Cash App", pt: "Contabilidade para pagamentos do Cash App" },
+  "site.trackZelle": { en: "Zelle tracking", es: "Registro de pagos de Zelle", pt: "Controle de pagamentos do Zelle" },
   "site.trackCash": { en: "Cash income", es: "Ingresos en efectivo", pt: "Renda em dinheiro" },
 
   // ---- /track/venmo ----
   "site.chVenmoTitle": {
     en: "Venmo bookkeeping, from the screenshots you already take.",
-    es: "Contabilidad de Venmo, con las capturas que ya tomas.",
-    pt: "Contabilidade do Venmo, com os prints que você já tira.",
+    es: "Contabilidad para pagos de Venmo, con las capturas que ya tomas.",
+    pt: "Contabilidade para pagamentos do Venmo, com os prints que você já tira.",
   },
   "site.chVenmoSub": {
-    en: "Business and personal mixed in one Venmo feed? Screenshot your Transactions list and contado turns it into real books — sorted, totaled, tax-ready.",
-    es: "¿Negocio y personal mezclados en un solo Venmo? Toma captura de tu lista de Transacciones y contado la convierte en libros de verdad — separados, sumados, listos para impuestos.",
-    pt: "Negócio e pessoal misturados num só Venmo? Tire print da sua lista de Transações e o contado transforma tudo em livro-caixa de verdade — separado, somado, pronto para o imposto.",
+    en: "Business and personal mixed in one Venmo feed? Screenshot your Transactions list and contado turns it into real books — sorted, totaled, ready for your preparer.",
+    es: "¿Negocio y personal mezclados en un solo Venmo? Toma captura de tu lista de Transacciones y contado la convierte en libros de verdad — separados, sumados, listos para tu contador.",
+    pt: "Negócio e pessoal misturados num só Venmo? Tire print da sua lista de Transações e o contado transforma tudo em livro-caixa de verdade — separado, somado, pronto para o seu contador.",
   },
   "site.chVenmoPain1": {
     en: "Rent from your cousin, $120.00 from Sarah, gas money — one feed, three different stories.",
@@ -591,9 +599,9 @@ export const messages = {
     pt: "Rolar de janeiro a dezembro para somar o ano, na mão.",
   },
   "site.chVenmoDoes1": {
-    en: "Screenshot the Transactions list — not the social feed — and contado reads every payment: who, how much, when.",
-    es: "Toma captura de la lista de Transacciones — no del feed social — y contado lee cada pago: quién, cuánto, cuándo.",
-    pt: "Tire print da lista de Transações — não do feed social — e o contado lê cada pagamento: quem, quanto, quando.",
+    en: "Screenshot the Transactions list — not the social feed — and contado reads the payments it shows: who, how much, when.",
+    es: "Toma captura de la lista de Transacciones — no del feed social — y contado lee los pagos que muestra: quién, cuánto, cuándo.",
+    pt: "Tire print da lista de Transações — não do feed social — e o contado lê os pagamentos que aparecem nela: quem, quanto, quando.",
   },
   "site.chVenmoDoes2": {
     en: "Swipe right for business, left for personal. Your cousin's rent never touches your books.",
@@ -601,9 +609,9 @@ export const messages = {
     pt: "Deslize para a direita para negócio, para a esquerda para pessoal. O aluguel do seu primo nunca entra no seu livro-caixa.",
   },
   "site.chVenmoDoes3": {
-    en: "Duplicates are caught across overlapping screenshots, so nothing counts twice — one payment, one entry.",
-    es: "Los duplicados se detectan entre capturas superpuestas, así nada se cuenta dos veces — un pago, una entrada.",
-    pt: "Duplicatas são detectadas entre prints sobrepostos, então nada conta duas vezes — um pagamento, um lançamento.",
+    en: "contado looks for payments repeated across overlapping screenshots and keeps one copy — and you still confirm every row.",
+    es: "contado busca los pagos repetidos entre capturas superpuestas y deja una sola copia — y tú igual confirmas cada fila.",
+    pt: "O contado procura pagamentos repetidos entre prints sobrepostos e mantém uma cópia só — e você ainda confere cada linha.",
   },
   "site.chVenmoFaq1Q": {
     en: "Do I have to connect my Venmo account?",
@@ -629,13 +637,13 @@ export const messages = {
   // ---- /track/cash-app ----
   "site.chCashAppTitle": {
     en: "Cash App bookkeeping for people paid by the day.",
-    es: "Contabilidad de Cash App para quien cobra por día.",
-    pt: "Contabilidade do Cash App para quem recebe por dia.",
+    es: "Contabilidad para pagos de Cash App, para quien cobra por día.",
+    pt: "Contabilidade para pagamentos do Cash App, para quem recebe por dia.",
   },
   "site.chCashAppSub": {
-    en: "Cuts, cleans, side jobs — screenshot your Cash App activity at close and the day is booked in two minutes, one hand.",
-    es: "Cortes, limpiezas, trabajos extra — captura tu actividad de Cash App al cierre y el día queda registrado en dos minutos, con una mano.",
-    pt: "Cortes, faxinas, bicos — tire print da sua atividade do Cash App no fim do dia e tudo fica lançado em dois minutos, com uma mão.",
+    en: "Cuts, cleans, side jobs — screenshot your Cash App activity at close and the day is booked in a few minutes, one hand.",
+    es: "Cortes, limpiezas, trabajos extra — captura tu actividad de Cash App al cierre y el día queda registrado en unos minutos, con una mano.",
+    pt: "Cortes, faxinas, bicos — tire print da sua atividade do Cash App no fim do dia e tudo fica lançado em poucos minutos, com uma mão.",
   },
   "site.chCashAppPain1": {
     en: "Cash App says one number, the drawer says another.",
@@ -653,9 +661,9 @@ export const messages = {
     pt: "Em janeiro alguém pede sua renda e ela mora em dois apps e um bolso.",
   },
   "site.chCashAppDoes1": {
-    en: "Screenshot your Cash App activity; contado reads every payment and you confirm each row before it counts.",
-    es: "Toma captura de tu actividad de Cash App; contado lee cada pago y tú confirmas cada fila antes de que cuente.",
-    pt: "Tire print da sua atividade do Cash App; o contado lê cada pagamento e você confirma cada linha antes de contar.",
+    en: "Screenshot your Cash App activity; contado reads the payments your screenshot shows and you confirm each row before it counts.",
+    es: "Toma captura de tu actividad de Cash App; contado lee los pagos que muestra tu captura y tú confirmas cada fila antes de que cuente.",
+    pt: "Tire print da sua atividade do Cash App; o contado lê os pagamentos que aparecem no seu print e você confirma cada linha antes de contar.",
   },
   "site.chCashAppDoes2": {
     en: "Log cash jobs in a few taps — the amount, then paid in cash. Cash days and Cash App days land in the same books.",
@@ -695,14 +703,14 @@ export const messages = {
     pt: "Controle de pagamentos Zelle sem a senha do banco.",
   },
   "site.chZelleSub": {
-    en: "Zelle lives inside your banking app and exports nothing. Screenshot your Zelle activity and contado builds the books your bank never gave you.",
-    es: "Zelle vive dentro de la app de tu banco y no exporta nada. Captura tu actividad de Zelle y contado arma los libros que tu banco nunca te dio.",
-    pt: "O Zelle mora dentro do app do seu banco e não exporta nada. Tire print da sua atividade do Zelle e o contado monta o livro-caixa que seu banco nunca te deu.",
+    en: "Zelle has no export of its own — your Zelle history lives inside your bank app, mixed with everything else. Screenshot your Zelle activity and contado builds the books your bank never gave you.",
+    es: "Zelle no tiene una exportación propia — tu historial de Zelle vive dentro de la app de tu banco, mezclado con todo lo demás. Captura tu actividad de Zelle y contado arma los libros que tu banco nunca te dio.",
+    pt: "O Zelle não tem exportação própria — seu histórico do Zelle mora dentro do app do seu banco, misturado com todo o resto. Tire print da sua atividade do Zelle e o contado monta o livro-caixa que seu banco nunca te deu.",
   },
   "site.chZellePain1": {
-    en: "No feed, no export, no history page — just entries inside your bank app.",
-    es: "Sin feed, sin exportar, sin página de historial — solo movimientos dentro de la app del banco.",
-    pt: "Sem feed, sem exportação, sem página de histórico — só lançamentos dentro do app do banco.",
+    en: "No Zelle export of its own — just entries inside your bank app, between everything else.",
+    es: "Sin una exportación propia de Zelle — solo movimientos dentro de la app del banco, entre todo lo demás.",
+    pt: "Sem exportação própria do Zelle — só lançamentos dentro do app do banco, no meio de todo o resto.",
   },
   "site.chZellePain2": {
     en: "Payments from clients and transfers from family, all in the same list.",
@@ -725,9 +733,9 @@ export const messages = {
     pt: "Deslize para separar negócio de pessoal; só o negócio entra nos seus totais e no CSV do imposto.",
   },
   "site.chZelleDoes3": {
-    en: "Log the job when you finish it; when the Zelle payment shows up in a screenshot, it matches and clears the owed entry on its own.",
-    es: "Registra el trabajo al terminarlo; cuando el pago por Zelle aparece en una captura, se empareja y cierra lo pendiente solo.",
-    pt: "Registre o serviço ao terminar; quando o pagamento do Zelle aparece num print, ele concilia e dá baixa no pendente sozinho.",
+    en: "Log the job when you finish it; when the Zelle payment shows up in a screenshot, it clears the owed entry when the amount, name and date match one sale — if more than one could match, it asks you which.",
+    es: "Registra el trabajo al terminarlo; cuando el pago por Zelle aparece en una captura, cierra lo pendiente cuando el monto, el nombre y la fecha coinciden con una sola venta — si más de una puede coincidir, te pregunta cuál.",
+    pt: "Registre o serviço ao terminar; quando o pagamento do Zelle aparece num print, ele dá baixa no pendente quando o valor, o nome e a data batem com uma venda só — se mais de uma puder bater, ele pergunta qual.",
   },
   "site.chZelleFaq1Q": {
     en: "Which banks work?",
@@ -735,9 +743,9 @@ export const messages = {
     pt: "Funciona com quais bancos?",
   },
   "site.chZelleFaq1A": {
-    en: "Any bank whose app shows your Zelle activity on screen — if you can screenshot it, contado can read it. You confirm every row before it counts.",
-    es: "Cualquier banco cuya app muestre tu actividad de Zelle en pantalla — si puedes tomarle captura, contado puede leerla. Tú confirmas cada fila antes de que cuente.",
-    pt: "Qualquer banco cujo app mostre sua atividade do Zelle na tela — se dá para tirar print, o contado consegue ler. Você confirma cada linha antes de contar.",
+    en: "Most bank apps show Zelle activity on screen — screenshot it and contado reads it; you confirm every row.",
+    es: "La mayoría de las apps de banco muestran la actividad de Zelle — tómale captura y contado la lee; tú confirmas cada fila.",
+    pt: "A maioria dos apps de banco mostra a atividade do Zelle — tire print e o contado lê; você confirma cada linha.",
   },
   "site.chZelleFaq2Q": {
     en: "Do I have to give contado my bank login?",
@@ -767,9 +775,9 @@ export const messages = {
     pt: "A gaveta sabe seu número real; seus registros não.",
   },
   "site.chCashPain2": {
-    en: "Apartments, loans and tax preparers all ask for proof of income that cash can't show.",
-    es: "Departamentos, préstamos y contadores piden un comprobante de ingresos que el efectivo no da.",
-    pt: "Aluguel, financiamento e contador pedem um comprovante de renda que o dinheiro vivo não dá.",
+    en: "Landlords, lenders and tax preparers all ask what you earn — and cash leaves no record.",
+    es: "Arrendadores, prestamistas y contadores te preguntan cuánto ganas — y el efectivo no deja registro.",
+    pt: "Aluguel, financiamento e contador perguntam quanto você ganha — e o dinheiro vivo não deixa registro.",
   },
   "site.chCashPain3": {
     en: "A year of little jobs adds up to a number you can only guess.",
@@ -787,9 +795,9 @@ export const messages = {
     pt: "O dinheiro fica ao lado da sua renda de Venmo, Cash App e Zelle — um livro só, cada total de verdade.",
   },
   "site.chCashDoes3": {
-    en: "Print a proof of income any time, and hand your preparer a CSV of actual income and expenses.",
-    es: "Imprime un comprobante de ingresos cuando quieras, y entrégale a tu contador un CSV de ingresos y gastos reales.",
-    pt: "Imprima um comprovante de renda quando quiser, e entregue ao seu contador um CSV de renda e despesas reais.",
+    en: "Print an income summary from your own records any time — not a verified statement — and hand your preparer a CSV of actual income and expenses.",
+    es: "Imprime un resumen de ingresos de tus propios registros cuando quieras — no es un estado verificado — y entrégale a tu contador un CSV de ingresos y gastos reales.",
+    pt: "Imprima um resumo de renda dos seus próprios registros quando quiser — não é um demonstrativo verificado — e entregue ao seu contador um CSV de renda e despesas reais.",
   },
   "site.chCashFaq1Q": {
     en: "Is logging cash income even worth it for taxes?",
@@ -819,9 +827,9 @@ export const messages = {
     pt: "Como faço para saber quem está me devendo?",
   },
   "site.faq11A": {
-    en: "Log the job when you do the work, even before the money arrives. It waits in Owed, grouped by client and aged, until you tap “Got cash” — or a payment in your next screenshots clears it automatically.",
-    es: "Registra el trabajo cuando lo haces, aun antes de que llegue el dinero. Queda en la pestaña Por cobrar, por cliente y con los días, hasta que tocas “Recibí efectivo” — o un pago en tus próximas capturas lo cierra solo.",
-    pt: "Registre o serviço quando fizer o trabalho, mesmo antes de o dinheiro chegar. Ele espera na aba A receber, por cliente e com os dias, até você tocar “Recebi em dinheiro” — ou um pagamento nos próximos prints dá baixa sozinho.",
+    en: "Log the job when you do the work, even before the money arrives. It waits in Owed, grouped by client and aged, until you tap “Got cash” — or a payment in your next screenshots, dated within 10 days of the job, clears it when the amount and name match one sale; if more than one could match, it asks you which. For a different amount or a later payment, tap “Find the payment…” under the sale.",
+    es: "Registra el trabajo cuando lo haces, aun antes de que llegue el dinero. Queda en la pestaña Por cobrar, por cliente y con los días, hasta que tocas “Recibí efectivo” — o un pago en tus próximas capturas, con fecha dentro de los 10 días del trabajo, lo cierra cuando el monto y el nombre coinciden con una sola venta; si más de una puede coincidir, te pregunta cuál. Si pagaron otro monto o más tarde, toca “Buscar el pago…” debajo de la venta.",
+    pt: "Registre o serviço quando fizer o trabalho, mesmo antes de o dinheiro chegar. Ele espera na aba A receber, por cliente e com os dias, até você tocar “Recebi em dinheiro” — ou um pagamento nos próximos prints, com data até 10 dias do serviço, dá baixa quando o valor e o nome batem com uma venda só; se mais de uma puder bater, ele pergunta qual. Se pagaram outro valor ou mais tarde, toque em “Encontrar o pagamento…” embaixo da venda.",
   },
   "site.faq12Q": {
     en: "How do I prove my income if I'm paid in cash?",
@@ -829,9 +837,9 @@ export const messages = {
     pt: "Como comprovo minha renda se recebo em dinheiro?",
   },
   "site.faq12A": {
-    en: "Log the cash as it comes in. contado builds a proof of income you can print or save as PDF, plus a CSV of actual income and expenses your tax preparer opens directly.",
-    es: "Registra el efectivo cuando llega. contado arma un comprobante de ingresos que puedes imprimir o guardar como PDF, más un CSV de ingresos y gastos reales que tu contador abre directo.",
-    pt: "Registre o dinheiro conforme ele entra. O contado monta um comprovante de renda que você pode imprimir ou salvar em PDF, mais um CSV de renda e despesas reais que seu contador abre direto.",
+    en: "Log the cash as it comes in. contado builds an income summary from your own records — not a verified statement — that you can print or save as PDF, plus a CSV of actual income and expenses your tax preparer opens directly.",
+    es: "Registra el efectivo cuando llega. contado arma un resumen de ingresos de tus propios registros — no es un estado verificado — que puedes imprimir o guardar como PDF, más un CSV de ingresos y gastos reales que tu contador abre directo.",
+    pt: "Registre o dinheiro conforme ele entra. O contado monta um resumo de renda dos seus próprios registros — não é um demonstrativo verificado — que você pode imprimir ou salvar em PDF, mais um CSV de renda e despesas reais que seu contador abre direto.",
   },
   "site.faq13Q": {
     en: "Can it separate business and personal Venmo payments?",

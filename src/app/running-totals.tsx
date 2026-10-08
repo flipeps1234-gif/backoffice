@@ -7,7 +7,8 @@ import {
 } from "@/lib/transaction";
 import { useLocale } from "./use-locale";
 
-/** The number that climbs. Sticky, so it stays in view while sorting. */
+/** The number that climbs. Sticky, so it stays in view while sorting —
+ *  and globals.css pads focus scrolling below it (data-running-totals). */
 export default function RunningTotals({
   transactions,
   expectedCents = 0,
@@ -32,19 +33,22 @@ export default function RunningTotals({
   const left = transactions.filter((tx) => tx.business === null).length;
 
   return (
-    <div className="sticky top-0 z-10 -mx-4 mb-4 border-b border-neutral-200 bg-background/95 px-4 py-3 backdrop-blur">
+    <div
+      data-running-totals
+      className="sticky top-0 z-10 -mx-4 mb-4 border-b border-neutral-200 bg-background/95 px-4 py-3 backdrop-blur"
+    >
       {/* Personal left, business right — matching the swipe directions:
           left = personal, right = business. The totals sit where the cards
           fly. */}
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-wide text-neutral-500">
+          <p className="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
             {t("insights.personal")}
           </p>
-          <p className="text-lg font-medium tabular-nums text-neutral-500">
+          <p className="text-lg font-medium tabular-nums text-neutral-600 dark:text-neutral-400">
             {formatCents(personal.inCents)}
           </p>
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-neutral-600 dark:text-neutral-400">
             {personal.outCents > 0 ? (
               <span>
                 {t("insights.spent", { amount: formatCents(personal.outCents) })} ·{" "}
@@ -56,7 +60,7 @@ export default function RunningTotals({
           </p>
         </div>
         <div className="text-right">
-          <p className="text-xs uppercase tracking-wide text-neutral-500">
+          <p className="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
             {t("insights.business")}
           </p>
           <p className="text-2xl font-semibold tabular-nums text-emerald-600">
@@ -67,9 +71,9 @@ export default function RunningTotals({
               {t("insights.owed", { amount: formatCents(owedCents) })}
             </p>
           )}
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-neutral-600 dark:text-neutral-400">
             {business.outCents > 0 ? (
-              <span className="text-red-500">
+              <span className="text-red-600 dark:text-red-400">
                 {t("insights.spent", { amount: formatCents(business.outCents) })} ·{" "}
               </span>
             ) : null}
@@ -80,7 +84,7 @@ export default function RunningTotals({
         </div>
       </div>
       {left > 0 && (
-        <p className="mt-2 text-xs text-neutral-500">
+        <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
           {t("insights.leftToSort", { n: left })}
         </p>
       )}

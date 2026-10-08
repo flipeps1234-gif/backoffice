@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# contado
 
-## Getting Started
+A ledger app for very small service businesses — cleaners, landscapers,
+barbers — paid through Venmo, Cash App, Zelle and cash. You upload
+screenshots of a payment feed, AI reads the rows, and you confirm each one
+and swipe it business or personal. Cash is logged by hand in a few taps.
+English, Spanish and Portuguese. Live at <https://getcontado.com>.
 
-First, run the development server:
+## Stack
+
+Next.js 16 (App Router) and React 19, Tailwind CSS 4, Supabase (Postgres
+with row-level security, and sign-in), OpenAI for reading screenshots,
+hosted on Vercel.
+
+## Run it locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # then fill it in; the file explains each value
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Checks
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npx tsc --noEmit
+npm run lint
+npm test          # tests/security and tests/unit
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Where things live
 
-## Learn More
+- `src/app` — pages and components. The app is at `/app`; the public site
+  is everything else.
+- `src/lib` — the logic, as pure TypeScript: money in integer cents,
+  extraction, dedupe, matching.
+- `src/lib/messages/*.ts` — every user-visible string, in EN, ES and PT.
+- `help-docs/` — the help center articles, one markdown file per language.
+- `supabase/migrations/` — SQL migrations, applied by hand.
+- `CLAUDE.md`, `DEPLOY.md`, `design-tokens.md` — project notes, the deploy
+  checklist and the design rules. Read `DEPLOY.md` before pushing: a push to
+  `main` deploys to production.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Venmo, Cash App and Zelle are trademarks of their owners. contado is
+independent and not affiliated with or endorsed by them.

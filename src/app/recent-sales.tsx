@@ -48,7 +48,7 @@ export default function RecentSales({
         <h2 className="text-sm font-semibold">{t("common.logAgain")}</h2>
         <button
           type="button"
-          className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+          className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
           onClick={onClose}
         >
           {t("common.close")}
@@ -56,7 +56,7 @@ export default function RecentSales({
       </div>
 
       {recent.length === 0 ? (
-        <p className="text-sm text-neutral-500">{t("owed.noRepeats")}</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("owed.noRepeats")}</p>
       ) : (
         <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white dark:divide-neutral-800 dark:border-neutral-800 dark:bg-neutral-900">
           {recent.map((sale) => (
@@ -70,7 +70,7 @@ export default function RecentSales({
                   <p className="truncate text-sm font-medium">
                     {nameOf(sale.clientId)}
                   </p>
-                  <p className="truncate text-xs text-neutral-500">
+                  <p className="truncate text-xs text-neutral-600 dark:text-neutral-400">
                     {sale.lineItems.map((i) => i.name).join(", ") ||
                       t("owed.sale")}
                   </p>

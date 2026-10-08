@@ -1,5 +1,13 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { isStopMessage } from "@/lib/notify/whatsapp";
+import { after } from "next/server";
+import {
+  accountLanguage,
+  accountsForSender,
+  optOutSender,
+  replyLanguage,
+} from "@/lib/notify/inbound";
+import { inboundKeyword, keywordReply } from "@/lib/notify/keywords";
+import { sendWhatsAppReply } from "@/lib/notify/whatsapp";
 import { serviceClient } from "@/lib/notify/store";
 
 /**
@@ -8,9 +16,15 @@ import { serviceClient } from "@/lib/notify/store";
  * GET  = Meta's one-time subscription handshake (hub.challenge echo,
  *        gated on WHATSAPP_VERIFY_TOKEN).
  * POST = delivery statuses (sent/delivered/read/failed) and inbound
- *        messages. An inbound STOP (or Spanish/Portuguese equivalent)
- *        marks the sender's prefs opted_out — consent dies until the
- *        user explicitly re-opts-in from Settings.
+ *        messages. An inbound STOP (or any opt-out word in the three
+ *        languages — keywords.ts, shared with the SMS webhook) marks the
+ *        sender's prefs opted_out — consent dies until the user
+ *        explicitly re-opts-in from Settings — and is confirmed with a
+ *        reply. HELP (AYUDA, AJUDA) gets the help reply. Both replies go
+ *        out in the account's language when the number has one
+ *        (inbound.ts — the same matching, by every form of the number,
+ *        as the SMS webhook). WhatsApp has no carrier keyword handling
+ *        like Twilio's: if this doesn't answer, nobody does.
  *
  * Signature: when WHATSAPP_APP_SECRET is set, X-Hub-Signature-256 is
  * verified and a bad signature is rejected. Without the secret, unsigned
@@ -19,7 +33,9 @@ import { serviceClient } from "@/lib/notify/store";
  * are accepted but say so in the log.
  *
  * Always answers 200 fast — Meta retries non-200s aggressively and a
- * retry storm against a spike helps nobody.
+ * retry storm against a spike helps nobody. The replies are sent after
+ * the response (next/server `after`), through the same dark switch as
+ * every other send.
  */
 
 type StatusEntry = {
@@ -90,6 +106,7 @@ export async function POST(request: Request) {
   }
 
   const db = serviceClient("whatsapp");
+  const replies: { to: string; text: string }[] = [];
 
   // Meta nests deeply: entry[] → changes[] → value.{statuses,messages}.
   const entries =
@@ -128,19 +145,42 @@ export async function POST(request: Request) {
       }
 
       for (const message of (value.messages as MessageEntry[] | undefined) ?? []) {
-        const text = message.text?.body ?? "";
-        if (!message.from || message.type !== "text" || !isStopMessage(text)) {
-          continue;
-        }
+        if (!message.from || message.type !== "text") continue;
+        const keyword = inboundKeyword(message.text?.body ?? "");
+        if (!keyword) continue;
         // Their number arrives without "+"; prefs store E.164.
         const e164 = `+${message.from.replace(/^\+/, "")}`;
+        if (keyword.kind === "help") {
+          const lang = db
+            ? await accountLanguage(db, await accountsForSender(db, e164))
+            : null;
+          replies.push({
+            to: message.from,
+            text: keywordReply({ ...keyword, lang: replyLanguage(keyword, lang, e164) }),
+          });
+          continue;
+        }
         if (db) {
-          const { error } = await db
-            .from("notification_prefs")
-            .update({ opted_out_at: new Date().toISOString() })
-            .eq("phone", e164);
-          if (error) console.error("whatsapp opt-out write failed:", error.message);
-          else console.log(`whatsapp STOP honored for ${last4(e164)}`);
+          const result = await optOutSender(db, e164);
+          if (!result.ok) {
+            // No confirmation until the opt-out is really on the row.
+            console.error("whatsapp opt-out write failed:", result.error);
+            continue;
+          }
+          // The rows it changed are the proof — "no error" never was (an
+          // update matching nothing is a success to PostgREST). None means
+          // no prefs row holds this number in any form: nothing alerts it,
+          // so the confirmation stays true, but the log says it missed.
+          if (result.accountIds.length > 0) {
+            console.log(`whatsapp STOP honored for ${last4(e164)}`);
+          } else {
+            console.warn(`whatsapp STOP matched no prefs row ${last4(e164)}`);
+          }
+          const lang = await accountLanguage(db, result.accountIds);
+          replies.push({
+            to: message.from,
+            text: keywordReply({ ...keyword, lang: replyLanguage(keyword, lang, e164) }),
+          });
         } else {
           console.log(
             `whatsapp STOP (no service key, not saved): ${last4(e164)} asked out`,
@@ -148,6 +188,19 @@ export async function POST(request: Request) {
         }
       }
     }
+  }
+
+  if (replies.length > 0) {
+    after(async () => {
+      for (const reply of replies) {
+        const result = await sendWhatsAppReply(reply.to, reply.text).catch(
+          (cause: unknown) => ({ ok: false as const, error: String(cause) }),
+        );
+        if (!result.ok && !("skipped" in result && result.skipped)) {
+          console.error(`whatsapp reply to ${last4(reply.to)} failed:`, result.error);
+        }
+      }
+    });
   }
 
   return new Response("ok", { status: 200 });

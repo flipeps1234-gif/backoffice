@@ -123,7 +123,7 @@ export default function Dashboard({
         <div className="flex items-baseline justify-between print:hidden">
           <button
             type="button"
-            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 hover:underline"
             onClick={() => setProofOpen(false)}
           >
             {t("common.back")}
@@ -146,7 +146,7 @@ export default function Dashboard({
               {[profile.ownerName, profile.usState].filter(Boolean).join(" · ")}
             </p>
           )}
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-neutral-600">
             {t("dash.proofGenerated", { date: today })}
           </p>
         </div>
@@ -189,7 +189,7 @@ export default function Dashboard({
           </p>
         )}
 
-        <p className="text-xs text-neutral-500">{t("dash.proofDisclaimer")}</p>
+        <p className="text-xs text-neutral-600">{t("dash.proofDisclaimer")}</p>
       </div>
     );
   }
@@ -219,7 +219,7 @@ export default function Dashboard({
         {onClose && (
           <button
             type="button"
-            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
             onClick={onClose}
           >
             {t("common.close")}
@@ -228,11 +228,11 @@ export default function Dashboard({
       </div>
 
       {months.length === 0 ? (
-        <p className="text-sm text-neutral-500">{t("dash.empty")}</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("dash.empty")}</p>
       ) : (
         <>
           <section>
-            <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
               {t("dash.moneyInOut")}
             </h3>
             <ul className="space-y-3">
@@ -253,7 +253,7 @@ export default function Dashboard({
                           }}
                         />
                       </div>
-                      <span className="w-20 shrink-0 text-right text-xs tabular-nums text-neutral-500">
+                      <span className="w-20 shrink-0 text-right text-xs tabular-nums text-neutral-600 dark:text-neutral-400">
                         {formatCents(m.inCents)}
                       </span>
                     </div>
@@ -266,12 +266,12 @@ export default function Dashboard({
                           }}
                         />
                       </div>
-                      <span className="w-20 shrink-0 text-right text-xs tabular-nums text-neutral-500">
+                      <span className="w-20 shrink-0 text-right text-xs tabular-nums text-neutral-600 dark:text-neutral-400">
                         −{formatCents(m.outCents)}
                       </span>
                     </div>
                   </div>
-                  <p className="mt-1 text-xs text-neutral-500">
+                  <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
                     {t("dash.kept", {
                       amount: `${m.inCents - m.outCents < 0 ? "−" : ""}${formatCents(Math.abs(m.inCents - m.outCents))}`,
                     })}
@@ -283,7 +283,7 @@ export default function Dashboard({
 
           {revenue.length > 0 && (
             <section>
-              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
                 {t("dash.revenueByService")}
               </h3>
               <ul className="space-y-2">
@@ -293,7 +293,7 @@ export default function Dashboard({
                       <span>{r.name}</span>
                       <span className="tabular-nums font-medium">
                         {formatCents(r.revenueCents)}
-                        <span className="ml-1 text-xs font-normal text-neutral-500">
+                        <span className="ml-1 text-xs font-normal text-neutral-600 dark:text-neutral-400">
                           ·{" "}
                           {r.jobs === 1
                             ? t("dash.jobs.one", { n: r.jobs })
@@ -315,10 +315,10 @@ export default function Dashboard({
 
           {margins.length > 0 && (
             <section>
-              <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
                 {t("dash.marginByService")}
               </h3>
-              <p className="mb-2 text-xs text-neutral-500">
+              <p className="mb-2 text-xs text-neutral-600 dark:text-neutral-400">
                 {t("dash.marginNote")}
               </p>
               <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 bg-white">
@@ -328,14 +328,14 @@ export default function Dashboard({
                       <span className="text-neutral-900">{m.name}</span>
                       <span
                         className={`font-medium tabular-nums ${
-                          m.marginCents >= 0 ? "text-emerald-600" : "text-red-600"
+                          m.marginCents >= 0 ? "text-emerald-700" : "text-red-600"
                         }`}
                       >
                         {m.marginCents < 0 ? "−" : ""}
                         {formatCents(Math.abs(m.marginCents))}
                       </span>
                     </div>
-                    <p className="text-xs text-neutral-500">
+                    <p className="text-xs text-neutral-600">
                       {t("dash.marginMath", {
                         in: formatCents(m.estimableRevenueCents),
                         cost: formatCents(m.estCostCents),
@@ -361,7 +361,7 @@ export default function Dashboard({
           about THIS business, and the copy says so. */}
       {quarterIncome > 0 && (
         <section className="rounded-lg border border-neutral-200 bg-neutral-50 p-3 dark:border-neutral-800 dark:bg-neutral-900">
-          <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
             {t("dash.setAsideTitle", { q: quarterOf(today).quarter })}
           </h3>
           <p className="text-sm text-neutral-700 dark:text-neutral-300">
@@ -370,7 +370,7 @@ export default function Dashboard({
               amount: formatCents(setAsideCents(quarterIncome)),
             })}
           </p>
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">
             {t("dash.setAsideNotAdvice")}
           </p>
         </section>
@@ -379,7 +379,7 @@ export default function Dashboard({
       {/* Mileage estimate — appears once any client has a distance. */}
       {mileage.length > 0 && (
         <section>
-          <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h3 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
             {t("dash.mileageTitle")}
           </h3>
           <p className="text-sm">
@@ -394,7 +394,7 @@ export default function Dashboard({
               },
             )}
           </p>
-          <p className="mb-2 text-xs text-neutral-500">{t("dash.mileageNote")}</p>
+          <p className="mb-2 text-xs text-neutral-600 dark:text-neutral-400">{t("dash.mileageNote")}</p>
           <button
             type="button"
             className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
@@ -444,7 +444,7 @@ export default function Dashboard({
           >
             {t("dash.downloadTax")}
           </button>
-          <p className="text-xs text-neutral-500">{t("dash.taxNote")}</p>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400">{t("dash.taxNote")}</p>
 
           <button
             type="button"
@@ -453,7 +453,7 @@ export default function Dashboard({
           >
             {t("dash.downloadAll")}
           </button>
-          <p className="text-xs text-neutral-500">{t("dash.allNote")}</p>
+          <p className="text-xs text-neutral-600 dark:text-neutral-400">{t("dash.allNote")}</p>
         </section>
       )}
     </div>

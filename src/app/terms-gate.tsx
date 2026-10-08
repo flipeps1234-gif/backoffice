@@ -40,6 +40,31 @@ function Term({
   );
 }
 
+/**
+ * Privacy · Terms — the website's pages, from inside the app (the native
+ * app's LegalLinksRow, same two labels). Everywhere the app asks for
+ * agreement or shows the promise, the pages behind it are one tap away.
+ * A new tab, so the app's screen (a half-read gate, open Settings) is
+ * still there when the reader comes back.
+ */
+export function LegalLinks() {
+  const { t } = useLocale();
+  const link = "tap hover:underline";
+  return (
+    <p className="flex items-center gap-3 py-2 text-xs font-medium">
+      <a className={link} href="/privacy" target="_blank" rel="noreferrer">
+        {t("landing.footerPrivacy")}
+      </a>
+      <span aria-hidden="true" className="text-neutral-600 dark:text-neutral-400">
+        ·
+      </span>
+      <a className={link} href="/terms" target="_blank" rel="noreferrer">
+        {t("landing.footerTerms")}
+      </a>
+    </p>
+  );
+}
+
 export default function TermsGate({
   onAccept,
   readOnly,
@@ -60,12 +85,12 @@ export default function TermsGate({
           <h2 className="text-lg font-semibold tracking-tight">
             {t("terms.title")}
           </h2>
-          <p className="mt-1 text-sm text-neutral-500">{t("terms.subtitle")}</p>
+          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">{t("terms.subtitle")}</p>
         </div>
         {readOnly && onClose && (
           <button
             type="button"
-            className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+            className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
             onClick={onClose}
           >
             {t("common.close")}
@@ -94,9 +119,10 @@ export default function TermsGate({
         </button>
       )}
 
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-neutral-600 dark:text-neutral-400">
         {t("terms.savedNote", { version: TERMS_VERSION })}
       </p>
+      <LegalLinks />
     </div>
   );
 }

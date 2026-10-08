@@ -5,7 +5,9 @@ import ContactContent from "./contact-content";
 
 export const metadata: Metadata = pageMetadata({
   title: "Contact",
-  description: "Talk to contado — text us, email us, or find the answer in the help center.",
+  // Texting is "coming soon" on the page itself, so the description
+  // names only what exists.
+  description: "Talk to contado — email us, or find the answer in the help center.",
   path: "/contact",
   keywords: ["contact contado", "contado support", "getcontado help"],
 });

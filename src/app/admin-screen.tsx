@@ -102,7 +102,7 @@ export default function AdminScreen() {
 
   const signedOut = !loading && !user && !sample;
   if (!signedOut && (loading || state.kind === "idle")) {
-    return <p className="text-sm text-neutral-500">Loading…</p>;
+    return <p className="text-sm text-neutral-600 dark:text-neutral-400">Loading…</p>;
   }
   if (signedOut || state.kind === "signed-out") {
     return (
@@ -136,7 +136,7 @@ export default function AdminScreen() {
   }
 
   if (state.kind !== "ready") {
-    return <p className="text-sm text-neutral-500">Loading…</p>;
+    return <p className="text-sm text-neutral-600 dark:text-neutral-400">Loading…</p>;
   }
 
   return <Overview data={state.data} fetchedAt={state.fetchedAt} onRefresh={refresh} sortKey={sortKey} onSort={setSortKey} />;
@@ -189,14 +189,14 @@ function Overview({
       <div className="flex items-baseline justify-between gap-4">
         <div>
           <h2 className="text-sm font-semibold">Analytics</h2>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
             Every account. Money is what your users logged, not revenue to you.
           </p>
         </div>
         <button
           type="button"
           onClick={onRefresh}
-          className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+          className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
           title={`Fetched ${fetchedAt.toLocaleTimeString()}`}
         >
           Refresh
@@ -255,7 +255,7 @@ function Overview({
         </Card>
         <Card title="Languages" sub="what the inbox speaks">
           <Facts rows={data.languages.map((l) => [languageLabel(l.lang), String(l.accounts)])} />
-          {data.languages.length === 0 && <p className="text-sm text-neutral-500">No accounts yet.</p>}
+          {data.languages.length === 0 && <p className="text-sm text-neutral-600 dark:text-neutral-400">No accounts yet.</p>}
         </Card>
         <Card title="Storage" sub={`${bytesLabel(data.storage.dbBytes)} of the 500 MB free tier`}>
           <div className="h-2 w-full rounded-full bg-neutral-200 dark:bg-neutral-800" aria-hidden="true">
@@ -264,7 +264,7 @@ function Overview({
               style={{ width: `${Math.max(1, dbPct)}%` }}
             />
           </div>
-          <p className="mt-1 text-xs text-neutral-500">{dbPct.toFixed(1)}% used</p>
+          <p className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">{dbPct.toFixed(1)}% used</p>
           <Facts rows={data.storage.tables.slice(0, 5).map((row) => [row.name, bytesLabel(row.bytes)])} />
         </Card>
       </section>
@@ -272,10 +272,10 @@ function Overview({
       {/* The account list. */}
       <section className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h3 className="text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
             Accounts · {rows.length}
           </h3>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-500">
+          <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-600 dark:text-neutral-400">
             <span>Sort by</span>
             {(
               [
@@ -300,7 +300,7 @@ function Overview({
         <div className="overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
           <table className="w-full min-w-[56rem] text-sm">
             <thead>
-              <tr className="border-b border-neutral-300 text-left text-xs uppercase tracking-wide text-neutral-500 dark:border-neutral-700">
+              <tr className="border-b border-neutral-300 text-left text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400 dark:border-neutral-700">
                 <th className="px-3 py-2 font-medium">Account</th>
                 <th className="px-3 py-2 font-medium">Joined</th>
                 <th className="px-3 py-2 font-medium">Last active</th>
@@ -324,20 +324,20 @@ function Overview({
                       {a.recurringActive > 0 && <Chip tone="neutral">{a.recurringActive} recurring</Chip>}
                     </div>
                   </td>
-                  <td className="px-3 py-2 text-neutral-500">{a.createdAt.slice(0, 10)}</td>
-                  <td className="px-3 py-2 text-neutral-500">{daysAgoLabel(a.lastActivityAt ?? a.lastSignInAt, fetchedAt)}</td>
+                  <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">{a.createdAt.slice(0, 10)}</td>
+                  <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">{daysAgoLabel(a.lastActivityAt ?? a.lastSignInAt, fetchedAt)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{a.transactions}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{a.sales}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{a.clients}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{formatCents(a.moneyInCents)}</td>
-                  <td className={`px-3 py-2 text-right tabular-nums ${a.owedCents > 0 ? "text-amber-700 dark:text-amber-400" : "text-neutral-500"}`}>{formatCents(a.owedCents)}</td>
+                  <td className={`px-3 py-2 text-right tabular-nums ${a.owedCents > 0 ? "text-amber-700 dark:text-amber-400" : "text-neutral-600 dark:text-neutral-400"}`}>{formatCents(a.owedCents)}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{a.uploads30d}</td>
-                  <td className="px-3 py-2 text-neutral-500">{a.lang}</td>
+                  <td className="px-3 py-2 text-neutral-600 dark:text-neutral-400">{a.lang}</td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-6 text-center text-neutral-500">No accounts yet.</td>
+                  <td colSpan={10} className="px-3 py-6 text-center text-neutral-600 dark:text-neutral-400">No accounts yet.</td>
                 </tr>
               )}
             </tbody>
@@ -345,7 +345,7 @@ function Overview({
         </div>
       </section>
 
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-neutral-600 dark:text-neutral-400">
         Generated {new Date(data.generatedAt).toLocaleString()} · a sale&apos;s total is the sum of its lines ·
         owed = open sales (expected counts as received, the app&apos;s law).
       </p>
@@ -374,9 +374,9 @@ function Tile({
           : "";
   return (
     <div className="rounded-lg border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
-      <div className="text-xs uppercase tracking-wide text-neutral-500">{label}</div>
+      <div className="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400">{label}</div>
       <div className={`mt-1 text-2xl font-semibold tabular-nums ${color}`}>{value}</div>
-      {note && <div className="mt-1 text-xs text-neutral-500">{note}</div>}
+      {note && <div className="mt-1 text-xs text-neutral-600 dark:text-neutral-400">{note}</div>}
     </div>
   );
 }
@@ -386,7 +386,7 @@ function Card({ title, sub, children }: { title: string; sub?: string; children:
     <div className="rounded-lg border border-neutral-300 bg-white p-4 dark:border-neutral-700 dark:bg-neutral-900">
       <div className="mb-3">
         <div className="text-base font-semibold">{title}</div>
-        {sub && <div className="text-xs text-neutral-500">{sub}</div>}
+        {sub && <div className="text-xs text-neutral-600 dark:text-neutral-400">{sub}</div>}
       </div>
       {children}
     </div>
@@ -398,7 +398,7 @@ function Facts({ rows }: { rows: [string, string][] }) {
     <dl className="space-y-1 text-sm">
       {rows.map(([k, v]) => (
         <div key={k} className="flex items-baseline justify-between gap-3">
-          <dt className="text-neutral-500">{k}</dt>
+          <dt className="text-neutral-600 dark:text-neutral-400">{k}</dt>
           <dd className="tabular-nums">{v}</dd>
         </div>
       ))}
@@ -426,7 +426,7 @@ function Sparkline({ values, className }: { values: number[]; className: string 
       <svg viewBox={`0 0 ${width} ${height}`} className={`h-16 w-full ${className}`} aria-hidden="true">
         <polyline points={points} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
       </svg>
-      <div className="text-xs text-neutral-500">
+      <div className="text-xs text-neutral-600 dark:text-neutral-400">
         peak {className.includes("emerald") ? formatCents(max) : max} · latest{" "}
         {className.includes("emerald") ? formatCents(values.at(-1) ?? 0) : (values.at(-1) ?? 0)}
       </div>
@@ -436,7 +436,7 @@ function Sparkline({ values, className }: { values: number[]; className: string 
 
 function Legend({ first, last }: { first?: string; last?: string }) {
   return (
-    <div className="mt-1 flex justify-between text-xs text-neutral-500">
+    <div className="mt-1 flex justify-between text-xs text-neutral-600 dark:text-neutral-400">
       <span>{first ?? ""}</span>
       <span>{last ?? ""}</span>
     </div>

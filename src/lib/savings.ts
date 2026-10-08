@@ -2,14 +2,16 @@
  * The landing page's "what is bookkeeping costing you?" estimate. Pure:
  * two numbers in, two numbers out, integer cents, no DOM.
  *
- * The one assumption is stated in the copy next to the sliders: with
- * contado the weekly bookkeeping shrinks to about CONTADO_MINUTES_PER_WEEK
- * (a few screenshots, a swipe). Everything else is the visitor's own
- * numbers. It is an estimate of their time's worth, never a promise of
- * revenue — the copy says so.
+ * The one assumption is stated in the copy: with contado the weekly
+ * bookkeeping shrinks to about CONTADO_MINUTES_PER_WEEK (a few
+ * screenshots, a swipe). That figure is our design target, not a
+ * measurement, and the note directly under the result says so.
+ * Everything else is the visitor's own numbers. It is an estimate of
+ * their time's worth, never a promise of revenue — the copy says that too.
  */
 
-/** A few screenshots and a swipe: what the core loop is built to cost. */
+/** A few screenshots and a swipe: the time the core loop is DESIGNED to
+ *  cost. A target, not a measured average — never present it as one. */
 export const CONTADO_MINUTES_PER_WEEK = 15;
 
 /** 52 weeks over 12 months, the honest "per month" multiplier. */

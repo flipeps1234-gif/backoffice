@@ -80,10 +80,11 @@ export const messages = {
     es: "Ingresos y gastos reales del negocio, los más antiguos primero. Las estimaciones nunca se incluyen.",
     pt: "Receitas e despesas reais do negócio, os mais antigos primeiro. Estimativas nunca são incluídas.",
   },
+  // "Every row", not "everything": sale photos are not in the CSV.
   "dash.downloadAll": {
-    en: "Download everything",
-    es: "Descargar todo",
-    pt: "Baixar tudo",
+    en: "Download every row",
+    es: "Descargar todas las filas",
+    pt: "Baixar todas as linhas",
   },
   "dash.allNote": {
     en: "Every row you've logged — business, personal and not yet sorted — with a column saying which is which. Your data, whenever you want it.",

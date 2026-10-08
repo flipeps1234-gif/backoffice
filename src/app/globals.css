@@ -139,10 +139,28 @@ body {
   }
 }
 
-/* The sidebar's sticky notice block (upload-screen.tsx) pins itself over
-   <main>; while it shows, focus scrolling keeps a control clear of it, so a
-   keyboard user can see what Enter will press (WCAG 2.2 2.4.11; pass-10 a11y
-   review). :has() is inside the old-browser cut (Safari 16.4+). */
+/* Sticky things at the top of /app cover what scrolls under them, so focus
+   scrolling keeps a control clear of them and a keyboard user can see what
+   Enter will press (WCAG 2.2 2.4.11; pass-10 a11y review, 2026-10-08
+   compliance audit). :has() is inside the old-browser cut (Safari 16.4+).
+   - Below lg, the phone banner (desktop-shell.tsx, data-app-banner): 3.5rem.
+   - The sorting stage's RunningTotals bar (running-totals.tsx): up to ~8rem
+     with every line showing, and it sticks at the very top, so under the
+     phone banner it is the taller of the two. Not the landing's inert demo
+     copy.
+   - The sidebar's sticky notice block (upload-screen.tsx), pinned over
+     <main> while it shows.
+   The banner rule is the least specific, so either of the other two
+   outranks it below lg; those two never meet (on Upload the notice block
+   is not sticky). */
+@media (width < 64rem) {
+  html:has([data-app-banner]) {
+    scroll-padding-top: 3.5rem;
+  }
+}
+html:has([data-running-totals]:not([inert] *)) {
+  scroll-padding-top: 8.5rem;
+}
 html:has([data-sticky-notices]:not([hidden])) {
   scroll-padding-top: 8rem;
 }

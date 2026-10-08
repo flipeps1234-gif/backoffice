@@ -18,7 +18,7 @@ import {
   useMounted,
 } from "./public-demos";
 import { OwedPlayground, SheetPlayground, SwipePlayground } from "./landing-playground";
-import { PublicFooter, PublicHeader } from "./public-shell";
+import { PublicPage } from "./public-shell";
 import SavingsCalculator from "./savings-calculator";
 import RunningTotals from "./running-totals";
 import { useLocale } from "./use-locale";
@@ -118,9 +118,7 @@ export default function Landing({
 
 
   return (
-    <main className="mx-auto w-full max-w-[40rem] px-4 py-8 lg:max-w-5xl">
-      <PublicHeader />
-
+    <PublicPage className="mx-auto w-full max-w-[40rem] px-4 py-8 lg:max-w-5xl">
       {/* HERO — on desktop the sheet demo sits beside the words, the way
           the app's own desktop keeps the rail beside the hub. DOM order
           (title → demo → CTA) is unchanged; grid placement does the rest. */}
@@ -129,13 +127,13 @@ export default function Landing({
           <h1 className="text-4xl font-semibold tracking-tight">
             {hero?.title ?? t("landing.heroTitle")}
           </h1>
-          <p className="text-sm text-neutral-500">{hero?.sub ?? t("landing.heroSub")}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{hero?.sub ?? t("landing.heroSub")}</p>
           {/* Desktop only: the tall sheet demo beside two lines of text
               left the hero's left column mostly air. These are real
               links to the four channel pages — substance, not filler.
               Mobile stays untouched (the lg: law). */}
           <div className="hidden lg:block lg:pt-4">
-            <p className="text-sm text-neutral-500">{t("landing.heroChannels")}</p>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("landing.heroChannels")}</p>
             <ul className="mt-2 flex flex-wrap gap-2">
               {(
                 [
@@ -167,26 +165,26 @@ export default function Landing({
 
       {/* HOW IT WORKS */}
       <section className="mt-14 space-y-6">
-        <h2 className="text-xs uppercase tracking-wide text-neutral-500">
+        <h2 className="text-xs uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
           {t("landing.howTitle")}
         </h2>
         <ol className="space-y-8 lg:space-y-12">
           <li className="space-y-3 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:space-y-0">
             <div className="space-y-3">
               <p className="text-base font-semibold">
-                <span className="mr-2 tabular-nums text-neutral-500">1</span>
+                <span className="mr-2 tabular-nums text-neutral-600 dark:text-neutral-400">1</span>
                 {t("landing.step1Title")}
               </p>
-              <p className="text-sm text-neutral-500">{t("landing.step1Body")}</p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("landing.step1Body")}</p>
             </div>
             {/* The hub's real drop zone — the whole box is the tap target;
                 there is no separate "choose" button in the app either. */}
-            <DemoFrame label={t("landing.demoData")}>
+            <DemoFrame label={t("landing.demoData")} description={t("landing.demoDescUpload")}>
               {/* A real drop zone that READS nothing: say so when someone
                   tries it, instead of swallowing their files in silence. */}
               <DropZone busy={false} onFiles={() => setDroppedOnDemo(true)} />
               {droppedOnDemo && (
-                <p role="status" className="mt-3 text-sm text-neutral-500">
+                <p role="status" className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
                   {t("landing.demoDropNote")}{" "}
                   <a href="/app" className="font-medium underline">
                     {t("landing.openApp")}
@@ -198,15 +196,15 @@ export default function Landing({
           <li className="space-y-3 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:space-y-0">
             <div className="space-y-3">
               <p className="text-base font-semibold">
-                <span className="mr-2 tabular-nums text-neutral-500">2</span>
+                <span className="mr-2 tabular-nums text-neutral-600 dark:text-neutral-400">2</span>
                 {t("landing.step2Title")}
               </p>
-              <p className="text-sm text-neutral-500">{t("landing.step2Body")}</p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("landing.step2Body")}</p>
               {/* Desktop: "What we found" moves under the words so the
                   stacked demo doesn't tower over two lines of text —
                   the tallest void on the page before this. */}
               <div className="hidden lg:block lg:pt-2">
-                <DemoFrame label={t("landing.demoData")}>
+                <DemoFrame label={t("landing.demoData")} description={t("landing.demoDescFound")}>
                   <Insights transactions={SHEET_DEMO} />
                 </DemoFrame>
               </div>
@@ -219,13 +217,13 @@ export default function Landing({
           <li className="space-y-3 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:space-y-0">
             <div className="space-y-3">
               <p className="text-base font-semibold">
-                <span className="mr-2 tabular-nums text-neutral-500">3</span>
+                <span className="mr-2 tabular-nums text-neutral-600 dark:text-neutral-400">3</span>
                 {t("landing.step3Title")}
               </p>
-              <p className="text-sm text-neutral-500">{t("landing.step3Body")}</p>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("landing.step3Body")}</p>
               {/* Desktop: the totals + dashboard demo is the tallest on
                   the page — these carry what the books actually hold. */}
-              <ul className="hidden space-y-2 text-sm text-neutral-500 lg:block lg:pt-2">
+              <ul className="hidden space-y-2 text-sm text-neutral-600 dark:text-neutral-400 lg:block lg:pt-2">
                 <li>{t("landing.step3a")}</li>
                 <li>{t("landing.step3b")}</li>
                 <li>{t("landing.step3c")}</li>
@@ -234,7 +232,7 @@ export default function Landing({
             {/* The totals bar and the Dashboard as the desktop rail shows
                 them. Dashboard reads today's date for the quarter, so it
                 waits for mount like the owed demo does. */}
-            <DemoFrame label={t("landing.demoData")}>
+            <DemoFrame label={t("landing.demoData")} description={t("landing.demoDescBooks")}>
               <div className="px-4">
                 <RunningTotals transactions={TOTALS_DEMO} />
               </div>
@@ -251,7 +249,7 @@ export default function Landing({
             </DemoFrame>
           </li>
         </ol>
-        <p className="text-sm text-neutral-500">{t("landing.law")}</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("landing.law")}</p>
         <Link href="/how-it-works" className="inline-block text-sm font-medium underline">
           {t("site.navHow")} →
         </Link>
@@ -264,8 +262,8 @@ export default function Landing({
       <section className="mt-14 space-y-4 lg:grid lg:grid-cols-2 lg:items-center lg:gap-12 lg:space-y-0">
         <div className="space-y-3">
           <h2 className="text-base font-semibold">{t("landing.owedTitle")}</h2>
-          <p className="text-sm text-neutral-500">{t("landing.owedBody")}</p>
-          <ul className="hidden space-y-2 text-sm text-neutral-500 lg:block lg:pt-2">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("landing.owedBody")}</p>
+          <ul className="hidden space-y-2 text-sm text-neutral-600 dark:text-neutral-400 lg:block lg:pt-2">
             <li>{t("landing.owed1")}</li>
             <li>{t("landing.owed2")}</li>
             <li>{t("landing.owed3")}</li>
@@ -278,11 +276,11 @@ export default function Landing({
       <div className="mt-14 grid gap-14 lg:grid-cols-2 lg:gap-12">
         <section className="space-y-3">
           <h2 className="text-base font-semibold">{t("landing.taxTitle")}</h2>
-          <p className="text-sm text-neutral-500">{t("landing.taxBody")}</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{t("landing.taxBody")}</p>
         </section>
         <section className="space-y-3">
           <h2 className="text-base font-semibold">{t("landing.trustTitle")}</h2>
-          <ul className="space-y-2 text-sm text-neutral-500">
+          <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
             <li>{t("landing.trust1")}</li>
             <li>{t("landing.trust2")}</li>
             <li>{t("landing.trust3")}</li>
@@ -300,8 +298,6 @@ export default function Landing({
       <div className="mt-14 lg:mx-auto lg:w-full lg:max-w-[40rem]">
         <Cta />
       </div>
-
-      <PublicFooter />
-    </main>
+    </PublicPage>
   );
 }

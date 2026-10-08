@@ -93,11 +93,13 @@ export default function Insights({
   };
 
   return (
+    // White in both themes, so its grey text is neutral-600 with no dark:
+    // variant (design-tokens.md).
     <section
       aria-label={t("insights.sectionLabel")}
       className="rounded-lg border border-neutral-200 bg-white p-4"
     >
-      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-500">
+      <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-neutral-600">
         {t("insights.title")}
       </h2>
       <dl className="space-y-3">
@@ -108,12 +110,12 @@ export default function Insights({
               key={insight.key}
               className="flex items-baseline justify-between gap-3"
             >
-              <dt className="text-sm text-neutral-500">{label}</dt>
+              <dt className="text-sm text-neutral-600">{label}</dt>
               <dd className="text-right">
                 <span className="block text-lg font-semibold tabular-nums text-neutral-900">
                   {value}
                 </span>
-                <span className="block text-xs text-neutral-500">{detail}</span>
+                <span className="block text-xs text-neutral-600">{detail}</span>
               </dd>
             </div>
           );

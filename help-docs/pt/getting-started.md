@@ -5,7 +5,7 @@ O contado transforma seus prints de pagamentos em um livro-caixa. Você envia as
 ## Os primeiros cinco minutos
 
 - Entre com seu e-mail e pule ou termine o breve tour de boas-vindas.
-- No celular, toque na caixa de cima e adicione prints dos seus pagamentos de Venmo, Cash App ou Zelle; no computador, escolha **Enviar capturas** no menu da esquerda — quantos quiser.
+- No celular, toque na caixa de cima e adicione prints dos seus pagamentos de Venmo, Cash App ou Zelle; no computador, escolha **Enviar capturas** no menu da esquerda — vários de uma vez.
 - O app lê cada pagamento que encontra e mostra uma lista já preenchida. O que ficou em dúvida aparece destacado — toque e corrija.
 - Marque cada pagamento como **do negócio ou pessoal** — deslizando no celular (para a direita se é do negócio, para a esquerda se é pessoal), ou com os dois botões. Seus totais sobem enquanto você avança.
 - Trabalho em dinheiro sem print? Registre a venda na mão — dois ou três toques.

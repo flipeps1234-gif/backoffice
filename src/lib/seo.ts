@@ -15,7 +15,16 @@ import { SITE_NAME, absolute } from "./site";
  * subpage was shipping an imageless small card).
  */
 
-export const OG_IMAGE_ALT = `${SITE_NAME} — your payments, turned into books`;
+/** The share card's words (opengraph-image.tsx draws them), kept here so
+ *  the image and its alt text can't drift: the alt carries everything
+ *  the picture says. Same claims as the landing hero (landing.heroTitle,
+ *  landing.heroSub) — "in a few taps", never "automatically". */
+export const OG_IMAGE_TEXT = {
+  headline: "Your Venmo, Cash App, Zelle and cash — turned into real books in a few taps.",
+  sub: "Built for cleaners, landscapers, barbers. Free.",
+} as const;
+
+export const OG_IMAGE_ALT = `${SITE_NAME}: ${OG_IMAGE_TEXT.headline} ${OG_IMAGE_TEXT.sub}`;
 
 export const OG_BASE: NonNullable<Metadata["openGraph"]> = {
   type: "website",
@@ -29,7 +38,7 @@ export const OG_BASE: NonNullable<Metadata["openGraph"]> = {
 
 export const TW_BASE: NonNullable<Metadata["twitter"]> = {
   card: "summary_large_image",
-  images: ["/opengraph-image"],
+  images: [{ url: "/opengraph-image", alt: OG_IMAGE_ALT }],
 };
 
 export const pageMetadata = ({
@@ -107,7 +116,7 @@ export const softwareApplication = (
     "Track who owes you, grouped by client and aged",
     "Schedule C expense categories on receipts",
     "Mileage estimate from client distances — no GPS",
-    "Proof of income as print or PDF",
+    "Income summary from your own records, as print or PDF — not a verified statement",
     "CSV export for your tax preparer, free forever",
     "English, Spanish and Portuguese",
   ],

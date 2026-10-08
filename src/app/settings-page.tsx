@@ -4,8 +4,10 @@ import { useState } from "react";
 import type { BusinessProfile } from "@/lib/profile";
 import {
   activeConsentAt,
+  alertsFormDirty,
   hasActiveConsent,
   looksLikeE164,
+  storablePhone,
   type NotificationPrefs,
   type NotifyChannel,
 } from "@/lib/notify/types";
@@ -19,7 +21,7 @@ import {
 } from "@/lib/settings";
 import { APP_VERSION } from "@/lib/version";
 import LocalePicker from "./locale-picker";
-import TermsGate from "./terms-gate";
+import TermsGate, { LegalLinks } from "./terms-gate";
 import { useLocale } from "./use-locale";
 import {
   useNotifyPrefs,
@@ -35,16 +37,26 @@ import {
  * the purge runs server-side (migration 0013).
  *
  * The WhatsApp rows render only when NEXT_PUBLIC_SUPPORT_WHATSAPP is
- * set at build time — a support link to nowhere is worse than a
- * "coming soon".
+ * set at build time — a support link to nowhere is worse than none. The
+ * email row always renders: mail@getcontado.com is the address /contact,
+ * the footer, /privacy and the native app already give, and
+ * NEXT_PUBLIC_SUPPORT_EMAIL (the same variable the site reads) can
+ * repoint it.
  */
 
 const SUPPORT_WHATSAPP = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP ?? "";
+const SUPPORT_EMAIL =
+  process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "mail@getcontado.com";
+
+// Every link-shaped row in Catalog and Help & about, whether a <button>
+// (an in-app screen) or an <a> (mail, the website).
+const rowClass =
+  "flex w-full items-center justify-between rounded-lg border border-neutral-300 px-3 py-3 text-sm font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900";
 
 const fieldClass =
-  "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900 " +
-  "placeholder:text-neutral-400 focus:border-neutral-900 focus:outline-none";
-const labelClass = "mb-1 block text-xs font-medium text-neutral-500";
+  "w-full rounded-md border border-neutral-500 bg-white px-3 py-2 text-sm text-neutral-900 " +
+  "placeholder:text-neutral-500 focus:border-neutral-900 focus:outline-none";
+const labelClass = "mb-1 block text-xs font-medium text-neutral-600 dark:text-neutral-400";
 
 function Section({
   title,
@@ -55,7 +67,7 @@ function Section({
 }) {
   return (
     <section>
-      <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+      <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-600 dark:text-neutral-400">
         {title}
       </h3>
       {children}
@@ -84,7 +96,7 @@ function Toggle({
       />
       <span>
         <span className="block text-sm font-medium">{label}</span>
-        <span className="mt-0.5 block text-xs text-neutral-500">{desc}</span>
+        <span className="mt-0.5 block text-xs text-neutral-600 dark:text-neutral-400">{desc}</span>
       </span>
     </label>
   );
@@ -105,11 +117,10 @@ function ChannelAlerts({
   const [consent, setConsent] = useState(hasActiveConsent(prefs));
   const [savedFlash, setSavedFlash] = useState(false);
 
-  const dirty =
-    channel !== prefs.channel ||
-    phone.trim() !== prefs.phone ||
-    consent !== hasActiveConsent(prefs);
   const needsDetails = channel !== "off";
+  // Compared as the save would store it, against the stored row read the
+  // same way — a STOPped account opens with Save dark (types.ts).
+  const dirty = alertsFormDirty(prefs, { channel, phone, consent });
   const phoneOk = !needsDetails || !consent || looksLikeE164(phone.trim());
   const consentAt = activeConsentAt(prefs);
   const optedOut =
@@ -142,12 +153,14 @@ function ChannelAlerts({
   return (
     <div className="rounded-lg border border-neutral-300 p-3 dark:border-neutral-700">
       <p className="text-sm font-medium">{t("settings.whatsappTitle")}</p>
-      <p className="mt-0.5 text-xs text-neutral-500">
+      <p className="mt-0.5 text-xs text-neutral-600 dark:text-neutral-400">
         {t("settings.whatsappDesc")}
       </p>
 
       <div className="mt-3 space-y-2">
-        <div className="flex gap-2" role="radiogroup" aria-label={t("settings.channelLabel")}>
+        {/* group, not radiogroup: the options are aria-pressed buttons, and
+            a radiogroup promises radios and arrow keys it never had. */}
+        <div className="flex gap-2" role="group" aria-label={t("settings.channelLabel")}>
           {channelOption("off", t("settings.channelOff"))}
           {channelOption("whatsapp", t("settings.channelWhatsapp"))}
           {channelOption("sms", t("settings.channelSms"))}
@@ -169,7 +182,7 @@ function ChannelAlerts({
                 onChange={(e) => setPhone(e.target.value)}
               />
               {!phoneOk && (
-                <p className="mt-1 text-xs text-red-600">
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                   {t("settings.phoneInvalid")}
                 </p>
               )}
@@ -193,9 +206,13 @@ function ChannelAlerts({
                 )}
               </span>
             </label>
+            {/* The pages the consent points to, right under it (carrier
+                opt-in rules ask for terms and privacy at the point of
+                consent). */}
+            <LegalLinks />
 
             {consentAt && !optedOut && (
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-neutral-600 dark:text-neutral-400">
                 {t("settings.consentSince", {
                   date: new Date(consentAt).toLocaleDateString(tag),
                 })}
@@ -221,10 +238,11 @@ function ChannelAlerts({
             const now = new Date().toISOString();
             // An old tick timestamp is only still valid PROOF if no STOP
             // came after it. Re-opting in after an opt-out must stamp the
-            // fresh tick — carrying the pre-STOP date forward (and nulling
-            // the opt-out below) would leave a record claiming uninterrupted
-            // consent across a STOP, which is exactly what a Meta/carrier
-            // dispute reads as ignoring one.
+            // fresh tick: the STOP stays on the row, and only a consent
+            // dated after it is the re-opt-in (hasActiveConsent). Carrying
+            // the pre-STOP date forward would leave a record claiming
+            // uninterrupted consent across a STOP, which is exactly what a
+            // Meta/carrier dispute reads as ignoring one.
             const stillValid = (at: string | null) =>
               at !== null &&
               (prefs.optedOutAt === null || prefs.optedOutAt < at);
@@ -239,7 +257,7 @@ function ChannelAlerts({
             // postdates it (re-selecting that channel later forces a
             // fresh tick anyway).
             const carried = (at: string | null) => (stillValid(at) ? at : null);
-            onSave({
+            const next: NotificationPrefs = {
               channel: consent || channel === "off" ? channel : "off",
               phone: phone.trim(),
               // Only the SELECTED channel's consent moves; the other
@@ -258,7 +276,11 @@ function ChannelAlerts({
               // for hours landed over a STOP texted in between, erasing it
               // (pass-7 concurrency review).
               optedOutAt: prefs.optedOutAt,
-            });
+            };
+            // The number travels only with a ticked box on an active
+            // channel (storablePhone): Off, or no consent, saves "" — it
+            // used to store whatever sat in the field.
+            onSave({ ...next, phone: storablePhone(next) });
             setSavedFlash(true);
             setTimeout(() => setSavedFlash(false), 4000);
           }}
@@ -336,11 +358,11 @@ function BusinessForm({
           onChange={(e) => setUsState(e.target.value)}
         />
       </div>
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-neutral-600 dark:text-neutral-400">
         {t(signedIn ? "settings.businessHint" : "settings.businessHintAnon")}
       </p>
       {signedIn && !profileReady && (
-        <p className="text-xs text-neutral-500">{t("settings.profileLoading")}</p>
+        <p className="text-xs text-neutral-600 dark:text-neutral-400">{t("settings.profileLoading")}</p>
       )}
       <button
         type="button"
@@ -477,20 +499,20 @@ export default function SettingsPage({
       onClick={() => setSaleFlow(value)}
     >
       <span className="block text-sm font-semibold">{label}</span>
-      <span className="mt-0.5 block text-xs text-neutral-500">{desc}</span>
+      <span className="mt-0.5 block text-xs text-neutral-600 dark:text-neutral-400">{desc}</span>
     </button>
   );
 
+  const chevron = (
+    <span aria-hidden="true" className="text-neutral-400">
+      ›
+    </span>
+  );
+
   const linkRow = (label: string, onClick: () => void) => (
-    <button
-      type="button"
-      className="flex w-full items-center justify-between rounded-lg border border-neutral-300 px-3 py-3 text-sm font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
-      onClick={onClick}
-    >
+    <button type="button" className={rowClass} onClick={onClick}>
       {label}
-      <span aria-hidden="true" className="text-neutral-400">
-        ›
-      </span>
+      {chevron}
     </button>
   );
 
@@ -500,7 +522,7 @@ export default function SettingsPage({
         <h2 className="text-sm font-semibold">{t("settings.title")}</h2>
         <button
           type="button"
-          className="-mx-2 min-h-11 px-2 text-sm text-neutral-500 hover:underline"
+          className="-mx-2 min-h-11 px-2 text-sm text-neutral-600 dark:text-neutral-400 hover:underline"
           onClick={onClose}
         >
           {t("common.close")}
@@ -545,7 +567,7 @@ export default function SettingsPage({
             t("settings.clientFirstDesc"),
           )}
         </div>
-        <p className="mt-2 text-xs text-neutral-500">
+        <p className="mt-2 text-xs text-neutral-600 dark:text-neutral-400">
           {t("settings.saleFlowHint")}
         </p>
       </Section>
@@ -579,7 +601,7 @@ export default function SettingsPage({
               onSave={onSaveNotifyPrefs}
             />
           ) : (
-            <div className="rounded-lg border border-dashed border-neutral-300 p-3 text-sm text-neutral-400 dark:border-neutral-700">
+            <div className="rounded-lg border border-dashed border-neutral-300 p-3 text-sm text-neutral-600 dark:border-neutral-700 dark:text-neutral-400">
               {t("settings.notifySignIn")}
             </div>
           )}
@@ -595,9 +617,10 @@ export default function SettingsPage({
           >
             {t("settings.exportAll")}
           </button>
-          <p className="text-xs leading-relaxed text-neutral-500">
+          <p className="text-xs leading-relaxed text-neutral-600 dark:text-neutral-400">
             {t("settings.privacyPromise")}
           </p>
+          <LegalLinks />
 
           {signedIn && email && (
             <div className="rounded-lg border border-red-200 p-3 dark:border-red-900">
@@ -645,7 +668,7 @@ export default function SettingsPage({
                   <p className="text-sm text-neutral-700 dark:text-neutral-300">
                     {t("settings.deleteExplain")}
                   </p>
-                  <label className="block text-xs text-neutral-500" htmlFor="delete-confirm">
+                  <label className="block text-xs text-neutral-600 dark:text-neutral-400" htmlFor="delete-confirm">
                     {t("settings.deleteTypeEmail", { email })}
                   </label>
                   <input
@@ -686,7 +709,7 @@ export default function SettingsPage({
                 </div>
               )}
               {deleteError && (
-                <p className="mt-2 text-sm text-red-600">
+                <p className="mt-2 text-sm text-red-600 dark:text-red-400">
                   {t("settings.deleteFailed")}
                 </p>
               )}
@@ -699,7 +722,7 @@ export default function SettingsPage({
         <p
           className={`text-sm ${
             !signedIn
-              ? "text-neutral-500"
+              ? "text-neutral-600 dark:text-neutral-400"
               : hasSaveError || saveWaiting
                 ? "text-amber-700 dark:text-amber-400"
                 : "text-emerald-700 dark:text-emerald-400"
@@ -717,23 +740,32 @@ export default function SettingsPage({
 
       <Section title={t("settings.helpAbout")}>
         <div className="space-y-2">
-          {SUPPORT_WHATSAPP ? (
+          {SUPPORT_WHATSAPP && (
             <a
-              className="flex w-full items-center justify-between rounded-lg border border-neutral-300 px-3 py-3 text-sm font-medium hover:bg-neutral-50 dark:border-neutral-700 dark:hover:bg-neutral-900"
+              className={rowClass}
               href={`https://wa.me/${SUPPORT_WHATSAPP}`}
               target="_blank"
               rel="noreferrer"
             >
               {t("settings.supportWhatsapp")}
-              <span aria-hidden="true" className="text-neutral-400">
-                ›
-              </span>
+              {chevron}
             </a>
-          ) : (
-            <div className="rounded-lg border border-dashed border-neutral-300 p-3 text-sm text-neutral-400 dark:border-neutral-700">
-              {t("settings.supportSoon")}
-            </div>
           )}
+          {/* A real address, not "coming soon" — the native app's row. */}
+          <a className={rowClass} href={`mailto:${SUPPORT_EMAIL}`}>
+            <span className="min-w-0">
+              {t("site.emailUs")}
+              <span className="mt-0.5 block break-all text-xs font-normal text-neutral-600 dark:text-neutral-400">
+                {SUPPORT_EMAIL}
+              </span>
+            </span>
+            {chevron}
+          </a>
+          {/* The website's contact page: a new tab, like LegalLinks. */}
+          <a className={rowClass} href="/contact" target="_blank" rel="noreferrer">
+            {t("site.navContact")}
+            {chevron}
+          </a>
           {linkRow(t("settings.viewTerms"), () => setShowTerms(true))}
           {/* Same gate as the business Save: before the stored profile
               loaded, the tour would seed blank fields whose Finish could
@@ -741,20 +773,18 @@ export default function SettingsPage({
           <button
             type="button"
             disabled={!profileReady}
-            className="flex w-full items-center justify-between rounded-lg border border-neutral-300 px-3 py-3 text-sm font-medium hover:bg-neutral-50 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-900"
+            className={`${rowClass} disabled:opacity-40`}
             onClick={onShowTour}
           >
             {t("settings.showTour")}
-            <span aria-hidden="true" className="text-neutral-400">
-              ›
-            </span>
+            {chevron}
           </button>
           {/* Same hint the business Save shows while gated — a disabled
               row with no reason reads as broken. */}
           {signedIn && !profileReady && (
-            <p className="px-1 text-xs text-neutral-500">{t("settings.profileLoading")}</p>
+            <p className="px-1 text-xs text-neutral-600 dark:text-neutral-400">{t("settings.profileLoading")}</p>
           )}
-          <p className="px-1 text-xs text-neutral-500">
+          <p className="px-1 text-xs text-neutral-600 dark:text-neutral-400">
             {t("settings.version", { version: APP_VERSION })}
           </p>
         </div>

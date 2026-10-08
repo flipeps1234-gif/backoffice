@@ -31,9 +31,9 @@ export const messages = {
     pt: "As fotos que você anexa a uma venda são guardadas",
   },
   "terms.photoBody": {
-    en: "The screenshots above are read and discarded. A photo you attach to a sale is different: it's stored with that sale until you delete your account — single photos can't be removed yet, so attach only what you're fine keeping.",
-    es: "Las capturas de arriba se leen y se descartan. Una foto que adjuntas a una venta es distinta: se guarda con esa venta hasta que borres tu cuenta — fotos sueltas todavía no se pueden quitar, así que adjunta solo lo que no te importe conservar.",
-    pt: "As capturas acima são lidas e descartadas. Uma foto anexada a uma venda é diferente: ela fica guardada com a venda até você apagar sua conta — fotos avulsas ainda não podem ser removidas, então anexe só o que você não se importa de manter.",
+    en: "The screenshots above are read by OpenAI and not stored by contado (OpenAI may keep them up to 30 days to check for abuse). A photo you attach to a sale is different: it's stored with that sale until you delete your account — single photos can't be removed yet, so attach only what you're fine keeping.",
+    es: "Las capturas de arriba las lee OpenAI y contado no las guarda (OpenAI puede conservarlas hasta 30 días para vigilar abusos). Una foto que adjuntas a una venta es distinta: se guarda con esa venta hasta que borres tu cuenta — fotos sueltas todavía no se pueden quitar, así que adjunta solo lo que no te importe conservar.",
+    pt: "As capturas acima são lidas pela OpenAI e o contado não as guarda (a OpenAI pode retê-las por até 30 dias para monitorar abusos). Uma foto anexada a uma venda é diferente: ela fica guardada com a venda até você apagar sua conta — fotos avulsas ainda não podem ser removidas, então anexe só o que você não se importa de manter.",
   },
   "terms.checkTitle": {
     en: "Check every row before you keep it",
@@ -71,9 +71,9 @@ export const messages = {
     pt: "Apagar: sua conta inteira sim, registros avulsos ainda não",
   },
   "terms.deleteBody": {
-    en: "A payment you log stays in your ledger — you can correct it, but not remove it one by one. You CAN delete your whole account in Settings: everything is erased for good 7 days after you ask, and you can change your mind inside those 7 days.",
-    es: "Un pago que registras se queda en tu libro — puedes corregirlo, pero no quitarlo uno por uno. Lo que SÍ puedes es borrar tu cuenta completa en Ajustes: todo se elimina para siempre 7 días después de pedirlo, y puedes arrepentirte dentro de esos 7 días.",
-    pt: "Um pagamento registrado fica no seu livro — dá para corrigir, mas não remover um por um. O que dá SIM é apagar sua conta inteira em Configurações: tudo é eliminado de vez 7 dias depois do pedido, e você pode mudar de ideia dentro desses 7 dias.",
+    en: "A payment you log stays in your ledger — you can correct it, but not remove it one by one. You CAN delete your whole account in Settings: your ledger is erased for good 7 days after you ask (a founding-list email is kept until you ask us to remove it), and you can change your mind inside those 7 days.",
+    es: "Un pago que registras se queda en tu libro — puedes corregirlo, pero no quitarlo uno por uno. Lo que SÍ puedes es borrar tu cuenta completa en Ajustes: tu libro se elimina para siempre 7 días después de pedirlo (un correo de la lista de fundadores se guarda hasta que pidas borrarlo), y puedes arrepentirte dentro de esos 7 días.",
+    pt: "Um pagamento registrado fica no seu livro — dá para corrigir, mas não remover um por um. O que dá SIM é apagar sua conta inteira em Configurações: seu livro-caixa é eliminado de vez 7 dias depois do pedido (um e-mail da lista de fundadores fica guardado até você pedir para remover), e você pode mudar de ideia dentro desses 7 dias.",
   },
   "terms.yoursTitle": {
     en: "Your data is yours",
@@ -81,9 +81,9 @@ export const messages = {
     pt: "Seus dados são seus",
   },
   "terms.yoursBody": {
-    en: "Export the lot as a spreadsheet whenever you like, free, always. We don't sell your data and there are no ads.",
-    es: "Exporta todo como hoja de cálculo cuando quieras, gratis, siempre. No vendemos tus datos y no hay anuncios.",
-    pt: "Exporte tudo como planilha quando quiser, grátis, sempre. Não vendemos seus dados e não há anúncios.",
+    en: "Export every row as a spreadsheet whenever you like, free, always. We don't sell your data and there are no ads.",
+    es: "Exporta cada fila como hoja de cálculo cuando quieras, gratis, siempre. No vendemos tus datos y no hay anuncios.",
+    pt: "Exporte cada linha como planilha quando quiser, grátis, sempre. Não vendemos seus dados e não há anúncios.",
   },
   "terms.earlyTitle": {
     en: "Early software, free hosting",
