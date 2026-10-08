@@ -271,6 +271,20 @@ confirm the demo word still signs in. The combined
 file `~/Desktop/contado-combined-0001-0017.sql` predates both; append
 0018 and 0019 to it before the next fresh-project setup.
 
+**Written, NOT applied — 0034 `founding_cap`** (2026-10-08, owner decision:
+"enforce a real cap of 100"): `security_limits.founding_cap` (default 100),
+`founding_signup_capped` ('ok' | 'full' | 'limited') and `founding_open()`,
+both service-role only; 0022's `founding_signup_limited` is re-created with
+the same cap so an older deployment can never write row 101. Full is full
+for everyone — a member's own address gets the same 'full' answer, so the
+list can't be probed. Independent of the Teams files 0028–0033.
+Order: deploy the route first (it falls back to 0022's signup on PGRST202),
+then apply 0034. Before applying, run `select count(*) from
+public.founding_list;` — if it is already over 100, the offer reads as full
+the moment 0034 lands; decide with the owner who the hundred are. To tune:
+`update public.security_limits set founding_cap = …;`. Re-run in order,
+never 0022 alone after 0034 (that would un-cap the old function).
+
 **Written, NOT applied — 0027 `notification_queue_server_only`** (2026-10-06):
 drops the 0014 client INSERT/UPDATE policies on `notification_queue` and
 revokes those grants from anon/authenticated (reading stays). No client
