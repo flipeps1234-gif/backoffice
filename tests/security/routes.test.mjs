@@ -98,33 +98,61 @@ test('signed-in users never receive the mock; an unconfigured production deploy 
   assert.equal((await missing.newInstance()(upload())).status,503);
 });
 
-function founding(result={data:true,error:null},configured=true){
+function founding(results={founding_signup_capped:{data:'ok',error:null}},configured=true){
   const calls=[];
   const route=load('src/app/api/founding/route.ts',{
     '@/lib/request-ip': requestIp,
     '@/lib/supabase/security':{
-      securityClient:()=>configured?{rpc:async(name,params)=>{calls.push({name,params});if(result instanceof Error)throw result;return result;}}:null,
+      securityClient:()=>configured?{rpc:async(name,params)=>{calls.push({name,params});const result=results[name]??{data:null,error:{code:'PGRST202'}};if(result instanceof Error)throw result;return result;}}:null,
       signupIpHash:()=> 'a'.repeat(64),
     },
   });
   const post=email=>route.POST(new Request('http://local.test/api/founding',{method:'POST',headers:{'content-type':'application/json','cf-connecting-ip':'192.0.2.1'},body:JSON.stringify({email})}));
-  return {calls,post};
+  return {calls,post,get:()=>route.GET()};
 }
-test('signup uses only the protected RPC with normalized email and a hash',async()=>{
+test('signup uses only the protected, capped RPC with normalized email and a hash',async()=>{
   const {calls,post}=founding();
   assert.equal((await post(' Local@Example.invalid ')).status,200);
-  assert.equal(calls[0].name,'founding_signup_limited');
+  assert.equal(calls.length,1);
+  assert.equal(calls[0].name,'founding_signup_capped');
   assert.equal(calls[0].params.p_email,'local@example.invalid');
   assert.equal(calls[0].params.p_ip_hash,'a'.repeat(64));
 });
-test('signup denies quota exhaustion and fails closed for missing migration/key/network',async()=>{
-  const limited=await founding({data:false,error:null}).post('local@example.invalid');
+test('a full founding list answers 409 full and saves nothing; limited answers 429',async()=>{
+  const full=await founding({founding_signup_capped:{data:'full',error:null}}).post('local@example.invalid');
+  assert.equal(full.status,409);
+  assert.equal((await full.json()).full,true);
+  const limited=await founding({founding_signup_capped:{data:'limited',error:null}}).post('local@example.invalid');
   assert.equal(limited.status,429);
   assert.equal(limited.headers.get('retry-after'),'3600');
-  for(const result of [{data:null,error:{code:'PGRST202'}},{data:null,error:null},new Error('network')]){
-    assert.equal((await founding(result).post('local@example.invalid')).status,503);
+  const odd=await founding({founding_signup_capped:{data:'surprise',error:null}}).post('local@example.invalid');
+  assert.equal(odd.status,503);
+});
+test('before 0034 the route falls back to the 0022 signup; it fails closed otherwise',async()=>{
+  const old=founding({founding_signup_limited:{data:true,error:null}});
+  assert.equal((await old.post('local@example.invalid')).status,200);
+  assert.deepEqual(old.calls.map(c=>c.name),['founding_signup_capped','founding_signup_limited']);
+  const limited=await founding({founding_signup_limited:{data:false,error:null}}).post('local@example.invalid');
+  assert.equal(limited.status,429);
+  assert.equal(limited.headers.get('retry-after'),'3600');
+  // Both functions missing, a non-202 error on the capped one, a malformed
+  // answer, a thrown network error and a missing key: 503, never a silent 200.
+  for(const results of [{},{founding_signup_capped:{data:null,error:{code:'42501'}}},{founding_signup_limited:{data:null,error:null}},{founding_signup_capped:new Error('network')}]){
+    assert.equal((await founding(results).post('local@example.invalid')).status,503);
   }
+  const notCalled=founding({founding_signup_capped:{data:null,error:{code:'42501'}},founding_signup_limited:{data:true,error:null}});
+  await notCalled.post('local@example.invalid');
+  assert.deepEqual(notCalled.calls.map(c=>c.name),['founding_signup_capped']);
   assert.equal((await founding(undefined,false).post('local@example.invalid')).status,503);
+});
+test('GET says whether the offer is open; unknown means open (the POST is the gate)',async()=>{
+  const closed=await founding({founding_open:{data:false,error:null}}).get();
+  assert.deepEqual(await closed.json(),{open:false});
+  assert.match(closed.headers.get('cache-control'),/s-maxage=300/);
+  assert.deepEqual(await (await founding({founding_open:{data:true,error:null}}).get()).json(),{open:true});
+  assert.deepEqual(await (await founding({}).get()).json(),{open:true});
+  assert.deepEqual(await (await founding({founding_open:new Error('network')}).get()).json(),{open:true});
+  assert.deepEqual(await (await founding(undefined,false).get()).json(),{open:true});
 });
 test('signup validates UTF-8 bytes, not just characters, before database work',async()=>{
   const {calls,post}=founding();

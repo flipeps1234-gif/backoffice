@@ -56,22 +56,60 @@ export async function POST(request: Request) {
     return Response.json({ error: "Bad request." }, { status: 400 });
   }
 
+  const params = { p_email: normalized, p_ip_hash: signupIpHash(ip) };
   try {
-    const { data, error } = await supabase.rpc("founding_signup_limited", {
-      p_email: normalized,
-      p_ip_hash: signupIpHash(ip),
-    });
+    // The capped signup (0034): the founding hundred is a real hundred.
+    const capped = await supabase.rpc("founding_signup_capped", params);
+    if (!capped.error) {
+      if (capped.data === "ok") return Response.json({ ok: true });
+      if (capped.data === "full") {
+        // 409, not 200: nothing was saved. The page says the offer is
+        // full — and that anyone who already joined is still in.
+        return Response.json({ error: "Full.", full: true }, { status: 409 });
+      }
+      if (capped.data === "limited") return limitedResponse();
+      console.error("Founding signup answered", capped.data);
+      return Response.json({ error: "Try again later." }, { status: 503 });
+    }
+    if (capped.error.code !== "PGRST202") {
+      console.error("Founding signup protection unavailable:", capped.error.code);
+      return Response.json({ error: "Try again later." }, { status: 503 });
+    }
+    // 0034 not applied yet (PGRST202: no such function): 0022's signup, as
+    // before. Once 0034 is in, that function is capped too.
+    const { data, error } = await supabase.rpc("founding_signup_limited", params);
     if (error || typeof data !== "boolean") {
       console.error("Founding signup protection unavailable:", error?.code);
       return Response.json({ error: "Try again later." }, { status: 503 });
     }
-    if (!data) {
-      return Response.json({ error: "Please try again later." }, {
-        status: 429, headers: { "Retry-After": "3600" },
-      });
-    }
+    if (!data) return limitedResponse();
   } catch {
     return Response.json({ error: "Try again later." }, { status: 503 });
   }
   return Response.json({ ok: true });
+}
+
+const limitedResponse = () =>
+  Response.json({ error: "Please try again later." }, {
+    status: 429, headers: { "Retry-After": "3600" },
+  });
+
+/**
+ * Whether the founding offer is still open, so the landing page can say
+ * "full" before anyone types an address. The same answer for everyone and
+ * no personal data, so the CDN may share it for a few minutes. Before 0034
+ * there is no cap: open. Any failure also answers open — the POST is the
+ * real gate and says "full" itself.
+ */
+export async function GET() {
+  const headers = { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" };
+  const supabase = securityClient();
+  if (!supabase) return Response.json({ open: true }, { headers });
+  try {
+    const { data, error } = await supabase.rpc("founding_open");
+    if (error || typeof data !== "boolean") return Response.json({ open: true }, { headers });
+    return Response.json({ open: data }, { headers });
+  } catch {
+    return Response.json({ open: true }, { headers });
+  }
 }

@@ -119,6 +119,8 @@ test('public roles cannot invoke either signup RPC, reserve or finish usage, or 
     for (const sql of [
       "SELECT public.founding_signup('review@example.invalid')",
       "SELECT public.founding_signup_limited('review@example.invalid',repeat('a',64))",
+      "SELECT public.founding_signup_capped('review@example.invalid',repeat('a',64))",
+      'SELECT public.founding_open()',
       `SELECT public.reserve_extraction('${user}',1)`,
       `SELECT public.finish_extraction('${user}')`,
       'SELECT public.cleanup_security_usage()',
@@ -139,6 +141,36 @@ test('server signup counts duplicates identically and enforces per-IP plus globa
   assert.equal(await signup('new@example.invalid','b'),true);
   assert.equal(await signup('next@example.invalid','c'),false);
   await assert.rejects(signup('not-an-email','d'), /invalid signup/);
+});
+
+test('the founding hundred is a real hundred: full is full for everyone, old route capped too (0034)', async () => {
+  await db.exec(`RESET ROLE; DELETE FROM public.founding_attempts; DELETE FROM public.founding_list;
+    UPDATE public.security_limits SET founding_ip_hourly=50,founding_project_hourly=50,founding_cap=2; SET ROLE service_role`);
+  const capped = async (email, ip = 'a') => (await db.query('SELECT public.founding_signup_capped($1,$2) AS r', [email, ip.repeat(64)])).rows[0].r;
+  const open = async () => (await db.query('SELECT public.founding_open() AS o')).rows[0].o;
+  assert.equal(await open(), true);
+  assert.equal(await capped('one@example.invalid'), 'ok');
+  assert.equal(await capped('ONE@example.invalid'), 'ok');            // a duplicate (any case) looks like a new address
+  assert.equal(await capped('two@example.invalid'), 'ok');
+  assert.equal(await open(), false);
+  assert.equal(await capped('three@example.invalid'), 'full');
+  assert.equal(await capped('one@example.invalid'), 'full');          // a member's address gets the same answer
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.founding_list')).rows[0].n, 2);
+  // 0022's function (an older deployment) can never write row 3 either.
+  await assert.rejects(db.query("SELECT public.founding_signup_limited('four@example.invalid',repeat('b',64))"), /founding list full/);
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.founding_list')).rows[0].n, 2);
+  // Rate limits still answer first, and invalid input still raises.
+  await db.exec('RESET ROLE; UPDATE public.security_limits SET founding_ip_hourly=1; SET ROLE service_role');
+  assert.equal(await capped('five@example.invalid', 'c'), 'full');
+  assert.equal(await capped('six@example.invalid', 'c'), 'limited');
+  await assert.rejects(capped('not-an-email', 'd'), /invalid signup/);
+  // The owner raises the cap and the offer reopens.
+  await db.exec(`RESET ROLE; DELETE FROM public.founding_attempts;
+    UPDATE public.security_limits SET founding_ip_hourly=50,founding_cap=3; SET ROLE service_role`);
+  assert.equal(await open(), true);
+  assert.equal(await capped('seven@example.invalid'), 'ok');
+  await db.exec(`RESET ROLE; DELETE FROM public.founding_attempts; DELETE FROM public.founding_list;
+    UPDATE public.security_limits SET founding_cap=100`);
 });
 
 test('account limits survive lease release and fresh requests; demo has a separate smaller limit', async () => {
@@ -189,7 +221,8 @@ test('invalid identities and image counts cannot reserve; rerunning corrective m
   for (const n of [0,21,null]) await assert.rejects(reserve(user,n), /invalid extraction request/);
   await assert.rejects(reserve(other), /unknown account/);
   await db.exec('RESET ROLE');
-  for (const file of ['0021_complete_write_guards.sql','0022_server_usage_limits.sql']) {
+  // In order, never an older file alone: 0034 re-caps what re-running 0022 replaced.
+  for (const file of ['0021_complete_write_guards.sql','0022_server_usage_limits.sql','0034_founding_cap.sql']) {
     await db.exec(await readFile(new URL(file,migrations),'utf8'));
   }
 });
