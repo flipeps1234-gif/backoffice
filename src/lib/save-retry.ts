@@ -10,7 +10,9 @@
  * absolute), so those are retried until they land. A save the server
  * ANSWERED and refused (a constraint, a permission, a 4xx/5xx with a body)
  * is not: repeating it would fail the same way forever and hold up every
- * save queued behind it.
+ * save queued behind it. One answer is a wait, not a refusal: the daily
+ * write ceiling (migration 0035, below) — that save is kept and tried
+ * again once the ceiling resets.
  */
 
 /** supabase-js reports a fetch that never got an answer as an error whose
@@ -44,6 +46,55 @@ const DELAYS_MS = [2_000, 5_000, 15_000, 30_000];
 export const retryDelayMs = (attempt: number): number =>
   DELAYS_MS[Math.min(Math.max(attempt, 0), DELAYS_MS.length - 1)];
 
+// ---- The daily write ceiling (migration 0035) ----
+//
+// An anti-abuse ceiling, not a usage cap (owner, 2026-10-08): 3,000 new rows
+// and 300 sale photos per account per UTC day — only a script gets there.
+// Over it, the database refuses the write with SQLSTATE PT429, which
+// PostgREST answers as HTTP 429 with code "PT429" and the message below.
+// The lib wrappers rethrow `new Error(error.message)`, so the message is
+// what reaches the queue; the code rides along only where a wrapper keeps
+// it (insertTransactions). Either one is enough.
+//
+// It is a WAIT, never a refusal: the save stays queued on this device and
+// is tried again after the reset — not dropped (the owner's data), and not
+// hammered (at most one try an hour while it waits, plus the wake-ups a
+// person causes: back online, the tab back in front).
+
+/** 0035's message. tests/unit/save-retry.test.mjs reads the migration and
+ *  holds the two together. */
+const DAILY_LIMIT_MESSAGE = /daily write limit/i;
+const DAILY_LIMIT_CODE = "PT429";
+
+export const isDailyLimitSaveError = (cause: unknown): boolean => {
+  if (typeof cause !== "object" || cause === null) return false;
+  const { code, message } = cause as { code?: unknown; message?: unknown };
+  if (code === DAILY_LIMIT_CODE) return true;
+  return typeof message === "string" && DAILY_LIMIT_MESSAGE.test(message);
+};
+
+/** What the write queue does with a failed save: wait for the network
+ *  ("network"), wait for the daily ceiling to reset ("limit") — both keep
+ *  the save and try it again — or report it, refused for good ("refused"). */
+export type SaveFailure = "network" | "limit" | "refused";
+export const classifySaveError = (cause: unknown): SaveFailure =>
+  isDailyLimitSaveError(cause) ? "limit" : isNetworkSaveError(cause) ? "network" : "refused";
+
+const DAY_MS = 86_400_000;
+/** When the ceiling resets: the next midnight UTC (0035 counts per UTC
+ *  day), by this device's clock. */
+export const limitResetsAt = (now: number = Date.now()): number =>
+  Math.floor(now / DAY_MS) * DAY_MS + DAY_MS;
+
+/** A minute past the reset, so a clock a little behind the server's does
+ *  not knock first; never more than an hour, so a clock running AHEAD (its
+ *  first try lands before the server's midnight and is refused again) or a
+ *  limit the owner raised mid-day costs an hour, not a day. */
+const LIMIT_MARGIN_MS = 60_000;
+const LIMIT_MAX_WAIT_MS = 60 * 60_000;
+export const limitRetryDelayMs = (now: number = Date.now()): number =>
+  Math.min(limitResetsAt(now) - now + LIMIT_MARGIN_MS, LIMIT_MAX_WAIT_MS);
+
 /** A parked save that lands after this long waited long enough that the
  *  owner may have entered it again on another device: the green line says
  *  to check for a double. */
@@ -68,8 +119,10 @@ export const TAB_ID: string = (() => {
 const PARKED_PREFIX = "contado.saveParked.";
 /** A marker older than this belongs to a tab that is gone (closed,
  *  crashed, asleep past its retry): readers drop it. A parked tab stamps
- *  its marker again on every retry, at most 30 s apart. */
+ *  its marker again on every retry, and every PARKED_RESTAMP_MS while a
+ *  longer wait runs (the daily ceiling's). */
 export const PARKED_STALE_MS = 90_000;
+export const PARKED_RESTAMP_MS = 30_000;
 
 export const markParked = (tabId: string, now: number = Date.now()): void => {
   try {

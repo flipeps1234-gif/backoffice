@@ -13,8 +13,13 @@ export default function RunningTotals({
   transactions,
   expectedCents = 0,
   owedCents = 0,
+  stickyTop = "top-0",
 }: {
   transactions: Transaction[];
+  /** Where it pins. /app's phone layout passes "top-14 lg:top-0": below lg
+   *  the 56px black banner (desktop-shell.tsx) is pinned at the very top
+   *  and would paint over it (2026-10-08 review, finding 1). */
+  stickyTop?: string;
   /** EXPECTED sales — owner says paid, no matched payment yet. Counted in
    *  the received figure per the owner's "show both" decision. */
   expectedCents?: number;
@@ -35,7 +40,7 @@ export default function RunningTotals({
   return (
     <div
       data-running-totals
-      className="sticky top-0 z-10 -mx-4 mb-4 border-b border-neutral-200 bg-background/95 px-4 py-3 backdrop-blur"
+      className={`sticky ${stickyTop} z-10 -mx-4 mb-4 border-b border-neutral-200 bg-background/95 px-4 py-3 backdrop-blur`}
     >
       {/* Personal left, business right — matching the swipe directions:
           left = personal, right = business. The totals sit where the cards

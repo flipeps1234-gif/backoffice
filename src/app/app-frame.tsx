@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import BrandHome from "./brand-home";
+import { askToSwitchLayout } from "./desktop-shell";
 import LocalePicker from "./locale-picker";
 import SkipLink from "./skip-link";
 import UploadScreen from "./upload-screen";
@@ -40,8 +41,13 @@ export function ClassicFrame({ children }: { children: ReactNode }) {
         </h1>
         <span className="flex items-center gap-3">
           {/* A full page load to the new layout, so the two never share a
-              mounted Ledger. */}
-          <a href="/app" className="-mx-1 min-h-11 px-1 py-3 text-xs text-neutral-600 hover:underline dark:text-neutral-400">
+              mounted Ledger — asked first, like the brand link: a half-typed
+              entry or a save on its way would go with this page. */}
+          <a
+            href="/app"
+            onClick={askToSwitchLayout}
+            className="-mx-1 inline-flex min-h-11 items-center px-1 py-3 text-xs text-neutral-600 hover:underline dark:text-neutral-400"
+          >
             {t("home.newLayout")}
           </a>
           <LocalePicker compact />

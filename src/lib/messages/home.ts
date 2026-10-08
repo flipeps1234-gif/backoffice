@@ -43,6 +43,35 @@ export const messages = {
     es: "Parte de esto está solo en pantalla por ahora. Deja esta página abierta — se guarda solo cuando vuelva la conexión.",
     pt: "Parte disto está só na tela por enquanto. Deixe esta página aberta — salva sozinho quando a conexão voltar.",
   },
+  // The daily write ceiling (migration 0035 — an anti-abuse limit only a
+  // script reaches): the queue keeps the save and tries again after the
+  // reset, midnight UTC, which {time} gives in this device's clock ("after
+  // 7:00 PM" is the common case in the Americas).
+  "home.saveLimitToday": {
+    en: "You've reached the daily save limit. Your entries are kept on this device and save by themselves after {time} — keep this page open until then.",
+    es: "Llegaste al límite diario de guardado. Tus entradas se quedan en este dispositivo y se guardan solas después de las {time} — deja esta página abierta hasta entonces.",
+    pt: "Você chegou ao limite diário de salvamentos. Seus lançamentos ficam neste aparelho e são salvos sozinhos depois das {time} — deixe esta página aberta até lá.",
+  },
+  "home.saveLimitTomorrow": {
+    en: "You've reached the daily save limit. Your entries are kept on this device and save by themselves tomorrow after {time} — keep this page open until then.",
+    es: "Llegaste al límite diario de guardado. Tus entradas se quedan en este dispositivo y se guardan solas mañana después de las {time} — deja esta página abierta hasta entonces.",
+    pt: "Você chegou ao limite diário de salvamentos. Seus lançamentos ficam neste aparelho e são salvos sozinhos amanhã depois das {time} — deixe esta página aberta até lá.",
+  },
+  "home.saveLimitNote": {
+    en: "Some of this is on screen only for now — the daily save limit is reached. Keep this page open: it saves by itself when the limit resets.",
+    es: "Parte de esto está solo en pantalla por ahora — se llegó al límite diario de guardado. Deja esta página abierta: se guarda solo cuando el límite se reinicie.",
+    pt: "Parte disto está só na tela por enquanto — o limite diário de salvamentos foi atingido. Deixe esta página aberta: salva sozinho quando o limite reiniciar.",
+  },
+  "home.saveRecoveredLimit": {
+    en: "The daily save limit has reset — everything is saved to your account.",
+    es: "El límite diario de guardado se reinició — todo quedó guardado en tu cuenta.",
+    pt: "O limite diário de salvamentos reiniciou — tudo foi salvo na sua conta.",
+  },
+  "home.saveRecoveredLimitPartial": {
+    en: "The daily save limit has reset — the changes that were waiting are saved. An earlier save was refused: reload the page to see what was saved.",
+    es: "El límite diario de guardado se reinició — los cambios que esperaban quedaron guardados. Un guardado anterior fue rechazado: recarga la página para ver qué quedó guardado.",
+    pt: "O limite diário de salvamentos reiniciou — as mudanças que esperavam foram salvas. Um salvamento anterior foi recusado: recarregue a página para ver o que ficou salvo.",
+  },
   "home.saveTrying": {
     en: "Trying again — this can take up to a minute.",
     es: "Intentando de nuevo — puede tardar hasta un minuto.",
@@ -58,10 +87,11 @@ export const messages = {
     es: "Algunos cambios todavía no se guardaron en tu cuenta. ¿Cerrar sesión de todos modos? Se perderán.",
     pt: "Algumas mudanças ainda não foram salvas na sua conta. Sair mesmo assim? Elas serão perdidas.",
   },
+  // Neutral about WHY they wait: the network, or the daily save limit.
   "home.signOutUnsavedElsewhere": {
-    en: "Changes made in another tab haven't saved to your account yet — they're waiting for the connection. Signing out here loses them. Sign out anyway?",
-    es: "Cambios hechos en otra pestaña todavía no se guardaron en tu cuenta — esperan la conexión. Cerrar sesión aquí los pierde. ¿Cerrar sesión de todos modos?",
-    pt: "Mudanças feitas em outra aba ainda não foram salvas na sua conta — estão esperando a conexão. Sair aqui as perde. Sair mesmo assim?",
+    en: "Changes made in another tab haven't saved to your account yet — they're still waiting to save. Signing out here loses them. Sign out anyway?",
+    es: "Cambios hechos en otra pestaña todavía no se guardaron en tu cuenta — siguen esperando para guardarse. Cerrar sesión aquí los pierde. ¿Cerrar sesión de todos modos?",
+    pt: "Mudanças feitas em outra aba ainda não foram salvas na sua conta — continuam esperando para serem salvas. Sair aqui as perde. Sair mesmo assim?",
   },
   "home.errLostEarlier": {
     en: "An earlier change on this device was lost before it reached your account and can't be recovered. Check your latest entries.",
@@ -100,6 +130,18 @@ export const messages = {
     pt: "Lemos seus prints, mas não conseguimos conferi-los com seus pagamentos salvos, então nada foi adicionado. Verifique sua conexão e envie de novo.",
   },
   "home.newLayout": { en: "New layout", es: "Nuevo diseño", pt: "Novo layout" },
+  // The layout links ("Classic phone layout" / "New layout") load the other
+  // layout's page: what is open and unsaved would go with this one.
+  "home.switchFinishEntry": {
+    en: "Finish or close what you're logging first — switching layouts reloads the page, and it would be lost.",
+    es: "Primero termina o cierra lo que estás registrando — cambiar de diseño recarga la página y se perdería.",
+    pt: "Primeiro termine ou feche o que você está registrando — trocar de layout recarrega a página e isso se perderia.",
+  },
+  "home.switchWaitForSave": {
+    en: "Your latest changes are still saving to your account — switching layouts now would lose them. Try again once they're saved.",
+    es: "Tus últimos cambios todavía se están guardando en tu cuenta — cambiar de diseño ahora los perdería. Intenta de nuevo cuando estén guardados.",
+    pt: "Suas últimas mudanças ainda estão sendo salvas na sua conta — trocar de layout agora as perderia. Tente de novo quando estiverem salvas.",
+  },
   "home.errLoadFailed": {
     en: "Couldn't load your saved payments.",
     es: "No pudimos cargar tus pagos guardados.",

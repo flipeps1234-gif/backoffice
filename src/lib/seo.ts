@@ -18,10 +18,11 @@ import { SITE_NAME, absolute } from "./site";
 /** The share card's words (opengraph-image.tsx draws them), kept here so
  *  the image and its alt text can't drift: the alt carries everything
  *  the picture says. Same claims as the landing hero (landing.heroTitle,
- *  landing.heroSub) — "in a few taps", never "automatically". */
+ *  landing.heroSub) — "in a few taps", never "automatically"; "Free during
+ *  preview", never a bare "Free." beside a pricing page with paid modules. */
 export const OG_IMAGE_TEXT = {
   headline: "Your Venmo, Cash App, Zelle and cash — turned into real books in a few taps.",
-  sub: "Built for cleaners, landscapers, barbers. Free.",
+  sub: "Built for cleaners, landscapers, barbers. Free during preview.",
 } as const;
 
 export const OG_IMAGE_ALT = `${SITE_NAME}: ${OG_IMAGE_TEXT.headline} ${OG_IMAGE_TEXT.sub}`;
@@ -94,7 +95,8 @@ export const organization = (): Record<string, unknown> => ({
   logo: absolute("/icon.svg"),
 });
 
-/** The product itself. Free — and the price says so in the markup.
+/** The product itself. Free during the preview (site.pricingIntro) — and
+ *  the price says so in the markup.
  *  featureList states, in query-shaped words, only what ships. */
 export const softwareApplication = (
   description: string,

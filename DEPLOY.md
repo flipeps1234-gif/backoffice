@@ -271,6 +271,22 @@ confirm the demo word still signs in. The combined
 file `~/Desktop/contado-combined-0001-0017.sql` predates both; append
 0018 and 0019 to it before the next fresh-project setup.
 
+**Written, NOT applied — 0035 `account_write_budget`** (2026-10-08, owner
+decision: "a generous anti-abuse ceiling … abuse protection, not a usage
+cap"): per account per UTC day, at most `security_limits.account_rows_daily`
+(3000) new rows across transactions, sales, clients, services and recurring
+templates, and `account_photos_daily` (300) sale photos stored. Only the app's
+own signed-in writes count; the service role, the webhooks, cron and the
+Teams member RPCs pass through. Over the limit the write is refused with
+SQLSTATE PT429 (PostgREST: HTTP 429): the web app keeps the entry on the
+device and saves it after 00:00 UTC, retrying at most hourly — never dropped.
+Why: ~1,000 scripted 500 KB photo saves would fill the 500 MB database for
+every account (input audit F6). Order: deploy the app FIRST, then apply 0035
+(an older app shows the 429 as a refused save). Independent of 0028–0034.
+Tune: `update public.security_limits set account_rows_daily = …,
+account_photos_daily = …;`. Rollback: drop the five `zz_meter_account_writes`
+triggers (postgres owns them); the counters table can stay.
+
 **Written, NOT applied — 0034 `founding_cap`** (2026-10-08, owner decision:
 "enforce a real cap of 100"): `security_limits.founding_cap` (default 100),
 `founding_signup_capped` ('ok' | 'full' | 'limited') and `founding_open()`,

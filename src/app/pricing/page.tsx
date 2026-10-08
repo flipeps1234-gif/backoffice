@@ -3,8 +3,10 @@ import JsonLd from "../json-ld";
 import { breadcrumbs, pageMetadata, softwareApplication } from "@/lib/seo";
 import PricingContent from "./pricing-content";
 
+// The owner's pricing decision (2026-10-08) in one line — the same four
+// points as site.pricingIntro, which the page itself renders.
 const DESCRIPTION =
-  "contado is free while we build — the core stays free forever. Join the founding hundred and lock $6/mo for every paid module, forever.";
+  "contado is free during the preview. Current users keep what they use today; paid modules come later, for new users, and the founding price, $6/mo, covers them.";
 
 export const metadata: Metadata = pageMetadata({
   title: "Pricing",

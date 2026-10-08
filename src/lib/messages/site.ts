@@ -94,22 +94,32 @@ export const messages = {
   },
 
   // ---- pricing ----
-  "site.pricingTitle": { en: "Free while we build.", es: "Gratis mientras lo construimos.", pt: "Grátis enquanto construímos." },
+  // The owner's decision (2026-10-08), said the same way on /pricing, in
+  // the FAQ (faq1A) and on the landing (heroSub, ctaBody): everything is
+  // free during the preview; current users keep what they use today; paid
+  // modules come later, for new users; the founding members' one price
+  // covers the modules. No prices, dates or limits beyond those already
+  // public. "Free during preview" is the owner's wording.
+  "site.pricingTitle": { en: "Free during preview.", es: "Gratis durante la versión preliminar.", pt: "Grátis durante a versão prévia." },
   "site.pricingIntro": {
-    en: "contado is free today, with nothing behind a paywall; reading screenshots has fair-use limits. When paid modules arrive, the core stays free forever — and the founding hundred lock in one price for all of it.",
-    es: "contado es gratis hoy, sin nada bloqueado detrás de un pago; la lectura de capturas tiene límites de uso justo. Cuando lleguen los módulos de pago, lo esencial seguirá siendo gratis para siempre — y los cien fundadores aseguran un solo precio por todo.",
-    pt: "O contado é grátis hoje, sem nada bloqueado atrás de pagamento; a leitura de prints tem limites de uso justo. Quando os módulos pagos chegarem, o essencial continua grátis para sempre — e os cem fundadores garantem um preço único por tudo.",
+    en: "Everything in contado is free during the preview — nothing is behind a paywall, though reading screenshots has fair-use limits. If you use contado today, you keep what you use today. Paid modules come later, for new users, and the founding hundred's one price covers the modules.",
+    es: "Todo en contado es gratis durante la versión preliminar — nada está bloqueado detrás de un pago, aunque la lectura de capturas tiene límites de uso justo. Si hoy usas contado, conservas lo que usas hoy. Los módulos de pago llegarán más adelante, para usuarios nuevos, y el precio único de los cien fundadores cubre los módulos.",
+    pt: "Tudo no contado é grátis durante a versão prévia — nada fica bloqueado atrás de pagamento, embora a leitura de prints tenha limites de uso justo. Se você usa o contado hoje, continua com o que usa hoje. Os módulos pagos virão mais tarde, para novos usuários, e o preço único dos cem fundadores cobre os módulos.",
   },
-  "site.freeForever": { en: "Free forever", es: "Gratis para siempre", pt: "Grátis para sempre" },
+  // The core no module will ever hold — free after the preview too, for
+  // new users as well (CLAUDE.md: never gate viewing or exporting one's
+  // own data, never charge for language). Matching BY HAND is here;
+  // automatic matching is Autopilot's.
+  "site.freeForever": { en: "Free forever, for everyone", es: "Gratis para siempre, para todos", pt: "Grátis para sempre, para todos" },
   "site.free1": {
     en: "Screenshots in, books out — the whole core loop.",
     es: "Capturas que entran, libros que salen — todo el ciclo central.",
     pt: "Prints entrando, livro-caixa saindo — todo o ciclo central.",
   },
   "site.free2": {
-    en: "Sales, clients and the Owed tab, with one-tap matching.",
-    es: "Ventas, clientes y la pestaña Por cobrar, con emparejado de un toque.",
-    pt: "Vendas, clientes e a aba A receber, com conciliação de um toque.",
+    en: "Sales, clients and the Owed tab, with matching by hand.",
+    es: "Ventas, clientes y la pestaña Por cobrar, con emparejado a mano.",
+    pt: "Vendas, clientes e a aba A receber, com conciliação manual.",
   },
   "site.free3": {
     en: "Your whole history, at any age. Never metered, never gated.",
@@ -126,11 +136,14 @@ export const messages = {
     es: "Inglés, español y portugués. Nunca cobramos por el idioma.",
     pt: "Inglês, espanhol e português. Nunca cobramos pelo idioma.",
   },
-  "site.laterTitle": { en: "Paid later, on top", es: "De pago, más adelante, como extra", pt: "Pagos, mais tarde, como extra" },
+  // Autopilot's matching, self-clearing Owed and recurring jobs already
+  // work today — free during the preview, kept by whoever uses them now,
+  // paid only for users who arrive after the modules do.
+  "site.laterTitle": { en: "Paid modules, later — for new users", es: "Módulos de pago, más adelante — para usuarios nuevos", pt: "Módulos pagos, mais tarde — para novos usuários" },
   "site.laterIntro": {
-    en: "Four modules are planned — the paid layer on top of your data. Some of it already works in today's free app; nothing is billed yet, and what's free for you today stays free for you.",
-    es: "Hay cuatro módulos planeados — la capa de pago sobre tus datos. Parte de eso ya funciona en la app gratis de hoy; todavía no se cobra nada, y lo que hoy es gratis para ti sigue siendo gratis para ti.",
-    pt: "Quatro módulos estão planejados — a camada paga por cima dos seus dados. Parte disso já funciona no app grátis de hoje; nada é cobrado ainda, e o que é grátis para você hoje continua grátis para você.",
+    en: "Four modules are planned — the paid layer on top of your data. Parts of them already work in contado today, free during the preview, and nothing is billed yet. They will be paid for new users; if you already use contado, what's free for you today stays free for you.",
+    es: "Hay cuatro módulos planeados — la capa de pago sobre tus datos. Partes de ellos ya funcionan hoy en contado, gratis durante la versión preliminar, y todavía no se cobra nada. Serán de pago para usuarios nuevos; si ya usas contado, lo que hoy es gratis para ti sigue siendo gratis para ti.",
+    pt: "Quatro módulos estão planejados — a camada paga por cima dos seus dados. Partes deles já funcionam hoje no contado, grátis durante a versão prévia, e nada é cobrado ainda. Eles serão pagos para novos usuários; se você já usa o contado, o que é grátis para você hoje continua grátis para você.",
   },
   "site.modAutopilot": {
     en: "Autopilot — automatic matching, Owed that clears itself, recurring jobs.",
@@ -152,10 +165,12 @@ export const messages = {
     es: "Time Machine — historial de versiones y restauración.",
     pt: "Time Machine — histórico de versões e restauração.",
   },
+  // "One price that covers the modules" — never "for all of it": tax
+  // filing, seats and payment links are not modules (CLAUDE.md).
   "site.laterNote": {
-    en: "Module prices will be announced when they ship. Founding members pay $6/mo for all of them, forever — a price that never rises.",
-    es: "Los precios de cada módulo se anunciarán cuando salgan. Los fundadores pagan $6/mes por todos, para siempre — un precio que nunca sube.",
-    pt: "Os preços dos módulos serão anunciados quando saírem. Os fundadores pagam $6/mês por todos, para sempre — um preço que nunca sobe.",
+    en: "Module prices will be announced when they ship. Founding members pay one price that covers all four modules — $6/mo, forever, a price that never rises.",
+    es: "Los precios de cada módulo se anunciarán cuando salgan. Los fundadores pagan un solo precio que cubre los cuatro módulos — $6/mes, para siempre, un precio que nunca sube.",
+    pt: "Os preços dos módulos serão anunciados quando saírem. Os fundadores pagam um preço único que cobre os quatro módulos — $6/mês, para sempre, um preço que nunca sobe.",
   },
   "site.filterTitle": { en: "The rule we charge by", es: "La regla con la que cobramos", pt: "A regra pela qual cobramos" },
   "site.filterBody": {
@@ -422,9 +437,9 @@ export const messages = {
   },
   "site.faq1Q": { en: "Is contado free?", es: "¿contado es gratis?", pt: "O contado é grátis?" },
   "site.faq1A": {
-    en: "Yes. The core is free forever: logging, confirming, totals, who owes you, exports, every language. Paid modules will come later, on top — and the founding hundred lock $6/mo for all of them.",
-    es: "Sí. Lo esencial es gratis para siempre: registrar, confirmar, totales, quién te debe, exportar, todos los idiomas. Más adelante habrá módulos de pago como extra sobre lo gratis — y los cien fundadores aseguran $6/mes por todos.",
-    pt: "Sim. O essencial é grátis para sempre: registrar, confirmar, totais, quem te deve, exportar, todos os idiomas. Módulos pagos virão depois, como extra sobre o grátis — e os cem fundadores garantem $6/mês por todos.",
+    en: "Yes — everything in contado is free during the preview. If you use it today, you keep what you use today. Paid modules come later, for new users, on top of a core that stays free forever: logging, confirming, totals, who owes you, exports, every language. The founding hundred's one price, $6/mo, covers the modules.",
+    es: "Sí — todo en contado es gratis durante la versión preliminar. Si lo usas hoy, conservas lo que usas hoy. Los módulos de pago llegarán más adelante, para usuarios nuevos, como extra sobre lo esencial, que sigue gratis para siempre: registrar, confirmar, totales, quién te debe, exportar, todos los idiomas. El precio único de los cien fundadores, $6/mes, cubre los módulos.",
+    pt: "Sim — tudo no contado é grátis durante a versão prévia. Se você usa hoje, continua com o que usa hoje. Os módulos pagos virão mais tarde, para novos usuários, como extra sobre o essencial, que continua grátis para sempre: registrar, confirmar, totais, quem te deve, exportar, todos os idiomas. O preço único dos cem fundadores, $6/mês, cobre os módulos.",
   },
   "site.faq2Q": { en: "Which payment apps work?", es: "¿Qué apps de pago funcionan?", pt: "Quais apps de pagamento funcionam?" },
   "site.faq2A": {
@@ -475,12 +490,14 @@ export const messages = {
     pt: "Negócios de serviço bem pequenos que recebem por apps e em dinheiro — faxineiras, jardineiros, barbeiros e quem mais trabalha assim. Um dono, um celular.",
   },
 
-  // ---- privacy: the website's analytics, disclosed — always on, its two
-  // cookies named, DNT and GPC honored, Signals/ads off (analytics.tsx) ----
+  // ---- privacy: the website's analytics, disclosed — on by default, off
+  // for visitors in the EU/EEA, UK, Switzerland and Brazil (/api/geo, owner
+  // 2026-10-08), its two cookies named, DNT and GPC honored, Signals/ads
+  // off (analytics.tsx) ----
   "site.privacyAnalytics": {
-    en: "The public website (these pages, not the app) uses Google Analytics to count visits. It sets two cookies, _ga and _ga_JEM7B09P0L, which last about two years. Google Signals and ad personalization are turned off, and the app itself never sends analytics. To opt out, have your browser send Do Not Track or Global Privacy Control — it then gets no analytics at all — or install Google's Analytics opt-out browser add-on.",
-    es: "El sitio público (estas páginas, no la app) usa Google Analytics para contar visitas. Guarda dos cookies, _ga y _ga_JEM7B09P0L, que duran unos dos años. Google Signals y la personalización de anuncios están desactivados, y la app nunca envía datos de análisis. Para no participar, haz que tu navegador envíe Do Not Track o Global Privacy Control — así no recibe ningún análisis — o instala el complemento de inhabilitación de Google Analytics para navegadores.",
-    pt: "O site público (estas páginas, não o app) usa o Google Analytics para contar visitas. Ele grava dois cookies, _ga e _ga_JEM7B09P0L, que duram cerca de dois anos. O Google Signals e a personalização de anúncios estão desativados, e o app em si nunca envia dados de análise. Para ficar de fora, faça seu navegador enviar Do Not Track ou Global Privacy Control — aí ele não recebe nenhuma análise — ou instale o complemento de desativação do Google Analytics para navegadores.",
+    en: "The public website (these pages, not the app) uses Google Analytics to count visits. Visitors in the EU/EEA, the UK, Switzerland and Brazil get no analytics at all: our server checks only the country your connection comes from and tells the page yes or no. Where analytics runs, it sets two cookies, _ga and _ga_JEM7B09P0L, which last about two years. Google Signals and ad personalization are turned off, and the app itself never sends analytics. To opt out, have your browser send Do Not Track or Global Privacy Control — it then gets no analytics at all — or install Google's Analytics opt-out browser add-on.",
+    es: "El sitio público (estas páginas, no la app) usa Google Analytics para contar visitas. Quienes nos visitan desde la UE/EEE, el Reino Unido, Suiza o Brasil no reciben ningún análisis: nuestro servidor solo revisa el país desde donde te conectas y le responde a la página sí o no. Donde funciona, Google Analytics guarda dos cookies, _ga y _ga_JEM7B09P0L, que duran unos dos años. Google Signals y la personalización de anuncios están desactivados, y la app nunca envía datos de análisis. Para no participar, haz que tu navegador envíe Do Not Track o Global Privacy Control — así no recibe ningún análisis — o instala el complemento de inhabilitación de Google Analytics para navegadores.",
+    pt: "O site público (estas páginas, não o app) usa o Google Analytics para contar visitas. Quem acessa da UE/EEE, do Reino Unido, da Suíça ou do Brasil não recebe nenhuma análise: nosso servidor só verifica o país de onde vem a sua conexão e responde à página sim ou não. Onde funciona, o Google Analytics grava dois cookies, _ga e _ga_JEM7B09P0L, que duram cerca de dois anos. O Google Signals e a personalização de anúncios estão desativados, e o app em si nunca envia dados de análise. Para ficar de fora, faça seu navegador enviar Do Not Track ou Global Privacy Control — aí ele não recebe nenhuma análise — ou instale o complemento de desativação do Google Analytics para navegadores.",
   },
   "site.privacyFounding": {
     en: "The founding-hundred form stores your email address for one purpose: telling you when the founding price goes live. It is never sold or shared. To come off the list, send us a message from the contact page and we delete the address.",

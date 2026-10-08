@@ -164,3 +164,11 @@ html:has([data-running-totals]:not([inert] *)) {
 html:has([data-sticky-notices]:not([hidden])) {
   scroll-padding-top: 8rem;
 }
+/* Below lg both of those pin UNDER the phone banner (top-14 / top-16), so
+   focus scrolling clears the banner plus them. */
+@media (width < 64rem) {
+  html:has([data-app-banner]):has([data-running-totals]:not([inert] *)),
+  html:has([data-app-banner]):has([data-sticky-notices]:not([hidden])) {
+    scroll-padding-top: 12rem;
+  }
+}

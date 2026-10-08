@@ -1,6 +1,9 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { readFile, readdir } from 'node:fs/promises';
+import vm from 'node:vm';
+import ts from 'typescript';
 import { PGlite } from '@electric-sql/pglite';
 
 let db;
@@ -27,10 +30,11 @@ async function reserve(id = user, images = 1) {
 async function finish(reservation) {
   await db.query('SELECT public.finish_extraction($1)', [reservation.reservation_id]);
 }
-before(async () => {
-  db = new PGlite();
-  // Minimal Supabase-style roles and JWT helpers; no credentials/network.
-  await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
+/** A fresh database: minimal Supabase-style roles and JWT helpers (no
+ *  credentials, no network), then the migrations `use` keeps, in order. */
+async function freshDb(use = () => true) {
+  const pg = new PGlite();
+  await pg.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role BYPASSRLS;
     CREATE SCHEMA auth;
     CREATE TABLE auth.users(id uuid primary key, email text, encrypted_password text, phone text, raw_user_meta_data jsonb, created_at timestamptz not null default now(), last_sign_in_at timestamptz);
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
@@ -39,9 +43,13 @@ before(async () => {
     GRANT USAGE ON SCHEMA auth, public TO anon, authenticated, service_role;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
   `);
-  for (const file of (await readdir(migrations)).filter(f => f.endsWith('.sql')).sort()) {
-    await db.exec(await readFile(new URL(file, migrations), 'utf8'));
+  for (const file of (await readdir(migrations)).filter(f => f.endsWith('.sql')).sort().filter(use)) {
+    await pg.exec(await readFile(new URL(file, migrations), 'utf8'));
   }
+  return pg;
+}
+before(async () => {
+  db = await freshDb();
   await db.query("INSERT INTO auth.users(id,email) VALUES ($1,'tester@demo.dem'),($2,'test@example.invalid'),($3,'other@example.invalid')", [demo,user,other]);
 });
 after(async () => { await db?.close(); });
@@ -347,4 +355,221 @@ test("0027: notification_queue is server-written — a signed-in account can rea
   await db.exec('RESET ROLE; SET ROLE service_role');
   await db.query("UPDATE public.notification_queue SET status='sent' WHERE id=$1", [id]);  // the sender still may
   await db.exec('RESET ROLE');
+});
+
+// ---- 0035: a daily write ceiling per account (client roles only) ----
+const budgetUser = '00000000-0000-4000-8000-00000000b035';
+const budgetOther = '00000000-0000-4000-8000-00000000b036';
+const BUDGET_TABLES = ['transactions', 'sales', 'clients', 'services', 'recurring_templates'];
+const PHOTO = 'data:image/png;base64,AA==';
+/** The refusal, as the database raises it: PostgREST turns PT429 into HTTP 429. */
+const overLimit = (e) => e.code === 'PT429' && /daily write limit/.test(e.message);
+/** The web save queue's classifier (src/lib/save-retry.ts), as shipped. */
+const { classifySaveError } = (() => {
+  const exports = {};
+  vm.runInNewContext(
+    ts.transpileModule(readFileSync(new URL('../../src/lib/save-retry.ts', import.meta.url), 'utf8'), {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+    }).outputText,
+    { exports, require: () => { throw new Error('save-retry.ts must stay dependency-free'); } },
+  );
+  return exports;
+})();
+async function budgetSetup(rows, photos) {
+  await db.exec(`RESET ROLE;
+    INSERT INTO auth.users(id,email) VALUES ('${budgetUser}','budget@example.test'),('${budgetOther}','budget-other@example.test') ON CONFLICT DO NOTHING;
+    DELETE FROM public.account_write_budget;
+    UPDATE public.security_limits SET account_rows_daily=${rows},account_photos_daily=${photos};`);
+}
+/** Today's (UTC) counter for an account, read as the owner; leaves the role reset. */
+async function spent(id) {
+  await db.exec('RESET ROLE');
+  const row = (await db.query(`SELECT rows_used AS rows, photos_used AS photos FROM public.account_write_budget
+    WHERE account_id=$1 AND day=(now() AT TIME ZONE 'UTC')::date`, [id])).rows[0];
+  return row ? { rows: row.rows, photos: row.photos } : { rows: 0, photos: 0 };
+}
+const txn = (id, payer = 'Budget') =>
+  db.query("INSERT INTO public.transactions(account_id,payer,amount_cents,source) VALUES ($1,$2,1,'manual')", [id, payer]);
+
+test('0035: every client insert into the five tables spends a row; over the ceiling the write is refused (PT429) and spends nothing', async () => {
+  await budgetSetup(4, 2);
+  await asUser(budgetUser, 'budget@example.test');
+  await txn(budgetUser);
+  const client = (await db.query("INSERT INTO public.clients(account_id,name) VALUES ($1,'Budget') RETURNING id", [budgetUser])).rows[0].id;
+  await db.query("INSERT INTO public.services(account_id,name,pricing_type,price_cents) VALUES ($1,'Budget','flat',1)", [budgetUser]);
+  await db.query("INSERT INTO public.recurring_templates(account_id,client_id,cadence,next_due) VALUES ($1,$2,'{\"type\":\"weekly\"}',current_date)", [budgetUser, client]);
+  assert.deepEqual(await spent(budgetUser), { rows: 4, photos: 0 });
+  await asUser(budgetUser, 'budget@example.test');
+  const refused = await db.query("INSERT INTO public.sales(account_id,occurred_on,state) VALUES ($1,current_date,'open')", [budgetUser]).catch((e) => e);
+  assert.ok(overLimit(refused), `refused with PT429: ${refused.code} ${refused.message}`);
+  assert.match(refused.detail, /4 new rows/);
+  // What the app does with that answer: keep the entry and wait (lib/save-retry.ts), through the
+  // wrappers' `new Error(error.message)` and with the code where a wrapper keeps it.
+  assert.equal(classifySaveError(new Error(refused.message)), 'limit');
+  assert.equal(classifySaveError({ code: refused.code, message: 'anything' }), 'limit');
+  for (const table of BUDGET_TABLES.filter((t) => t !== 'sales')) {
+    const sql = {
+      transactions: "INSERT INTO public.transactions(account_id,payer,amount_cents,source) VALUES ($1,'x',1,'manual')",
+      clients: "INSERT INTO public.clients(account_id,name) VALUES ($1,'x')",
+      services: "INSERT INTO public.services(account_id,name,pricing_type,price_cents) VALUES ($1,'x','flat',1)",
+      recurring_templates: `INSERT INTO public.recurring_templates(account_id,client_id,cadence,next_due) VALUES ($1,'${client}','{"type":"weekly"}',current_date)`,
+    }[table];
+    await assert.rejects(db.query(sql, [budgetUser]), overLimit, table);
+  }
+  assert.deepEqual(await spent(budgetUser), { rows: 4, photos: 0 });          // refused writes spent nothing
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.sales WHERE account_id=$1', [budgetUser])).rows[0].n, 0);
+});
+
+test('0035: one statement that crosses the ceiling rolls back whole; another account is untouched; the server and definer functions pass through', async () => {
+  await budgetSetup(3, 2);
+  await asUser(budgetUser, 'budget@example.test');
+  await assert.rejects(
+    db.query("INSERT INTO public.transactions(account_id,payer,amount_cents,source) SELECT $1,'batch',1,'manual' FROM generate_series(1,4)", [budgetUser]),
+    overLimit);
+  assert.deepEqual(await spent(budgetUser), { rows: 0, photos: 0 });
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM public.transactions WHERE payer='batch'")).rows[0].n, 0);
+  await asUser(budgetUser, 'budget@example.test');
+  await db.query("INSERT INTO public.transactions(account_id,payer,amount_cents,source) SELECT $1,'batch',1,'manual' FROM generate_series(1,3)", [budgetUser]);
+  await assert.rejects(txn(budgetUser), overLimit);
+  // Per account: the other one still has its whole day.
+  await asUser(budgetOther, 'budget-other@example.test');
+  for (let i = 0; i < 3; i += 1) await txn(budgetOther);
+  await assert.rejects(txn(budgetOther), overLimit);
+  assert.deepEqual(await spent(budgetOther), { rows: 3, photos: 0 });
+  // The service role (routes, webhooks, cron) is not metered…
+  await db.exec('RESET ROLE; SET ROLE service_role');
+  await db.query("INSERT INTO public.transactions(account_id,payer,amount_cents,source) SELECT $1,'server',1,'manual' FROM generate_series(1,10)", [budgetUser]);
+  await db.query("INSERT INTO public.sales(account_id,occurred_on,state,photo) VALUES ($1,current_date,'open',$2)", [budgetUser, PHOTO]);
+  // …nor is a SECURITY DEFINER function a client calls (its current_user is the owner).
+  await db.exec(`RESET ROLE;
+    CREATE FUNCTION public.budget_test_definer(n integer) RETURNS void LANGUAGE sql SECURITY DEFINER SET search_path = '' AS
+      $$ INSERT INTO public.transactions(account_id,payer,amount_cents,source) SELECT auth.uid(),'definer',1,'manual' FROM generate_series(1,n) $$;
+    GRANT EXECUTE ON FUNCTION public.budget_test_definer(integer) TO authenticated;`);
+  await asUser(budgetUser, 'budget@example.test');
+  await db.query('SELECT public.budget_test_definer(5)');
+  await db.exec('RESET ROLE; DROP FUNCTION public.budget_test_definer(integer)');
+  assert.deepEqual(await spent(budgetUser), { rows: 3, photos: 0 });
+  assert.equal((await db.query("SELECT count(*)::int AS n FROM public.transactions WHERE account_id=$1 AND payer IN ('server','definer')", [budgetUser])).rows[0].n, 15);
+  // A new UTC day starts from zero, and the account's earlier days are pruned on its first write.
+  await db.query('UPDATE public.account_write_budget SET day = day - 1 WHERE account_id=$1', [budgetUser]);
+  await asUser(budgetUser, 'budget@example.test');
+  await txn(budgetUser);
+  assert.deepEqual(await spent(budgetUser), { rows: 1, photos: 0 });
+  assert.equal((await db.query('SELECT count(*)::int AS n FROM public.account_write_budget WHERE account_id=$1', [budgetUser])).rows[0].n, 1);
+});
+
+test('0035: photos are counted on insert and when an update sets or changes one; edits that store no new photo are free', async () => {
+  await budgetSetup(100, 2);
+  await asUser(budgetUser, 'budget@example.test');
+  const sale = async (photo = null) =>
+    (await db.query("INSERT INTO public.sales(account_id,occurred_on,state,photo) VALUES ($1,current_date,'open',$2) RETURNING id", [budgetUser, photo])).rows[0].id;
+  const first = await sale(PHOTO);                                            // row 1, photo 1
+  const second = await sale();
+  const third = await sale();
+  assert.deepEqual(await spent(budgetUser), { rows: 3, photos: 1 });
+  await asUser(budgetUser, 'budget@example.test');
+  await db.query('UPDATE public.sales SET photo=$2 WHERE id=$1', [second, PHOTO]);          // set: photo 2
+  await db.query("UPDATE public.sales SET notes='a note' WHERE id=$1", [second]);           // no photo in the update
+  await db.query("UPDATE public.sales SET photo=$2, notes='again' WHERE id=$1", [second, PHOTO]); // the same bytes again
+  await db.query('UPDATE public.sales SET photo=NULL WHERE id=$1', [first]);                // cleared
+  assert.deepEqual(await spent(budgetUser), { rows: 3, photos: 2 });
+  await asUser(budgetUser, 'budget@example.test');
+  await assert.rejects(db.query('UPDATE public.sales SET photo=$2 WHERE id=$1', [third, PHOTO]), overLimit);
+  await assert.rejects(sale(PHOTO), overLimit);
+  const refused = await db.query('UPDATE public.sales SET photo=$2 WHERE id=$1', [third, PHOTO]).catch((e) => e);
+  assert.match(refused.detail, /2 photos/);
+  assert.equal((await db.query('SELECT photo FROM public.sales WHERE id=$1', [third])).rows[0].photo, null);
+  await sale();                                                               // rows are a separate budget
+  assert.deepEqual(await spent(budgetUser), { rows: 4, photos: 2 });
+  // Changing a stored photo to other bytes is a new photo too.
+  await db.exec('RESET ROLE; UPDATE public.security_limits SET account_photos_daily=3');
+  await asUser(budgetUser, 'budget@example.test');
+  await db.query('UPDATE public.sales SET photo=$2 WHERE id=$1', [second, 'data:image/png;base64,AB==']);
+  assert.deepEqual(await spent(budgetUser), { rows: 4, photos: 3 });
+  // The service role stores photos unmetered.
+  await db.exec('RESET ROLE; SET ROLE service_role');
+  await db.query('UPDATE public.sales SET photo=$2 WHERE id=$1', [third, PHOTO]);
+  assert.deepEqual(await spent(budgetUser), { rows: 4, photos: 3 });
+});
+
+test('0035: the counters and the helper are out of every client\'s reach; the helper refuses any call but a trigger\'s', async () => {
+  for (const role of ['anon', 'authenticated']) {
+    await db.exec(`RESET ROLE; SET ROLE ${role}`);
+    for (const sql of [
+      'SELECT * FROM public.account_write_budget',
+      `INSERT INTO public.account_write_budget(account_id,day) VALUES ('${budgetUser}',current_date)`,
+      'UPDATE public.account_write_budget SET rows_used=0',
+      'DELETE FROM public.account_write_budget',
+      'SELECT account_rows_daily, account_photos_daily FROM public.security_limits',
+    ]) await assert.rejects(db.exec(sql), /permission denied/, `${role}: ${sql}`);
+  }
+  await db.exec('RESET ROLE; SET ROLE anon');
+  await assert.rejects(db.exec(`SELECT private.spend_account_write_budget('${budgetUser}',1,0)`), /permission denied/);
+  // The insert path needs EXECUTE for the signed-in role; a direct call still spends nothing.
+  await asUser(budgetOther, 'budget-other@example.test');
+  await assert.rejects(db.exec(`SELECT private.spend_account_write_budget('${budgetUser}',1,0)`), /triggers only/);
+  await db.exec('RESET ROLE');
+  const grants = (await db.query(`SELECT r AS role,
+      has_table_privilege(r, 'public.account_write_budget', 'SELECT') AS can_read,
+      has_function_privilege(r, 'private.spend_account_write_budget(uuid,integer,integer)', 'EXECUTE') AS can_spend
+    FROM unnest(ARRAY['anon','authenticated']) r`)).rows;
+  assert.deepEqual(Object.fromEntries(grants.map((g) => [g.role, [g.can_read, g.can_spend]])), { anon: [false, false], authenticated: [false, true] });
+  assert.equal((await db.query("SELECT relrowsecurity AS on FROM pg_class WHERE oid='public.account_write_budget'::regclass")).rows[0].on, true);
+  // anon (no subject in its token) has no account to meter: RLS refuses its insert exactly as before 0035.
+  await db.exec('RESET ROLE');
+  await db.query("SELECT set_config('request.jwt.claim.sub','',false), set_config('request.jwt.claims','{}',false)");
+  await db.exec('SET ROLE anon');
+  await assert.rejects(txn(budgetUser), /row-level security/);
+  await db.exec('RESET ROLE');
+});
+
+test('0035: re-running the file (and 0034 on either side of it) is safe — tuned limits, today\'s counters and one trigger per table survive', async () => {
+  await budgetSetup(1234, 56);
+  await asUser(budgetUser, 'budget@example.test');
+  await txn(budgetUser);
+  const file = await readFile(new URL('0035_account_write_budget.sql', migrations), 'utf8');
+  await db.exec('RESET ROLE');
+  await db.exec(file);
+  await db.exec(await readFile(new URL('0034_founding_cap.sql', migrations), 'utf8'));
+  await db.exec(file);
+  const limits = (await db.query('SELECT account_rows_daily AS r, account_photos_daily AS p FROM public.security_limits')).rows[0];
+  assert.deepEqual([limits.r, limits.p], [1234, 56]);
+  assert.deepEqual(await spent(budgetUser), { rows: 1, photos: 0 });
+  const triggers = (await db.query(`SELECT tgrelid::regclass::text AS t FROM pg_trigger
+    WHERE tgname='zz_meter_account_writes' ORDER BY 1`)).rows.map((r) => r.t);
+  assert.deepEqual(triggers, BUDGET_TABLES.map((t) => `${t}`).sort());
+  // Still enforced after the re-run.
+  await db.exec('UPDATE public.security_limits SET account_rows_daily=2');
+  await asUser(budgetUser, 'budget@example.test');
+  await txn(budgetUser);
+  await assert.rejects(txn(budgetUser), overLimit);
+  // Back to the shipped defaults for anything after this.
+  await db.exec('RESET ROLE; DELETE FROM public.account_write_budget; UPDATE public.security_limits SET account_rows_daily=3000,account_photos_daily=300');
+  const defaults = (await db.query(`SELECT column_name AS c, column_default AS d FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='security_limits' AND column_name IN ('account_rows_daily','account_photos_daily') ORDER BY 1`)).rows;
+  assert.deepEqual(defaults.map((r) => [r.c, r.d]), [['account_photos_daily', '300'], ['account_rows_daily', '3000']]);
+});
+
+test('0035 stands alone: on a fresh database without 0034, after a pre-existing private schema (Teams 0033 makes one), then 0034, then itself again', async () => {
+  const pg = await freshDb((f) => f < '0034');
+  try {
+    // What Teams' 0033 leaves behind when it runs first: the schema, with the same grants.
+    await pg.exec(`CREATE SCHEMA private; REVOKE ALL ON SCHEMA private FROM public, anon; GRANT USAGE ON SCHEMA private TO authenticated;
+      CREATE FUNCTION private.teams_on() RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;`);
+    const own = await readFile(new URL('0035_account_write_budget.sql', migrations), 'utf8');
+    await pg.exec(own);
+    await pg.exec(await readFile(new URL('0034_founding_cap.sql', migrations), 'utf8'));
+    await pg.exec(own);
+    assert.equal((await pg.query('SELECT private.teams_on() AS on')).rows[0].on, false);   // left alone
+    await pg.query("INSERT INTO auth.users(id,email) VALUES ($1,'alone@example.test')", [budgetUser]);
+    await pg.exec('UPDATE public.security_limits SET account_rows_daily=1');
+    await pg.query("SELECT set_config('request.jwt.claim.sub',$1,false)", [budgetUser]);
+    await pg.exec('SET ROLE authenticated');
+    await pg.query("INSERT INTO public.clients(account_id,name) VALUES ($1,'one')", [budgetUser]);
+    await assert.rejects(pg.query("INSERT INTO public.clients(account_id,name) VALUES ($1,'two')", [budgetUser]), overLimit);
+    await pg.exec('RESET ROLE');
+    assert.equal((await pg.query('SELECT founding_cap FROM public.security_limits')).rows[0].founding_cap, 100);
+  } finally {
+    await pg.close();
+  }
 });

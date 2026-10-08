@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import type { MessageKey } from "@/lib/i18n";
 import LocalePicker from "./locale-picker";
 import Mark from "./mark";
@@ -109,10 +110,67 @@ function ToCheckBadge({ count }: { count: number }) {
   );
 }
 
-const itemClass = (on: boolean) =>
-  `flex h-10 w-full items-center gap-3 whitespace-nowrap rounded-lg px-3 text-left text-sm transition-colors ${
+/** A row of the sidebar (40px) or of the phone menu (44px, the tap minimum
+ *  in design-tokens.md). */
+const itemClass = (on: boolean, phone: boolean) =>
+  `flex ${phone ? "h-11" : "h-10"} w-full items-center gap-3 whitespace-nowrap rounded-lg px-3 text-left text-sm transition-colors ${
     on ? "bg-[#ededed] font-semibold text-black" : "text-neutral-400 hover:bg-neutral-900 hover:text-[#ededed]"
   }`;
+
+/** Where the phone layout ends: Tailwind's lg, as the classes below use it. */
+const WIDE = "(min-width: 64rem)";
+
+/** Calls `close` at once if the window is already wide, and again whenever
+ *  it becomes wide; returns the unsubscribe. The phone menu's drawer is
+ *  `lg:hidden`, so a window that reaches lg (a tablet turned, a desktop
+ *  window widened) must also CLOSE it — or the page stays inert and
+ *  scroll-locked behind a menu nobody can see (2026-10-08 review).
+ *  Separate from the component so the unit test can drive it. */
+export function closeWhenWide(
+  query: Pick<MediaQueryList, "matches" | "addEventListener" | "removeEventListener">,
+  close: () => void,
+): () => void {
+  const shut = () => {
+    if (query.matches) close();
+  };
+  shut();
+  query.addEventListener("change", shut);
+  return () => query.removeEventListener("change", shut);
+}
+
+/** Fired by the links between the two layouts ("Classic phone layout",
+ *  "New layout"): they load the other layout's page, so the mounted Ledger
+ *  answers first — preventDefault() means "not now" (an entry is open, or a
+ *  save is still on its way), and it says why. Nothing listening (the
+ *  gates): the link loads. */
+export const LAYOUT_EVENT = "contado:layout";
+
+/** A click on a layout link: ask the Ledger (LAYOUT_EVENT), and keep the
+ *  page when it says no. Modifier and middle clicks open a new tab — this
+ *  page stays, so nothing is at risk: those are left to the browser.
+ *  Returns false when the switch was refused. */
+export function askToSwitchLayout(event: MouseEvent<HTMLAnchorElement>): boolean {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+    return true;
+  }
+  const ask = new CustomEvent(LAYOUT_EVENT, { cancelable: true });
+  window.dispatchEvent(ask);
+  if (!ask.defaultPrevented) return true;
+  event.preventDefault();
+  return false;
+}
+
+/** A line the page shows in its sticky notice block (an error, a save
+ *  waiting or landed). The phone menu repeats the ones that arrive while it
+ *  is open: the page behind it is inert — out of reach and silent to a
+ *  screen reader — and covered. */
+export type ShellAlert = { text: string; tone: "red" | "amber" | "green" };
+
+const ALERT_CLASS: Record<ShellAlert["tone"], string> = {
+  red: "border-red-200 bg-red-50 text-red-900",
+  amber: "border-amber-200 bg-amber-50 text-amber-900",
+  green: "border-emerald-200 bg-emerald-50 text-emerald-900",
+};
 
 export default function DesktopShell({
   section,
@@ -123,6 +181,7 @@ export default function DesktopShell({
   signedIn,
   onSignOut,
   locked = false,
+  alerts = [],
   children,
 }: {
   section: DesktopSection;
@@ -136,19 +195,33 @@ export default function DesktopShell({
   /** True while the welcome tour is up: the section links go inert (the
    *  tour is modal); language and sign-out stay usable. */
   locked?: boolean;
+  /** The lines the page's sticky notice block shows right now. */
+  alerts?: ShellAlert[];
   children: ReactNode;
 }) {
   const { t } = useLocale();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  // What the notice block already said when the menu opened is not news;
+  // a line that arrives (or changes) while it is open is repeated inside
+  // it, where a person and a screen reader can reach it. The lines on show
+  // at opening are remembered by state set during render — React's way of
+  // deriving from the previous render.
+  const alertKey = (alert: ShellAlert) => `${alert.tone}:${alert.text}`;
+  const [alertsAtOpen, setAlertsAtOpen] = useState<string[] | null>(null);
+  if (menuOpen && alertsAtOpen === null) setAlertsAtOpen(alerts.map(alertKey));
+  if (!menuOpen && alertsAtOpen !== null) setAlertsAtOpen(null);
+  const freshAlerts =
+    menuOpen && alertsAtOpen !== null ? alerts.filter((alert) => !alertsAtOpen.includes(alertKey(alert))) : [];
 
   // The phone menu is modal: the page behind it does not scroll, focus
   // starts on Close and goes back to the menu button when it shuts — from
   // the cleanup, because the banner is inert until that render. Escape is
   // heard on the document, not only inside the menu: focus can leave it
   // (a click on its blank space puts focus on <body>), and Escape must
-  // still close it.
+  // still close it. A window that reaches lg closes it too (closeWhenWide);
+  // the cleanup — which also runs on unmount — releases the lock either way.
   useEffect(() => {
     if (!menuOpen) return;
     const before = document.body.style.overflow;
@@ -158,11 +231,14 @@ export default function DesktopShell({
     };
     document.body.style.overflow = "hidden";
     document.addEventListener("keydown", onKey);
+    const stopWide = closeWhenWide(window.matchMedia(WIDE), () => setMenuOpen(false));
     closeButton.current?.focus();
     return () => {
+      stopWide();
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = before;
-      opener?.focus();
+      // Hidden at lg (lg:hidden): focus() there would land nowhere useful.
+      if (opener && opener.getClientRects().length > 0) opener.focus();
     };
   }, [menuOpen]);
   const go = (next: DesktopSection) => {
@@ -199,7 +275,7 @@ export default function DesktopShell({
                 type="button"
                 onClick={() => go(item.id)}
                 aria-current={on ? "page" : undefined}
-                className={itemClass(on)}
+                className={itemClass(on, phone)}
               >
                 <NavIcon id={item.id} />
                 <span className="flex-1">{t(item.key)}</span>
@@ -218,7 +294,7 @@ export default function DesktopShell({
           inert={locked}
           onClick={() => go("settings")}
           aria-current={section === "settings" ? "page" : undefined}
-          className={itemClass(section === "settings")}
+          className={itemClass(section === "settings", phone)}
         >
           <NavIcon id="settings" />
           {t("settings.title")}
@@ -232,7 +308,18 @@ export default function DesktopShell({
               <span className="truncate" title={email ?? undefined}>
                 {t("desktop.signedInAs", { email: email ?? "" })}
               </span>
-              <button type="button" onClick={onSignOut} className="min-h-11 self-start hover:text-[#ededed] hover:underline">
+              <button
+                type="button"
+                onClick={() => {
+                  // From the phone menu: close it FIRST (committed now, not
+                  // after the handler), so the confirm opens over the page
+                  // and a refusal ("couldn't sign out…") lands in a <main>
+                  // that is no longer inert — seen, and announced.
+                  if (phone) flushSync(() => setMenuOpen(false));
+                  onSignOut();
+                }}
+                className="min-h-11 self-start hover:text-[#ededed] hover:underline"
+              >
                 {t("home.signOut")}
               </button>
             </>
@@ -241,8 +328,16 @@ export default function DesktopShell({
           )}
           {phone && (
             // The old phone layout, kept: a full page load, so the two
-            // layouts never share a mounted Ledger.
-            <a href="/app/classic" className="flex min-h-11 items-center hover:text-[#ededed] hover:underline">
+            // layouts never share a mounted Ledger — which is why the Ledger
+            // is asked first (LAYOUT_EVENT). Refused: the menu closes so its
+            // reason shows.
+            <a
+              href="/app/classic"
+              onClick={(event) => {
+                if (!askToSwitchLayout(event)) setMenuOpen(false);
+              }}
+              className="flex min-h-11 items-center hover:text-[#ededed] hover:underline"
+            >
               {t("desktop.nav.classic")}
             </a>
           )}
@@ -352,6 +447,20 @@ export default function DesktopShell({
                   <path d="M6 6l12 12M18 6L6 18" />
                 </svg>
               </button>
+            </div>
+            {/* The page's notices that arrived while the menu is open (see
+                freshAlerts): mounted with the menu, so a line inserted here
+                is announced. */}
+            <div className="flex flex-col gap-2 empty:hidden">
+              {freshAlerts.map((alert) => (
+                <p
+                  key={alertKey(alert)}
+                  role={alert.tone === "green" ? "status" : "alert"}
+                  className={`rounded-md border px-3 py-2 text-sm ${ALERT_CLASS[alert.tone]}`}
+                >
+                  {alert.text}
+                </p>
+              ))}
             </div>
             {navBody(true)}
           </nav>

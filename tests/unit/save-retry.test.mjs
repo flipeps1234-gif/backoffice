@@ -14,7 +14,7 @@ const load = (globals = {}) => {
   );
   return exports;
 };
-const { isNetworkSaveError, retryDelayMs } = load();
+const { isNetworkSaveError, retryDelayMs, isDailyLimitSaveError, classifySaveError, limitResetsAt, limitRetryDelayMs, PARKED_STALE_MS, PARKED_RESTAMP_MS } = load();
 
 /** A localStorage with the real API surface the helpers use (length/key). */
 const fakeStorage = () => {
@@ -117,4 +117,68 @@ test('a save the server answered and refused is NOT retried', () => {
 test('the backoff is short first, then 30 s for as long as the page stays open', () => {
   assert.deepEqual([0, 1, 2, 3, 4, 50].map(retryDelayMs), [2000, 5000, 15000, 30000, 30000, 30000]);
   assert.equal(retryDelayMs(-1), 2000);
+});
+
+// ---- The daily write ceiling (migration 0035): a wait, never a refusal ----
+
+/** What 0035 raises: the SQLSTATE PostgREST turns into HTTP 429, and the message. */
+const migration = readFileSync(new URL('../../supabase/migrations/0035_account_write_budget.sql', import.meta.url), 'utf8');
+const raised = migration.match(/raise exception '([^']+)'\s+using errcode = '([A-Z0-9]{5})'/g)
+  .map((s) => s.match(/raise exception '([^']+)'\s+using errcode = '([A-Z0-9]{5})'/))
+  .find(([, , code]) => code === 'PT429');
+
+test('0035\'s refusal is what the queue parks on: its exact message (as the wrappers rethrow it) and its code', () => {
+  assert.ok(raised, '0035 raises PT429');
+  const [, message, code] = raised;
+  assert.equal(code, 'PT429');                                                   // PostgREST: HTTP 429
+  assert.equal(classifySaveError(new Error(message)), 'limit');                  // `new Error(error.message)` in lib/supabase/*
+  assert.equal(classifySaveError({ message, code, details: 'At most 3000 new rows per account per UTC day.' }), 'limit'); // the raw PostgrestError
+  assert.equal(classifySaveError(Object.assign(new Error(message), { code })), 'limit'); // insertTransactions keeps the code
+  assert.equal(classifySaveError({ code: 'PT429', message: '' }), 'limit');      // the code alone is enough
+  assert.equal(isDailyLimitSaveError(new Error(message)), true);
+  assert.equal(isNetworkSaveError(new Error(message)), false);                   // an older reading of it would have been "refused"
+});
+
+test('classifySaveError: network waits, the ceiling waits, everything else the server answered is refused for good', () => {
+  for (const message of ['TypeError: Failed to fetch', 'TypeError: Load failed', 'JWT expired', 'AbortError: signal is aborted without reason']) {
+    assert.equal(classifySaveError(new Error(message)), 'network', message);
+  }
+  assert.equal(classifySaveError(Object.assign(new Error('x'), { name: 'AuthRetryableFetchError' })), 'network');
+  for (const cause of [
+    new Error('duplicate key value violates unique constraint "sales_pkey"'),
+    { code: '23505', message: 'duplicate key value violates unique constraint "transactions_pkey"' },
+    new Error('new row violates row-level security policy for table "sales"'),
+    new Error('demo cap reached'),
+    { code: '429', message: 'Too many requests' },                              // not 0035's answer
+    { code: 'PT402', message: 'Payment Required' },
+    new Error(''), null, undefined, 'daily write limit reached for this account', 42,
+  ]) {
+    assert.equal(classifySaveError(cause), 'refused', String(cause?.message ?? cause));
+  }
+});
+
+test('the ceiling\'s wait: until a minute past the next UTC midnight, never more than an hour, never a hot loop', () => {
+  const at = (iso) => Date.parse(iso);
+  assert.equal(limitResetsAt(at('2026-10-08T15:20:00Z')), at('2026-10-09T00:00:00Z'));
+  assert.equal(limitResetsAt(at('2026-10-08T00:00:00Z')), at('2026-10-09T00:00:00Z')); // exactly at a reset: the next one
+  assert.equal(limitResetsAt(at('2026-10-08T23:59:59.999Z')), at('2026-10-09T00:00:00Z'));
+  assert.equal(limitRetryDelayMs(at('2026-10-08T23:59:30Z')), 90_000);               // 30 s to midnight + the minute
+  assert.equal(limitRetryDelayMs(at('2026-10-08T23:30:00Z')), 31 * 60_000);
+  assert.equal(limitRetryDelayMs(at('2026-10-08T15:20:00Z')), 60 * 60_000);          // hours away: an hour at a time
+  assert.equal(limitRetryDelayMs(at('2026-10-09T00:00:30Z')), 60 * 60_000);          // a fast clock's early knock: an hour, not a day
+  // A whole day parked on the ceiling, refused every time: how many tries?
+  let now = at('2026-10-08T00:00:30Z');
+  let tries = 0;
+  for (; now < at('2026-10-09T00:00:00Z'); now += limitRetryDelayMs(now)) tries += 1;
+  assert.ok(tries <= 25, `${tries} tries in a day`);
+  assert.ok(now - at('2026-10-09T00:00:00Z') <= 60_000, 'and the first try after the reset comes a minute after it');
+  for (let t = at('2026-10-08T00:00:00Z'); t < at('2026-10-09T00:00:00Z'); t += 7 * 60_000 + 13_000) {
+    const wait = limitRetryDelayMs(t);
+    assert.ok(wait >= 60_000 && wait <= 60 * 60_000, `${new Date(t).toISOString()}: ${wait}`);
+  }
+});
+
+test('a long wait keeps the parked marker fresh: restamped well inside the staleness window', () => {
+  assert.ok(PARKED_RESTAMP_MS * 2 < PARKED_STALE_MS, 'a throttled timer firing late still stamps in time');
+  assert.ok(retryDelayMs(99) <= PARKED_RESTAMP_MS, 'the network backoff never outlasts one stamp');
 });

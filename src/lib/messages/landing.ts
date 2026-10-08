@@ -10,10 +10,15 @@ export const messages = {
     es: "Tu Venmo, Cash App, Zelle y efectivo — convertidos en libros de verdad en unos toques.",
     pt: "Seu Venmo, Cash App, Zelle e dinheiro — virando um livro-caixa de verdade em poucos toques.",
   },
+  // "Free during preview" is the owner's wording (2026-10-08): everything
+  // is free during the preview; paid modules come later, for new users
+  // (site.pricingIntro). A bare "Free." read as free for good, beside a
+  // pricing page that lists paid modules. lib/seo.ts OG_IMAGE_TEXT.sub
+  // mirrors this line.
   "landing.heroSub": {
-    en: "Built for cleaners, landscapers, barbers. Free.",
-    es: "Hecho para limpiadoras, jardineros, barberos. Gratis.",
-    pt: "Feito para faxineiras, jardineiros, barbeiros. Grátis.",
+    en: "Built for cleaners, landscapers, barbers. Free during preview.",
+    es: "Hecho para limpiadoras, jardineros, barberos. Gratis durante la versión preliminar.",
+    pt: "Feito para faxineiras, jardineiros, barbeiros. Grátis durante a versão prévia.",
   },
   "landing.openApp": {
     en: "Open the app",
@@ -261,9 +266,9 @@ export const messages = {
     pt: "Entre para os cem fundadores — $6/mês travado para sempre",
   },
   "landing.ctaBody": {
-    en: "contado is free while we build. Leave your email and the founding price is yours when paid modules arrive.",
-    es: "contado es gratis mientras lo construimos. Deja tu correo y el precio fundador es tuyo cuando lleguen los módulos de pago.",
-    pt: "O contado é grátis enquanto construímos. Deixe seu e-mail e o preço de fundador é seu quando os módulos pagos chegarem.",
+    en: "Everything in contado is free during the preview. Leave your email and the founding price is yours when paid modules arrive — one price that covers them all.",
+    es: "Todo en contado es gratis durante la versión preliminar. Deja tu correo y el precio fundador es tuyo cuando lleguen los módulos de pago — un solo precio que los cubre todos.",
+    pt: "Tudo no contado é grátis durante a versão prévia. Deixe seu e-mail e o preço de fundador é seu quando os módulos pagos chegarem — um preço único que cobre todos eles.",
   },
   "landing.ctaPlaceholder": {
     en: "you@example.com",
@@ -287,6 +292,22 @@ export const messages = {
     en: "You're on the list.",
     es: "Estás en la lista.",
     pt: "Você está na lista.",
+  },
+  // In place of the form once the founding hundred is full (GET
+  // /api/founding says closed, or the POST answers 409). The same words
+  // for every visitor: the page never says whether an address is on the
+  // list, so the body tells anyone who joined that they are still in.
+  // No count, no countdown — the offer is open or it is full. Followed by
+  // an "Open the app" link (landing.openApp).
+  "landing.ctaFullTitle": {
+    en: "The founding hundred is full.",
+    es: "Se llenó el cupo de los cien fundadores.",
+    pt: "As cem vagas de fundador já foram preenchidas.",
+  },
+  "landing.ctaFullBody": {
+    en: "If you already joined, you're still in. contado is free to use today.",
+    es: "Si ya te uniste, tu lugar sigue siendo tuyo. Y hoy puedes usar contado gratis.",
+    pt: "Se você já entrou, sua vaga continua garantida. E você pode usar o contado grátis hoje mesmo.",
   },
   "landing.ctaInvalid": {
     en: "That doesn't look like an email.",

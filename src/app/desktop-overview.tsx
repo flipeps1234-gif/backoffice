@@ -314,7 +314,10 @@ function Toggle<T extends string | number>({
           type="button"
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
-          className={`h-9 whitespace-nowrap rounded-full px-3.5 text-sm transition-colors ${
+          // 44px below lg, where this page is the phone layout's home (the
+          // tap minimum, design-tokens.md); the sidebar layout keeps 36px
+          // (2026-10-08 review, finding 6).
+          className={`h-11 whitespace-nowrap rounded-full px-3.5 text-sm transition-colors lg:h-9 ${
             value === o.value
               ? "bg-foreground text-background"
               : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800"

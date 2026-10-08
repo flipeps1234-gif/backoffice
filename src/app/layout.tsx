@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     template: `%s — ${SITE_NAME}`,
   },
   description:
-    "Turn Venmo, Cash App, Zelle and cash into real books in a few taps. Built for cleaners, landscapers and barbers. Free.",
+    "Turn Venmo, Cash App, Zelle and cash into real books in a few taps. Built for cleaners, landscapers and barbers. Free during preview.",
   applicationName: SITE_NAME,
   // The same base every page spreads into its own openGraph/twitter —
   // Next replaces nested objects instead of merging them (lib/seo.ts).

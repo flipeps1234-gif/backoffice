@@ -5,10 +5,13 @@ import { PublicPage } from "../public-shell";
 import { useLocale } from "../use-locale";
 
 /**
- * Pricing, honestly: free today, the core free forever, one founding
- * price for the paid modules that don't exist yet. No billing code
- * exists and none is implied — this page describes the promise, not a
- * checkout (CLAUDE.md: build NO billing). Bundle-first, as specified.
+ * Pricing, honestly — the owner's decision of 2026-10-08: everything is
+ * free during the preview; current users keep what they use today; paid
+ * modules come later, for new users; the founding members' one price
+ * covers the modules. Under it, the core that no module will ever hold
+ * (free forever, for everyone). No billing code exists and none is
+ * implied — this page describes the promise, not a checkout (CLAUDE.md:
+ * build NO billing). Bundle-first, as specified.
  */
 export default function PricingContent() {
   const { t } = useLocale();

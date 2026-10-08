@@ -14,7 +14,7 @@ import { SITE_NAME, absolute } from "@/lib/site";
  * suffix on the home page itself); everything else is set here.
  */
 const DESCRIPTION =
-  "The AI bookkeeping app for cleaners, landscapers and barbers: AI reads your Venmo, Cash App and Zelle screenshots, and you log cash in a few taps — see who owes you, with Schedule C totals ready for your preparer. No bank login. Free.";
+  "The AI bookkeeping app for cleaners, landscapers and barbers: AI reads your Venmo, Cash App and Zelle screenshots, and you log cash in a few taps — see who owes you, with Schedule C totals ready for your preparer. No bank login. Free during preview.";
 
 export const metadata: Metadata = {
   description: DESCRIPTION,

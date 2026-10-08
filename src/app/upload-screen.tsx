@@ -10,7 +10,12 @@ import {
 import ClientsPage from "./clients-page";
 import ConfirmationSheet from "./confirmation-sheet";
 import DesktopOverview from "./desktop-overview";
-import DesktopShell, { DesktopGate, type DesktopSection } from "./desktop-shell";
+import DesktopShell, {
+  DesktopGate,
+  LAYOUT_EVENT,
+  type DesktopSection,
+  type ShellAlert,
+} from "./desktop-shell";
 import DropZone from "./drop-zone";
 import Dashboard from "./dashboard";
 import HistoryList, { type LogAgainPrefill } from "./history-list";
@@ -74,12 +79,15 @@ import { dedupe, isDuplicate } from "@/lib/extract/dedupe";
 import type { ExtractionWarning } from "@/lib/extract/types";
 import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import {
+  classifySaveError,
   clearParked,
-  isNetworkSaveError,
   LATE_LANDING_MS,
+  limitResetsAt,
+  limitRetryDelayMs,
   markParked,
   noteLostWrites,
   otherTabParked,
+  PARKED_RESTAMP_MS,
   retryDelayMs,
   TAB_ID,
   takeLostWrites,
@@ -236,12 +244,16 @@ type SaveQueue = {
    *  in flight (pass-7). "late" when the wait was long enough that a
    *  double entry on another device is plausible. */
   recoveredPending: "" | "now" | "late";
+  /** …and whether what it waited for was the daily write ceiling (0035),
+   *  not the network: the green line then says the limit reset, not
+   *  "back online". */
+  recoveredLimit: boolean;
 };
 
 /** Resolve when it is worth trying the parked save again: the browser says
- *  it is back online, the tab comes back to the front, the backoff runs
- *  out, or someone calls queue.wake. */
-const parkUntilRetry = (queue: SaveQueue, attempt: number): Promise<"woken" | "timer"> =>
+ *  it is back online, the tab comes back to the front, `ms` runs out, or
+ *  someone calls queue.wake. */
+const parkUntilRetry = (queue: SaveQueue, ms: number): Promise<"woken" | "timer"> =>
   new Promise((resolve) => {
     let done = false;
     const finish = (why: "woken" | "timer") => {
@@ -257,11 +269,24 @@ const parkUntilRetry = (queue: SaveQueue, attempt: number): Promise<"woken" | "t
     const onVisible = () => {
       if (document.visibilityState === "visible") woken();
     };
-    const timer = window.setTimeout(() => finish("timer"), retryDelayMs(attempt));
+    const timer = window.setTimeout(() => finish("timer"), ms);
     window.addEventListener("online", woken);
     document.addEventListener("visibilitychange", onVisible);
     queue.wake = woken;
   });
+
+/** parkUntilRetry for a wait of any length — the daily ceiling's can be an
+ *  hour: in slices, stamping this tab's parked marker between them, so
+ *  another tab's Sign out still sees the save and asks first (a marker
+ *  unstamped for 90 s reads as a tab that is gone). */
+const waitParked = async (queue: SaveQueue, ms: number): Promise<"woken" | "timer"> => {
+  const until = Date.now() + ms;
+  for (;;) {
+    const why = await parkUntilRetry(queue, Math.min(Math.max(until - Date.now(), 0), PARKED_RESTAMP_MS));
+    if (why === "woken" || queue.stopped || Date.now() >= until) return why;
+    markParked(TAB_ID);
+  }
+};
 
 export default function UploadScreen({
   layout = "classic",
@@ -674,8 +699,17 @@ function Ledger({
    *  the server (no signal) and is being retried — see persist. Not sticky:
    *  it clears when the save lands. */
   const [saveWaiting, setSaveWaiting] = useState(false);
+  /** While the save is parked on the daily write ceiling (0035) rather than
+   *  the network: when that park began (the line names the reset time; it
+   *  is re-stamped at every try, at most an hour apart). null otherwise. */
+  const [limitParkedAt, setLimitParkedAt] = useState<number | null>(null);
   /** "Back online — everything is saved", for a few seconds after that. */
   const [saveRecovered, setSaveRecovered] = useState<"" | "now" | "late">("");
+  /** …said as "the limit reset" when the ceiling is what it waited for. */
+  const [recoveredLimit, setRecoveredLimit] = useState(false);
+  /** Why a layout link did not switch (LAYOUT_EVENT below): an entry is
+   *  open, or saves are still on their way. */
+  const [leaveNotice, setLeaveNotice] = useState<"" | "entry" | "saving">("");
   const saveQueue = useRef<SaveQueue>({
     waiting: false,
     stopped: false,
@@ -685,6 +719,7 @@ function Ledger({
     size: 0,
     running: null,
     recoveredPending: "",
+    recoveredLimit: false,
   });
   /** "Try now" was tapped and the attempt is running (or waiting on
    *  auth-js, which caches a failed token refresh for a minute). */
@@ -921,6 +956,33 @@ function Ledger({
     window.addEventListener(HOME_EVENT, goHome);
     return () => window.removeEventListener(HOME_EVENT, goHome);
   }, [quickAdd, logAgain, showNewSale, showProducts, showSettings, setupUp, t]);
+  // The layout links ("Classic phone layout", "New layout" —
+  // desktop-shell.tsx askToSwitchLayout) load the OTHER layout's page, and
+  // everything this Ledger holds goes with this one: a half-typed entry
+  // (the brand link's set, above) and every save still in the queue — on
+  // its way, or parked on the network or the daily limit (the queue lives
+  // in memory). So the switch waits, and a line says why (2026-10-08
+  // review: the plain links reloaded past both).
+  const entryForSwitch = quickAdd || logAgain !== null || showNewSale || showProducts || showSettings;
+  useEffect(() => {
+    const onSwitch = (ask: Event) => {
+      const saving = saveQueue.current.size > 0;
+      if (!entryForSwitch && !saving) return;
+      ask.preventDefault();
+      setLeaveNotice(entryForSwitch ? "entry" : "saving");
+      if (desktop && entryForSwitch) {
+        // The open form is mounted but may be hidden in its section: show it.
+        setSection(showNewSale ? "sale" : quickAdd || logAgain ? "expense" : showProducts ? "products" : "settings");
+      }
+      // The line renders with the page's other notices, at the top.
+      window.scrollTo({ top: 0 });
+    };
+    window.addEventListener(LAYOUT_EVENT, onSwitch);
+    return () => window.removeEventListener(LAYOUT_EVENT, onSwitch);
+  }, [entryForSwitch, desktop, showNewSale, quickAdd, logAgain, showProducts]);
+  // The entry it named is finished or closed: the line has done its job
+  // (the "saving" one goes when the queue drains — persist's finally).
+  if (leaveNotice === "entry" && !entryForSwitch) setLeaveNotice("");
   /** Auto-link undo: everything needed to put both sides back. */
   const [matchUndo, setMatchUndo] = useState<
     {
@@ -968,9 +1030,12 @@ function Ledger({
    * REACHED the server (no signal, the auth refresh failing offline) is
    * tried again until it lands, with everything queued behind it waiting
    * its turn — so the order on the server is the order of the taps, and
-   * "keep this page open, it saves when you're back online" is true. A
-   * save the server answered and refused is reported and dropped, as
-   * before (lib/save-retry.ts has the rule and the reasons).
+   * "keep this page open, it saves when you're back online" is true. So is
+   * a save the daily write ceiling turned away (0035, a script's problem,
+   * never a person's): kept, and tried again once the ceiling resets — at
+   * most once an hour until then. A save the server answered and refused
+   * otherwise is reported and dropped, as before (lib/save-retry.ts has the
+   * rule and the reasons).
    *
    * The returned promise resolves at this save's FIRST outcome — landed,
    * failed for good, or parked behind the network — not when it finally
@@ -991,6 +1056,8 @@ function Ledger({
       const next = writeChain.current.then(async () => {
         let parked = false;
         let parkedAt = 0;
+        /** What the last park waited for. */
+        let parkedOn: "network" | "limit" = "network";
         let runDone = () => {};
         const run = new Promise<void>((resolve) => {
           runDone = resolve;
@@ -1057,17 +1124,26 @@ function Ledger({
               if (parked && queue.recoveredPending !== "late") {
                 queue.recoveredPending = Date.now() - parkedAt > LATE_LANDING_MS ? "late" : "now";
               }
+              if (parked) queue.recoveredLimit = parkedOn === "limit";
               return;
             } catch (cause) {
               const reverted = cause instanceof RevertedWrite;
-              if (!reverted && !queue.stopped && isNetworkSaveError(cause)) {
-                console.warn("Save waiting for the network:", cause);
+              // "network" and "limit" keep the save and wait; "refused" is
+              // the server's final answer.
+              const failure = reverted ? "refused" : classifySaveError(cause);
+              if (failure !== "refused" && !queue.stopped) {
+                console.warn(
+                  failure === "limit" ? "Save waiting for the daily write limit to reset:" : "Save waiting for the network:",
+                  cause,
+                );
                 parked = true;
+                parkedOn = failure;
                 if (!parkedAt) parkedAt = Date.now();
                 queue.waiting = true;
                 // Other tabs' Sign out asks before losing this (signOut below).
                 markParked(TAB_ID);
                 setSaveWaiting(true);
+                setLimitParkedAt(failure === "limit" ? Date.now() : null);
                 setSaveTrying(false);
                 // The "Try now" that may have started this attempt is over.
                 focusRecovered.current = false;
@@ -1075,7 +1151,12 @@ function Ledger({
                 // Everyone awaiting a queued save has their answer: parked.
                 for (const done of queue.outcomes) done();
                 runDone();
-                const why = await parkUntilRetry(queue, attempt);
+                // The ceiling resets at midnight UTC: no point knocking every
+                // 30 s until then (lib/save-retry.ts limitRetryDelayMs).
+                const why = await waitParked(
+                  queue,
+                  failure === "limit" ? limitRetryDelayMs() : retryDelayMs(attempt),
+                );
                 if (!queue.stopped) {
                   // Still parked, still here: the marker's age says so.
                   markParked(TAB_ID);
@@ -1088,10 +1169,11 @@ function Ledger({
                   continue;
                 }
               }
-              // A network failure after the queue was stopped (this Ledger is
-              // unmounting under a write still in flight): nothing retries
-              // it, so say so on the next signed-in mount instead of nothing.
-              if (!reverted && queue.stopped && !queue.consentedLoss && isNetworkSaveError(cause)) {
+              // A network failure (or the ceiling) after the queue was stopped
+              // (this Ledger is unmounting under a write still in flight):
+              // nothing retries it, so say so on the next signed-in mount
+              // instead of nothing.
+              if (failure !== "refused" && queue.stopped && !queue.consentedLoss) {
                 noteLostWrites(accountId);
               }
               console.error("Save failed:", cause);
@@ -1122,6 +1204,7 @@ function Ledger({
               }
             }
             setSaveWaiting(false);
+            setLimitParkedAt(null);
             setSaveTrying(false);
           }
           // The last queued save is done — landed, or refused (the red line
@@ -1129,8 +1212,11 @@ function Ledger({
           // waited): now the green line. Batched with setSaveWaiting above.
           if (queue.recoveredPending && queue.size === 1 && !queue.waiting) {
             setSaveRecovered(queue.recoveredPending);
+            setRecoveredLimit(queue.recoveredLimit);
             queue.recoveredPending = "";
           }
+          // The queue is empty now: a layout switch it held up may go ahead.
+          if (queue.size === 1) setLeaveNotice((notice) => (notice === "saving" ? "" : notice));
           queue.outcomes.delete(settle);
           queue.size -= 1;
           if (queue.running === run) queue.running = null;
@@ -3236,35 +3322,64 @@ function Ledger({
       </p>
     ) : null;
 
+  /** The daily write ceiling's line (0035): when it resets — midnight UTC —
+   *  in this device's clock and language, like the upload limit's. Worded
+   *  from when the park began (re-stamped at every try), so the render
+   *  stays pure. */
+  const saveLimitLine = (parkedAt: number) => {
+    const reset = new Date(limitResetsAt(parkedAt));
+    const time = reset.toLocaleTimeString(tag, { hour: "numeric", minute: "2-digit" });
+    return reset.toDateString() === new Date(parkedAt).toDateString()
+      ? t("home.saveLimitToday", { time })
+      : t("home.saveLimitTomorrow", { time });
+  };
+  /** The green line's words: what the saves waited for, and whether an
+   *  earlier save was refused for good (the red line's subject). */
+  const recoveredKey = saveFailed
+    ? recoveredLimit
+      ? "home.saveRecoveredLimitPartial"
+      : "home.saveRecoveredPartial"
+    : recoveredLimit
+      ? "home.saveRecoveredLimit"
+      : "home.saveRecovered";
+
   /** The write queue's own line, in the red error banner's slot — which it
    *  takes from the refused-save line while a save is parked (see above).
    *  `error`/`status` are left as they are, so that line returns when the
    *  queue drains. Amber while
-   *  a save waits for the network (with a way to try at once), then a
-   *  short confirmation when it lands. Nothing when all is well. */
+   *  a save waits for the network (with a way to try at once) or for the
+   *  daily ceiling to reset (no "Try now": it would only be refused again
+   *  — the queue tries by itself), then a short confirmation when it
+   *  lands. Nothing when all is well. */
   const saveQueueEl = (where: "phone" | "sidebar" = "phone") =>
     saveWaiting ? (
       <p
         role="alert"
         className={`${where === "phone" ? "mb-4 " : ""}flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-1 text-sm text-amber-900`}
       >
-        <span className="py-1">{t(saveTrying ? "home.saveTrying" : "home.saveWaiting")}</span>
+        <span className="py-1">
+          {limitParkedAt !== null
+            ? saveLimitLine(limitParkedAt)
+            : t(saveTrying ? "home.saveTrying" : "home.saveWaiting")}
+        </span>
         {/* aria-disabled, not disabled: a disabled control drops focus to
             the page top in Firefox and Safari, and this is the one control
             a keyboard user is on. */}
-        <button
-          type="button"
-          aria-disabled={saveTrying}
-          className={`min-h-11 shrink-0 px-2 font-medium underline ${saveTrying ? "no-underline opacity-60" : ""}`}
-          onClick={() => {
-            if (saveTrying) return;
-            focusRecovered.current = true;
-            setSaveTrying(true);
-            saveQueue.current.wake?.();
-          }}
-        >
-          {t("home.saveRetryNow")}
-        </button>
+        {limitParkedAt === null && (
+          <button
+            type="button"
+            aria-disabled={saveTrying}
+            className={`min-h-11 shrink-0 px-2 font-medium underline ${saveTrying ? "no-underline opacity-60" : ""}`}
+            onClick={() => {
+              if (saveTrying) return;
+              focusRecovered.current = true;
+              setSaveTrying(true);
+              saveQueue.current.wake?.();
+            }}
+          >
+            {t("home.saveRetryNow")}
+          </button>
+        )}
       </p>
     ) : saveRecovered ? (
       // Said even when an earlier save was refused: the waiting ones DID
@@ -3277,7 +3392,7 @@ function Ledger({
       >
         {/* The sticky flag, not the red line: an upload in between clears
             `error`, and the batch it reported is still unsaved (pass-7). */}
-        {t(saveFailed ? "home.saveRecoveredPartial" : "home.saveRecovered")}
+        {t(recoveredKey)}
         {saveRecovered === "late" && ` ${t("home.saveRecoveredLate")}`}
         {(saveRecovered === "late" || saveFailed) && (
           <button
@@ -3294,6 +3409,24 @@ function Ledger({
         )}
       </p>
     ) : null;
+
+  /** The same lines as words, for the phone menu: the page behind it is
+   *  inert and covered, so a line that arrives while it is open is repeated
+   *  inside it (desktop-shell.tsx, 2026-10-08 review finding 4). */
+  const shellAlerts: ShellAlert[] = [
+    ...(status === "error" && !errorHidden && error ? [{ text: error, tone: "red" as const }] : []),
+    ...(saveWaiting
+      ? [{
+          text: limitParkedAt !== null ? saveLimitLine(limitParkedAt) : t(saveTrying ? "home.saveTrying" : "home.saveWaiting"),
+          tone: "amber" as const,
+        }]
+      : saveRecovered
+        ? [{
+            text: `${t(recoveredKey)}${saveRecovered === "late" ? ` ${t("home.saveRecoveredLate")}` : ""}`,
+            tone: "green" as const,
+          }]
+        : []),
+  ];
 
   /** The email + Sign out line. Shared by the hub and the welcome tour:
    *  someone who signed in with the wrong address must be able to leave
@@ -3422,6 +3555,15 @@ function Ledger({
       {batchNotice && (
         <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
           {batchNotice}
+        </p>
+      )}
+
+      {/* Why a layout link did not switch (LAYOUT_EVENT): an entry is open,
+          or saves are still on their way. Gone when the entry closes or the
+          queue drains. */}
+      {leaveNotice && (
+        <p role="status" className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {t(leaveNotice === "entry" ? "home.switchFinishEntry" : "home.switchWaitForSave")}
         </p>
       )}
 
@@ -3620,7 +3762,7 @@ function Ledger({
               {accountId && saveWaiting ? (
                 <>
                   <p className="text-xs text-amber-700 dark:text-amber-400">
-                    {t("home.saveWaitingNote")}
+                    {t(limitParkedAt !== null ? "home.saveLimitNote" : "home.saveWaitingNote")}
                   </p>
                   {/* Both, when both are true: the waiting note alone promised
                       that everything here would save itself (pass-6 review). */}
@@ -3674,6 +3816,7 @@ function Ledger({
         .filter((s) => s.state === "expected")
         .reduce((sum, s) => sum + saleTotalCents(s), 0)}
       owedCents={owedCents(sales)}
+      stickyTop={desktop ? "top-14 lg:top-0" : "top-0"}
     />
   );
 
@@ -4106,6 +4249,7 @@ function Ledger({
         signedIn={accountId !== null}
         onSignOut={signOut}
         locked={tourOpen}
+        alerts={shellAlerts}
       >
         {/* Sticky: every section is one scrolling page here, and a "Got
             cash" far down a long Owed list must still SHOW its failed save
@@ -4117,7 +4261,9 @@ function Ledger({
             top, and the block would cover the totals. */}
         <div
           data-sticky-notices={show("upload") ? undefined : ""}
-          className={`${show("upload") ? "" : "sticky top-2 z-20 "}flex flex-col gap-2`}
+          // Below lg the 56px phone banner is pinned at the top: the block
+          // pins under it, not behind it (2026-10-08 review, finding 1).
+          className={`${show("upload") ? "" : "sticky top-16 z-20 lg:top-2 "}flex flex-col gap-2`}
           // `:empty` cannot do this: the red line stays mounted (hidden) so
           // its role=alert does not remount, and a 0-height flex item still
           // costs <main>'s gap (pass-7 review).

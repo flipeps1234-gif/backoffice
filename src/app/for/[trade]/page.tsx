@@ -23,7 +23,7 @@ const META: Record<
   cleaners: {
     title: "Bookkeeping for house cleaners",
     description:
-      "Turn Venmo, Cash App, Zelle and cash into real books from the driveway, in a few taps. Track who owes you, tag supplies for Schedule C, export for your tax preparer. Free.",
+      "Turn Venmo, Cash App, Zelle and cash into real books from the driveway, in a few taps. Track who owes you, tag supplies for Schedule C, export for your tax preparer. Free during preview.",
     keywords: [
       "bookkeeping for house cleaners",
       "house cleaner income tracker",
@@ -36,7 +36,7 @@ const META: Record<
   landscapers: {
     title: "Bookkeeping for landscapers",
     description:
-      "Payments from the truck, one hand: Venmo, Cash App, Zelle and cash into real books. Recurring monthly accounts, who owes you, a mileage estimate, Schedule C. Free.",
+      "Payments from the truck, one hand: Venmo, Cash App, Zelle and cash into real books. Recurring monthly accounts, who owes you, a mileage estimate, Schedule C. Free during preview.",
     keywords: [
       "landscaping bookkeeping app",
       "lawn care income tracker",
@@ -49,7 +49,7 @@ const META: Record<
   barbers: {
     title: "Bookkeeping for barbers",
     description:
-      "Cash App and cash days in the same books, a few minutes at close. Who still owes you, chair rent and product tagged for Schedule C. Free.",
+      "Cash App and cash days in the same books, a few minutes at close. Who still owes you, chair rent and product tagged for Schedule C. Free during preview.",
     keywords: [
       "barber bookkeeping app",
       "barber income tracker",
